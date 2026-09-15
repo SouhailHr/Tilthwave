@@ -1,9 +1,18 @@
 #!/bin/bash
+# API service. Migrations run in the dedicated `migrate` service (deploy/docker-compose.yml);
+# set RUN_MIGRATIONS=1 to run them here instead (single-container setups).
+set -euo pipefail
 
-# Migrate changes the database
-echo "Applying database migrations..."
-alembic upgrade head
+if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then
+  echo "Applying database migrations..."
+  alembic upgrade head
+fi
 
-# Start server
 echo "Starting FastAPI server..."
-uvicorn app.interfaces.api.main:app --host 0.0.0.0 --port 8080 --reload
+# UVICORN_RELOAD=1 is for a bind-mounted development checkout only.
+if [ "${UVICORN_RELOAD:-0}" = "1" ]; then
+  exec uvicorn interfaces.api.main:app --host 0.0.0.0 --port 8080 --reload --reload-dir /backend/app
+fi
+exec uvicorn interfaces.api.main:app --host 0.0.0.0 --port 8080 \
+  --workers "${UVICORN_WORKERS:-2}" --proxy-headers --forwarded-allow-ips="${FORWARDED_ALLOW_IPS:-127.0.0.1}" \
+  --timeout-graceful-shutdown 15

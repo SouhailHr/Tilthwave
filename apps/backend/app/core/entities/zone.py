@@ -6,7 +6,7 @@ from core.entities.base import BaseEntity
 @dataclasses.dataclass
 class Zone(BaseEntity):
     """
-     Zone is an entity that represents a zone, extending BaseEntity.
+    Zone is an entity that represents a zone, extending BaseEntity.
     """
 
     farm_name: str

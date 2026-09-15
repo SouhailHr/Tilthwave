@@ -1,58 +1,66 @@
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi_pagination import Page
 
 from adapters.zone import ZoneAdaptor
-from config.settings import settings
-from core.use_cases.zone import ZoneUseCase
-from infrastructure.repositories.irrigation_task import IrrigationTaskDBRepository
-from infrastructure.repositories.sensor import SensorDBRepository
-from infrastructure.repositories.sensor_record import SensorRecordDBRepository
-from infrastructure.repositories.tree import TreeDBRepository
-from infrastructure.repositories.water_switcher import WaterSwitcherDBRepository
-from infrastructure.repositories.zone import ZoneDBRepository
-from infrastructure.repositories.zone_sensors import ZoneSensorsDBRepository
 from interfaces.api.endpoints.base import BaseCrud
 from interfaces.api.helpers.auth import AuthHelper
-from interfaces.api.schemas.zone import ZoneCreate
+from interfaces.api.schemas.zone import ZoneCreate, ZoneUpdate
+from wiring import api_use_cases
 
 router = APIRouter(prefix="/zones", tags=["Zones"])
-# Getting all the repos to use in zone use case
-
-irrigation_task_repo = IrrigationTaskDBRepository(uri=settings.DATABASE.URI)
-zone_sensors_repo = ZoneSensorsDBRepository(uri=settings.DATABASE.URI)
-sensor_repo = SensorDBRepository(uri=settings.DATABASE.URI)
-sensor_records_repo = SensorRecordDBRepository(uri=settings.DATABASE.URI)
-zone_repo = ZoneDBRepository(uri=settings.DATABASE.URI)
-water_switcher_repo = WaterSwitcherDBRepository(uri=settings.DATABASE.URI)
-tree_repo = TreeDBRepository(uri=settings.DATABASE.URI)
-# Getting the zones to check triggers
-zone_use_case = ZoneUseCase(repo=zone_repo,
-                            irrigation_task_repo=irrigation_task_repo,
-                            zone_sensors_repo=zone_sensors_repo,
-                            sensor_repo=sensor_repo,
-                            sensor_record_repo=sensor_records_repo,
-                            water_switcher_repo=water_switcher_repo,
-                            water_source_repo=None,
-                            tree_repo=tree_repo)
-
+use_cases = api_use_cases()
 logger = logging.getLogger(__name__)
 
 
 class ZoneCrudHelper(BaseCrud):
     ADAPTOR_CLASS = ZoneAdaptor
-    USE_CASE_INSTANCE = zone_use_case
+    USE_CASE_INSTANCE = use_cases.zone
     IDENTIFIER = "zone_name"
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 def create(data: ZoneCreate, username: str = Depends(AuthHelper.get_current_user_username)):
     """
     This Router creates a Zone
     """
     return ZoneCrudHelper.create(data=data, performed_by=username)
+
+
+@router.get("/", response_model=Page[dict])
+def get_all(
+    filters: str | None = Query(None, description=ZoneCrudHelper.filters_doc()),
+    search: str | None = Query(None, description="Case-insensitive match on the identifier"),
+):
+    """
+    This Router gets one page of Zones
+    """
+    return ZoneCrudHelper.get_all(filters_str=filters, search=search)
+
+
+@router.get("/stats/{zone_name}")
+def get_stats(zone_name: str):
+    """
+    This Router gets the stats of one Zone
+    """
+    return ZoneCrudHelper.get_stats(entity_name=zone_name)
+
+
+@router.get("/select-list/")
+def select_list(filters: str | None = Query(None)):
+    """
+    This Router gets the Zones as select options
+    """
+    return ZoneCrudHelper.get_select_list(filters_str=filters)
+
+
+@router.get("/identifier/{identifier}")
+def get_by_identifier(identifier: str):
+    """
+    This Router gets a Zone by its zone_name
+    """
+    return ZoneCrudHelper.get_by_identifier(identifier=identifier)
 
 
 @router.get("/{id}")
@@ -63,40 +71,7 @@ def get_by_id(id: int):
     return ZoneCrudHelper.get_by_id(id=id)
 
 
-@router.get("/identifier/{identifier}")
-def get_by_identifier(identifier: str):
-    """
-    This Router gets a zone by zone identifier
-    """
-    return ZoneCrudHelper.get_by_identifier(identifier=identifier)
-
-
-@router.get("/", response_model=Page[dict])
-def get_all(filters: Optional[str] = Query(None)):
-    """
-    This Router gets all the Zones
-    """
-    return ZoneCrudHelper.get_all(filters_str=filters)
-
-
-@router.get("/select-list/")
-def select_list():
-    """
-    This Router gets all Zone for the select list
-    """
-    # list_data = [{"value": zone_name, "label":  zone_name }]
-    return ZoneCrudHelper.get_select_list()
-
-
-@router.get("/stats/{zone_name}")
-def get_zone_stats(zone_name: str):
-    """
-    This Router gets all stats per zone
-    """
-    return ZoneCrudHelper.get_stats(entity_name=zone_name)
-
-
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_by_id(id: int):
     """
     This Router deletes a Zone by ID
@@ -105,8 +80,8 @@ def delete_by_id(id: int):
 
 
 @router.patch("/{id}")
-def update_by_id(id: int, data: dict, username: str = Depends(AuthHelper.get_current_user_username)):
+def update_by_id(id: int, data: ZoneUpdate, username: str = Depends(AuthHelper.get_current_user_username)):
     """
-     This Router updates a Zone by ID with the given Data
+    This Router updates a Zone by ID with the given fields
     """
-    return ZoneCrudHelper.update_by_id(id=id, data=data, performed_by=username)
+    return ZoneCrudHelper.update_by_id(id=id, data=data.model_dump(exclude_unset=True), performed_by=username)

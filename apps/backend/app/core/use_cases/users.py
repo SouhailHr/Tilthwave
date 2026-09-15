@@ -1,10 +1,10 @@
-from passlib.context import CryptContext
-
-from core.entities.users import Users as UserEntity
-from core.use_cases.base import BaseUseCase
-from common import constants as global_constants
-from core.use_cases.exceptions import UseCaseException
 import logging
+
+from common import constants as global_constants
+from core.entities.users import Users as UserEntity
+from core.security.password import PasswordHasher
+from core.use_cases.base import BaseUseCase
+from core.use_cases.exceptions import UseCaseException
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,19 @@ class UserUseCase(BaseUseCase):
         @param  hashed_password: The hashed password from the database.
         @return: True if the password is correct, False otherwise.
         """
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        return PasswordHasher.verify(plain_password, hashed_password)
 
-        return pwd_context.verify(plain_password, hashed_password)
+    @staticmethod
+    def is_superuser_role(role: str) -> bool:
+        """The one rule deriving the superuser flag from a role."""
+        return role in global_constants.SUPERUSER_ROLES
+
+    def create(self, entity: ENTITY):
+        """
+        Create a user; is_superuser is always derived from the role, never taken from the caller.
+        """
+        entity.is_superuser = self.is_superuser_role(entity.role)
+        return self.repo.create(entity)
 
     def authenticate_user(self, username: str, password: str):
         """
@@ -33,16 +43,14 @@ class UserUseCase(BaseUseCase):
         @param password: The password provided for authentication.
         @return: The User entity if authentication is successful, None otherwise.
         """
-        filters = [
-            {"attribute": "username", "value": username, "condition": "eq"}
-        ]
+        filters = [{"attribute": "username", "value": username, "condition": "eq"}]
         users = self.repo.filter(filters)
 
         # Assuming the filter returns a list of users, we take the first one if it exists
         user = users[0] if users else None
 
         if user and self.verify_password(password, user.password):
-            return self.ENTITY(**user.__dict__)
+            return user
 
     def update(self, id: int, data: dict):
         """
@@ -61,11 +69,13 @@ class UserUseCase(BaseUseCase):
         if role:
             # Validate the provided role
             if role not in global_constants.USER_ROLES_LIST:
-                raise UseCaseException(class_name=self.__class__.__name__,
-                                       message=f"user role must be one of the following {global_constants.USER_ROLES_LIST}")
+                raise UseCaseException(
+                    class_name=self.__class__.__name__,
+                    message=f"user role must be one of the following {global_constants.USER_ROLES_LIST}",
+                )
 
             # Set 'is_superuser' based on whether the role is a superuser role
-            data["is_superuser"] = role in global_constants.SUPERUSER_ROLES
+            data["is_superuser"] = self.is_superuser_role(role)
 
         # Proceed with the update, whether 'role' was included or not
         return self.repo.update(id, data)
@@ -76,9 +86,7 @@ class UserUseCase(BaseUseCase):
         @param role:
         @return: list of users
         """
-        filters = [
-            {"attribute": "role", "value": role, "condition": "eq"}
-        ]
+        filters = [{"attribute": "role", "value": role, "condition": "eq"}]
         users = self.filter(filters=filters)
 
         return users

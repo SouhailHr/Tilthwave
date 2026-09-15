@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class WaterSwitcherUseCase(BaseUseCase):
     ENTITY = WaterSwitcherEntity
 
-    def __init__(self, repo, sensor_repo, broker_repo= None):
+    def __init__(self, repo, sensor_repo, broker_repo=None):
         """
         Initialize the use case with a repository.
         we are passing sensor_repo to handle validation
@@ -37,18 +37,16 @@ class WaterSwitcherUseCase(BaseUseCase):
         @param entity: Entity instance to be created.
         @return: The created entity.
         """
-        filter_by = [{
-            "attribute": "serial_number",
-            "value": entity.sensor_serial_number,
-            "condition": "eq"
-        }]
+        filter_by = [{"attribute": "serial_number", "value": entity.sensor_serial_number, "condition": "eq"}]
         if entity.sensor_serial_number:
             sensor_use_case = SensorUseCase(repo=self.sensor_repo)
             sensor = sensor_use_case.filter(filters=filter_by)
             if sensor and sensor[0].type == global_constants.SWITCHER_SENSOR:
                 return self.repo.create(entity)
-            raise UseCaseException(class_name=self.__class__.__name__,
-                                   message=f"water switcher can only have a sensor of type {global_constants.SWITCHER_SENSOR}")
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"water switcher can only have a sensor of type {global_constants.SWITCHER_SENSOR}",
+            )
         return self.repo.create(entity)
 
     def update(self, id: int, data: dict):
@@ -66,18 +64,15 @@ class WaterSwitcherUseCase(BaseUseCase):
         """
         if data.get("sensor_serial_number"):
             sensor_serial_number = data["sensor_serial_number"]
-            filter_by = [{
-                "attribute": "serial_number",
-                "value": sensor_serial_number,
-                "condition": "eq"
-            }]
+            filter_by = [{"attribute": "serial_number", "value": sensor_serial_number, "condition": "eq"}]
             sensor_use_case = SensorUseCase(repo=self.sensor_repo)
             sensor = sensor_use_case.filter(filters=filter_by)
             if sensor and sensor[0].type == global_constants.SWITCHER_SENSOR:
                 return self.repo.update(id, data)
-            raise UseCaseException(class_name=self.__class__.__name__,
-                                   message=f"water switcher can only have a sensor of type "
-                                           f"{global_constants.SWITCHER_SENSOR}")
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"water switcher can only have a sensor of type {global_constants.SWITCHER_SENSOR}",
+            )
 
         return self.repo.update(id, data)
 
@@ -90,35 +85,22 @@ class WaterSwitcherUseCase(BaseUseCase):
         @param serial_number: Serial number of the water switcher.
         @param data: Dictionary of data to update.
         @return: The updated entity.
-        @raises UseCaseException: If an error occurs during the update process.
         """
-        try:
-            # Get the water switcher using the serial_number
-            switcher_filter_by = [{
-                "attribute": "serial_number",
-                "value": serial_number,
-                "condition": "eq"
-            }]
-            water_switchers = self.repo.filter(filters=switcher_filter_by)
+        # Get the water switcher using the serial_number
+        switcher_filter_by = [{"attribute": "serial_number", "value": serial_number, "condition": "eq"}]
+        water_switchers = self.repo.filter(filters=switcher_filter_by)
 
+        if water_switchers:
+            # Update the water switcher with the provided data
+            return self.repo.update(water_switchers[0].id, data)
+        else:
+            # Remove the sensor serial number from the water switcher
+            sensor_serial_number = data["sensor_serial_number"]
+            filter_by_sensor = [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
+            water_switchers = self.filter(filters=filter_by_sensor)
+            sensor_data = {"sensor_serial_number": None}
             if water_switchers:
-                # Update the water switcher with the provided data
-                return self.repo.update(water_switchers[0].id, data)
-            else:
-                # Remove the sensor serial number from the water switcher
-                sensor_serial_number = data["sensor_serial_number"]
-                filter_by_sensor = [{
-                    "attribute": "sensor_serial_number",
-                    "value": sensor_serial_number,
-                    "condition": "eq"
-                }]
-                water_switchers = self.filter(filters=filter_by_sensor)
-                sensor_data = {"sensor_serial_number": None}
-                if water_switchers:
-                    return self.repo.update(water_switchers[0].id, sensor_data)
-        except Exception as e:
-            logger.debug(str(e))
-            raise UseCaseException(class_name=self.__class__.__name__, message=str(e))
+                return self.repo.update(water_switchers[0].id, sensor_data)
 
     def update_by_sensor_serial_number(self, sensor_serial_number, data: dict):
         """
@@ -128,24 +110,15 @@ class WaterSwitcherUseCase(BaseUseCase):
         @param sensor_serial_number: Serial number of the water switcher.
         @param data: Dictionary of data to update.
         @return: The updated entity.
-        @raises UseCaseException: If an error occurs during the update process.
         """
-        try:
-            # Get the water switcher using the serial_number
-            switcher_filter_by = [{
-                "attribute": "sensor_serial_number",
-                "value": sensor_serial_number,
-                "condition": "eq"
-            }]
-            water_switchers = self.repo.filter(filters=switcher_filter_by)
-            if water_switchers:
-                # Update the water switcher with the provided data
-                return self.repo.update(water_switchers[0].id, data)
-            else:
-                logger.info(f"no water switcher found assigned to the sensor {sensor_serial_number}")
-        except Exception as e:
-            logger.debug(str(e))
-            raise UseCaseException(class_name=self.__class__.__name__, message=str(e))
+        # Get the water switcher using the serial_number
+        switcher_filter_by = [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
+        water_switchers = self.repo.filter(filters=switcher_filter_by)
+        if water_switchers:
+            # Update the water switcher with the provided data
+            return self.repo.update(water_switchers[0].id, data)
+        else:
+            logger.info(f"no water switcher found assigned to the sensor {sensor_serial_number}")
 
     def get_all_water_switchers(self):
         """

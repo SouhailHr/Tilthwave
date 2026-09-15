@@ -21,24 +21,40 @@ automated irrigation — with a live web dashboard. Runs as a 24/7 public demo a
 - **API** — FastAPI REST endpoints with RBAC and per-farm object authorization.
 - **Flow Runner** — evaluates real-time data and drives irrigation via the broker.
 
-## Quick start (per app)
+## Quick start (whole stack, one command)
 
-Each app has its own README and Docker setup:
+Requires Docker with Compose v2.
 
 ```bash
-# backend (API + streamer + flow-runner + Postgres)
-cd apps/backend && cp .env.example .env   # fill in secrets, then:
-make up        # or: docker compose up
-
-# web
-cd apps/web && npm install && npm run dev
-
-# simulator / broker
-cd apps/simulator && docker compose up
-cd apps/broker && docker compose up
+make env       # creates deploy/.env with generated secrets (prints where the admin password is)
+make up        # builds and starts everything in the background
+make logs      # follow logs (make logs s=api for one service)
+make test      # backend tests (SQLite) + simulator lint
 ```
 
-For the full stack together, see `deploy/`.
+| What | Where |
+|---|---|
+| Web dashboard | http://localhost:3000 (login: `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `deploy/.env`) |
+| API docs | http://localhost:8080/docs |
+| Redpanda console | http://localhost:8082 |
+| Postgres | `localhost:5432` (`make psql`) |
+
+On first start the stack runs migrations, seeds a demo farm (two zones, sensors, an admin
+user), then the simulator logs in, publishes fake readings, and the flow-runner starts and stops
+irrigation from the zone triggers. `make down` stops it (data kept); `make reset` wipes the volumes.
+Host ports bind to `127.0.0.1` only; set `BIND_ADDR` in `deploy/.env` to change that.
+
+## Per-app development
+
+Python apps use `pyproject.toml` + `uv.lock`:
+
+```bash
+cd apps/backend && uv sync && uv run ruff check app     # same for apps/simulator
+cd apps/web && npm install && npm run dev
+```
+
+Individual services can be run in isolation with the same compose file, e.g.
+`docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d db redpanda api`.
 
 ## Documentation
 

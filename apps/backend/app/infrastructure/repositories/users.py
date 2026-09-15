@@ -8,8 +8,8 @@ class UserDBRepository(BaseDBRepo):
     """
     UserRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = Users
     ENTITY = UserEntity
     ADAPTOR = UserAdaptor
     TENANT_SCOPE = ("column", "farm_name")
-

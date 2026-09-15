@@ -1,40 +1,26 @@
 import logging
 
-from config.settings import settings
-from core.use_cases.sensor_record import SensorRecordUseCase
-from core.use_cases.water_source import WaterSourceUseCase
-from core.use_cases.water_switcher import WaterSwitcherUseCase
-from infrastructure.repositories.sensor_record import SensorRecordDBRepository
-from infrastructure.repositories.water_source import WaterSourceDBRepository
-from infrastructure.repositories.water_switcher import WaterSwitcherDBRepository
 from adapters.sensor_record import SensorRecordAdaptor
+from core.use_cases.exceptions import UseCaseException
+from wiring import api_use_cases
 
-# Db repos
-sensor_record_repo = SensorRecordDBRepository(uri=settings.DATABASE.URI)
-water_source_repo = WaterSourceDBRepository(uri=settings.DATABASE.URI)
-water_switcher_repo = WaterSwitcherDBRepository(uri=settings.DATABASE.URI)
-
-# Use cases
-sensor_record_use_case = SensorRecordUseCase(repo=sensor_record_repo)
-water_source_use_case = WaterSourceUseCase(repo=water_source_repo, sensor_repo=None, sensor_record_repo=None,
-                                           broker_repo=None)
-water_switcher_use_case = WaterSwitcherUseCase(repo=water_switcher_repo, sensor_repo=None)
-
-logging.basicConfig(level=logging.DEBUG)
-
+use_cases = api_use_cases()  # Null Object broker: the streamer records state, it never commands the field
 logger = logging.getLogger(__name__)
 
 
 class EventHandler:
     """
-    A class for handling the events.
+    Applies the events read from the sensors topic to the database.
+
+    Dispatch is table driven (event type -> handler, actuator type -> use case), like
+    SensorCrudHelper: adding an event type is one entry, not another if-branch.
     """
 
     @classmethod
     def extract_event_type(cls, event):
         event_type = event.get("event_type")
         if event_type is None:
-            raise Exception("Payload missing event type")
+            raise UseCaseException(class_name=cls.__name__, message="Payload missing event type")
         return event_type
 
     @classmethod
@@ -44,59 +30,53 @@ class EventHandler:
         @param event:
         @return:
         """
-        # add the performer as the streamer
-        # logger.info("***** Saving the record *****")
-        record_entity = SensorRecordAdaptor.dict_to_entity(event)
-        sensor_record_use_case.create(entity=record_entity)
-        # logger.info("***** Record Saved Successfully *****")
+        record_entity = SensorRecordAdaptor.dict_to_entity({**event, "performed_by": "streamer"})
+        use_cases.sensor_record.create(entity=record_entity)
 
     @classmethod
     def _handle_reading(cls, event):
         """
-        Method that handel the data_record events
-        @return:
+        Method that handles the data_record events: save the record, nothing else
         """
-        # Save the records without any other handling
         event.pop("event_type")
         cls._save_records(event=event)
 
     @classmethod
     def _handle_commanding(cls, event):
         """
-        Method that handel the reading events
-        @return:
+        Method that handles the status_data events: an actuator confirmed a new status.
+        Update the actuator's row, then keep the record.
         """
         event.pop("event_type")
         sensor_serial_number = event.get("sensor_serial_number")
-        data = event.get("data")
-        status = data.get("status")
-        if data.get("type") == "switcher":
-            # Update water switcher status
-            logger.info("***** Updating the water switcher status *****")
-            water_switcher_use_case.update_by_sensor_serial_number(sensor_serial_number=sensor_serial_number,
-                                                                   data={"status": status})
-        if data.get("type") == "source":
-            # Update water source status
-            logger.info("***** Updating the water source status *****")
-            water_source_use_case.update_by_sensor_serial_number(sensor_serial_number=sensor_serial_number,
-                                                                 data={"status": status})
-        # Save records after handling the status
+        data = event.get("data") or {}
+        status_updaters = {
+            "switcher": use_cases.water_switcher.update_by_sensor_serial_number,
+            "source": use_cases.water_source.update_by_sensor_serial_number,
+        }
+        update_status = status_updaters.get(data.get("type"))
+        if update_status is None:
+            raise UseCaseException(
+                class_name=cls.__name__, message=f"Unknown actuator type {data.get('type')!r} in status_data event"
+            )
+        logger.info("Updating the water %s %s status to %s", data.get("type"), sensor_serial_number, data.get("status"))
+        update_status(sensor_serial_number=sensor_serial_number, data={"status": data.get("status")})
         cls._save_records(event=event)
+
+    HANDLERS = {
+        "data_record": _handle_reading.__func__,
+        "status_data": _handle_commanding.__func__,
+    }
 
     def process(self, event):
         """
         Processing the event based on the event type
         @param event:
-        @return:
+        @raises UseCaseException: unknown or missing event type
         """
-        # 1- get event type
-        logger.info(f"***** Processing event ***** : {event}")
-        try:
-            event_type = self.extract_event_type(event=event)
-            if event_type == "data_record":
-                self._handle_reading(event=event)
-            if event_type == "status_data":
-                self._handle_commanding(event=event)
-
-        except Exception as e:
-            raise e
+        logger.info("Processing event: %s", event)
+        event_type = self.extract_event_type(event=event)
+        handler = self.HANDLERS.get(event_type)
+        if handler is None:
+            raise UseCaseException(class_name=self.__class__.__name__, message=f"Unknown event type {event_type!r}")
+        handler(type(self), event)

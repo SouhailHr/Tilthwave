@@ -8,6 +8,7 @@ class ZoneDBRepository(BaseDBRepo):
     """
     ZoneDBRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = Zone
     ENTITY = ZoneEntity
     ADAPTOR = ZoneAdaptor

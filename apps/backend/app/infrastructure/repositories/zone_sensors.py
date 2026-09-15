@@ -8,6 +8,7 @@ class ZoneSensorsDBRepository(BaseDBRepo):
     """
     ZoneSensorsDBRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = ZoneSensors
     ENTITY = ZoneSensorsEntity
     ADAPTOR = ZoneSensorsAdaptor

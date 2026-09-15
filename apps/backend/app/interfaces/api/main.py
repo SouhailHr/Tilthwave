@@ -1,29 +1,58 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
-from interfaces.api.endpoints import farm, zone, users, tree, \
-    irrigation_task, sensor, water_source, water_switcher, auth, zone_sensors, sensor_record
+from common.logging import configure_logging
+from config.settings import settings
+from interfaces.api.endpoints import (
+    auth,
+    farm,
+    health,
+    irrigation_task,
+    sensor,
+    sensor_record,
+    tree,
+    users,
+    water_source,
+    water_switcher,
+    zone,
+    zone_sensors,
+)
+from interfaces.api.helpers.auth import oauth2_scheme
+from interfaces.api.helpers.errors import register_exception_handlers
 from interfaces.api.helpers.permission import RBACMiddleware
 from interfaces.api.helpers.tenant import TenantContextMiddleware
 
-app = FastAPI(title="Tilthwave API", debug=False)
+configure_logging(settings.LOG_LEVEL)
 
-# CORS (Cross-Origin Resource Sharing) middleware
+# Interactive docs only when API_DOCS_ENABLED=true: they map the whole attack surface.
+app = FastAPI(
+    title="Tilthwave API",
+    debug=False,
+    docs_url="/docs" if settings.API.DOCS_ENABLED else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if settings.API.DOCS_ENABLED else None,
+)
+register_exception_handlers(app)
+
+# Middleware order (innermost first): RBAC authorizes, CORS answers preflights, the tenant
+# middleware is added last -> outermost, so the JWT is decoded once and the ContextVar is set
+# before any task boundary.
 app.add_middleware(RBACMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this according to your needs
+    allow_origins=settings.API.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],  # Adjust this according to your needs
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
-# Bind the caller's tenant (farm) from the JWT for per-farm object scoping.
-# Added last -> outermost, so the ContextVar is set before any task boundary.
 app.add_middleware(TenantContextMiddleware)
-api_router = APIRouter()
 
-# Include all routers that require authentication
+# Authenticated resources. The dependency does not authorize (RBACMiddleware does); it documents
+# the bearer requirement in OpenAPI and rejects requests without a token with a JSON 401.
+api_router = APIRouter(dependencies=[Depends(oauth2_scheme)])
 api_router.include_router(users.router)
 api_router.include_router(farm.router)
 api_router.include_router(zone.router)
@@ -35,10 +64,10 @@ api_router.include_router(water_switcher.router)
 api_router.include_router(tree.router)
 api_router.include_router(irrigation_task.router)
 
-# Register the auth router without the authentication dependency
+# Public routes
 app.include_router(auth.router)
+app.include_router(health.router)
 
-# Register the authenticated router with the main app
 app.include_router(api_router)
 
 add_pagination(app)  # add pagination to app

@@ -6,7 +6,7 @@ from core.entities.base import BaseEntity
 @dataclasses.dataclass
 class ZoneSensors(BaseEntity):
     """
-     ZoneSensors is an entity that represents the sensors of each zone, extending BaseEntity.
+    ZoneSensors is an entity that represents the sensors of each zone, extending BaseEntity.
     """
 
     sensor_serial_number: str

@@ -6,7 +6,7 @@ from core.entities.base import BaseEntity
 @dataclasses.dataclass
 class IrrigationTask(BaseEntity):
     """
-        IrrigationTask is an entity that represents an irrigation_task, extending BaseEntity.
+    IrrigationTask is an entity that represents an irrigation_task, extending BaseEntity.
     """
 
     zone_name: str

@@ -8,6 +8,7 @@ class SensorRecordDBRepository(BaseDBRepo):
     """
     SensorDBRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = SensorRecord
     ENTITY = SensorRecordEntity
     ADAPTOR = SensorRecordAdaptor

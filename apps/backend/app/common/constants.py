@@ -20,7 +20,7 @@ WATER_SOURCE_STATUS = "^(On|Off|Error)$"
 # USER CONSTANTS
 
 USER_ROLES = "^(admin|owner|worker|engineer)$"
-SUPERUSER_ROLES = ['admin', 'owner']
+SUPERUSER_ROLES = ["admin", "owner"]
 USER_ROLES_LIST = ["admin", "owner", "worker", "engineer"]
 
 # Irrigation Task Constants
@@ -32,59 +32,55 @@ IRRIGATION_TASK_COMPLETED = "completed"
 # role-based access control (RBAC) structure
 
 RESOURCES_FOR_ROLES = {
-    'admin': {
-        'users': ['read', 'write', 'update', 'delete'],
-        'farms': ['read', 'write', 'update', 'delete'],
-        'sensors': ['read', 'write', 'update', 'delete'],
-        'zones': ['read', 'write', 'update', 'delete'],
-        'water-switchers': ['read', 'write', 'update', 'delete'],
-        'water-sources': ['read', 'write', 'update', 'delete'],
-        'zone-sensors': ['read', 'write', 'update', 'delete'],
-        'irrigation-tasks': ['read', 'write', 'update', 'delete'],
-        'sensor-records': ['read'],
-        'trees': ['read', 'write', 'update', 'delete'],
-
+    "admin": {
+        "users": ["read", "write", "update", "delete"],
+        "farms": ["read", "write", "update", "delete"],
+        "sensors": ["read", "write", "update", "delete"],
+        "zones": ["read", "write", "update", "delete"],
+        "water-switchers": ["read", "write", "update", "delete"],
+        "water-sources": ["read", "write", "update", "delete"],
+        "zone-sensors": ["read", "write", "update", "delete"],
+        "irrigation-tasks": ["read", "write", "update", "delete"],
+        "sensor-records": ["read"],
+        "trees": ["read", "write", "update", "delete"],
     },
-    'owner': {
-        'users': ['read', 'write', 'update', 'delete'],
-        'farms': ['read', 'write', 'update', 'delete'],
-        'sensors': ['read', 'write', 'update', 'delete'],
-        'zones': ['read', 'write', 'update', 'delete'],
-        'water-switchers': ['read', 'write', 'update', 'delete'],
-        'water-sources': ['read', 'write', 'update', 'delete'],
-        'zone-sensors': ['read', 'write', 'update', 'delete'],
-        'irrigation-tasks': ['read', 'write', 'update', 'delete'],
-        'sensor-records': ['read'],
-        'trees': ['read', 'write', 'update', 'delete'],
-
+    "owner": {
+        "users": ["read", "write", "update", "delete"],
+        "farms": ["read", "write", "update", "delete"],
+        "sensors": ["read", "write", "update", "delete"],
+        "zones": ["read", "write", "update", "delete"],
+        "water-switchers": ["read", "write", "update", "delete"],
+        "water-sources": ["read", "write", "update", "delete"],
+        "zone-sensors": ["read", "write", "update", "delete"],
+        "irrigation-tasks": ["read", "write", "update", "delete"],
+        "sensor-records": ["read"],
+        "trees": ["read", "write", "update", "delete"],
     },
-    'worker': {
-        'users': ['read'],
-        'farms': ['read'],
-        'sensors': ['read'],
-        'zones': ['read'],
-        'water-switchers': ['read'],
-        'water-sources': ['read'],
-        'zone-sensors': ['read'],
-        'irrigation-tasks': ['read'],
-        'sensor-records': ['read'],
-        'trees': ['read', 'update'],
-
+    "worker": {
+        "users": ["read"],
+        "farms": ["read"],
+        "sensors": ["read"],
+        "zones": ["read"],
+        "water-switchers": ["read"],
+        "water-sources": ["read"],
+        "zone-sensors": ["read"],
+        "irrigation-tasks": ["read"],
+        "sensor-records": ["read"],
+        "trees": ["read", "update"],
     },
-    'engineer': {
-        'users': ['read'],
-        'farms': ['read'],
-        'sensors': ['read'],
-        'zones': ['read'],
-        'water-switchers': ['read'],
-        'water-sources': ['read'],
-        'zone-sensors': ['read'],
-        'irrigation-tasks': ['read'],
-        'sensor-records': ['read'],
-        'trees': ['read', 'update'],
-
-    }
+    "engineer": {
+        "users": ["read"],
+        "farms": ["read"],
+        "sensors": ["read"],
+        "zones": ["read"],
+        "water-switchers": ["read"],
+        "water-sources": ["read"],
+        "zone-sensors": ["read"],
+        "irrigation-tasks": ["read"],
+        "sensor-records": ["read"],
+        "trees": ["read", "update"],
+    },
 }
 
 # Excluded paths from permission
-EXCLUDED_PATHS = ['auth', 'docs', 'openapi.json']
+EXCLUDED_PATHS = ["auth", "docs", "openapi.json", "health"]

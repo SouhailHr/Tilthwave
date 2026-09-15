@@ -1,53 +1,304 @@
-# Tilthwave — combined stack (STARTER SKELETON, complete the TODOs).
-# Runs backend (api/streamer/flow-runner) + broker + simulator + web.
-# For standalone app dev, use each app's own compose instead.
+# Tilthwave — full local stack in one compose file.
+#
+#   make env                              # once: creates deploy/.env with generated secrets
+#   make up                               # or: docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+#
+# Services (start order is enforced with depends_on conditions):
+#   db            Postgres
+#   redpanda      Kafka-compatible broker (+ console)
+#   broker-init   one-shot: creates the two topics
+#   migrate       one-shot: alembic upgrade head — everything below waits for it
+#   api           FastAPI                                        -> http://localhost:8080/docs
+#   seed          one-shot: demo farm, zones, sensors, admin user (idempotent)
+#   streamer      backend: sensors topic -> sensor_records
+#   flow-runner   backend: evaluates zone triggers, drives irrigation (only service that commands the field)
+#   sim-actuators simulator: answers water-control commands on the broker
+#   sim-sensors   simulator: publishes fake sensor readings (logs in to the API)
+#   web           Next.js dashboard                              -> http://localhost:3000
+#
+# Host ports bind to BIND_ADDR (default 127.0.0.1) so the database, broker and console are never
+# reachable from other machines by accident. Production adds a TLS reverse proxy in front of web/api
+# and publishes nothing else; it is intentionally not part of this file.
 name: tilthwave
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-broker-env: &broker-env
+  STREAMER_BROKER_HOSTS: '["redpanda:29092"]'
+  STREAMER_SENSORS_TOPIC: ${SENSORS_TOPIC:-tilthwave.sensors.dev}
+  STREAMER_WATER_CONTROL_TOPIC: ${WATER_CONTROL_TOPIC:-tilthwave.water-control.dev}
+  STREAMER_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  TZ: ${TZ:-Europe/Paris}
+
+# Backend services get exactly the variables they need; the admin credentials are NOT among them.
+x-backend: &backend
+  build:
+    context: ../apps/backend
+    dockerfile: docker/Dockerfile
+  image: tilthwave-backend:local
+  environment: &backend-env
+    <<: *broker-env
+    POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: ${POSTGRES_DB:-tilthwave}
+    POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
+    API_SECRET_KEY: ${API_SECRET_KEY:?run `make env` to generate deploy/.env}
+    API_ALGORITHM: ${API_ALGORITHM:-HS256}
+    API_ACCESS_TOKEN_EXPIRE: ${API_ACCESS_TOKEN_EXPIRE:-120}
+    API_CORS_ORIGINS: ${API_CORS_ORIGINS:-["http://localhost:3000"]}
+    API_TRUSTED_PROXIES: ${API_TRUSTED_PROXIES:-[]}
+    API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
+    FLOW_RUNNER_MINUTES: ${FLOW_RUNNER_MINUTES:-0.2}
+    FLOW_RUNNER_MAX_IRRIGATION_MINUTES: ${FLOW_RUNNER_MAX_IRRIGATION_MINUTES:-60}
+    FLOW_RUNNER_MAX_READING_AGE_MINUTES: ${FLOW_RUNNER_MAX_READING_AGE_MINUTES:-30}
+  logging: *default-logging
+
+x-simulator: &simulator
+  build:
+    context: ../apps/simulator
+    dockerfile: docker/Dockerfile
+  image: tilthwave-simulator:local
+  environment: &simulator-env
+    <<: *broker-env
+  logging: *default-logging
+
 services:
+  # ---------------------------------------------------------------- data ----
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    container_name: tilthwave-db
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-tilthwave}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
+      TZ: ${TZ:-Europe/Paris}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tilthwave}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
+    restart: unless-stopped
+    logging: *default-logging
 
-  # TODO: broker (Redpanda) — see apps/broker/docker-compose.yml for config
-  # broker:
-  #   build: ../apps/broker
+  # -------------------------------------------------------------- broker ----
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.14
+    container_name: tilthwave-redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:${KAFKA_PORT:-9092}
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${KAFKA_PORT:-9092}:9092"   # for host-side kafka clients only
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+    mem_limit: 1536m
+    restart: unless-stopped
+    logging: *default-logging
 
-  api:
-    build: ../apps/backend
-    env_file: .env
+  broker-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.14
+    container_name: tilthwave-broker-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for t in "${SENSORS_TOPIC:-tilthwave.sensors.dev}" "${WATER_CONTROL_TOPIC:-tilthwave.water-control.dev}"; do
+          # idempotent: TOPIC_ALREADY_EXISTS is the expected answer after the first run
+          rpk topic create "$$t" -p 1 -X brokers=redpanda:29092 || true
+        done
+        rpk topic list -X brokers=redpanda:29092
+    restart: "no"
+    logging: *default-logging
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:v3.7.2
+    container_name: tilthwave-redpanda-console
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:29092"]
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${CONSOLE_PORT:-8082}:8080"
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ------------------------------------------------------------- backend ----
+  migrate:
+    <<: *backend
+    container_name: tilthwave-migrate
+    entrypoint: /backend/docker/migrate/entrypoint.sh
     depends_on:
       db:
         condition: service_healthy
-    # TODO: entrypoint for the API service; expose port; reverse-proxy handles TLS
+    restart: "no"
 
-  # TODO: streamer and flow-runner (same image as api, different entrypoints)
-  # streamer:
-  #   build: ../apps/backend
-  # flow-runner:
-  #   build: ../apps/backend
-
-  web:
-    build: ../apps/web
-    env_file: .env
+  api:
+    <<: *backend
+    container_name: tilthwave-api
+    entrypoint: /backend/docker/api/entrypoint.sh
+    environment:
+      <<: *backend-env
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${API_PORT:-8080}:8080"
     depends_on:
-      - api
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    mem_limit: 512m
+    stop_grace_period: 30s
+    restart: unless-stopped
 
-  simulator:
-    build: ../apps/simulator
-    # depends_on: [broker]
+  seed:
+    <<: *backend
+    container_name: tilthwave-seed
+    entrypoint: ["python", "/backend/app/infrastructure/scripts/seed_data.py"]
+    environment:
+      <<: *backend-env
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run `make env` to generate deploy/.env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
 
-  # TODO: reverse proxy (Caddy/Traefik) terminating TLS for ${DOMAIN},
-  #       routing / -> web and /api -> api.
+  streamer:
+    <<: *backend
+    container_name: tilthwave-streamer
+    entrypoint: /backend/docker/streamer/entrypoint.sh
+    environment:
+      <<: *backend-env
+      STREAMER_WORKERS: ${STREAMER_WORKERS:-1}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      broker-init:
+        condition: service_completed_successfully
+    mem_limit: 512m
+    restart: unless-stopped
+
+  flow-runner:
+    <<: *backend
+    container_name: tilthwave-flow-runner
+    entrypoint: /backend/docker/flow_runner/entrypoint.sh
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      broker-init:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    # The loop touches this file after every successful tick (FLOW_RUNNER_MINUTES apart).
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/flow-runner.heartbeat -mmin -2 | grep -q ."]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    mem_limit: 256m
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------- simulator ----
+  sim-actuators:
+    <<: *simulator
+    container_name: tilthwave-sim-actuators
+    entrypoint: docker/actuators/entrypoint.sh
+    environment:
+      <<: *simulator-env
+      STREAMER_WORKERS: ${STREAMER_WORKERS:-1}
+    depends_on:
+      broker-init:
+        condition: service_completed_successfully
+    mem_limit: 256m
+    restart: unless-stopped
+
+  sim-sensors:
+    <<: *simulator
+    container_name: tilthwave-sim-sensors
+    entrypoint: docker/sensors/entrypoint.sh
+    environment:
+      <<: *simulator-env
+      API_BASE_URL: http://api:8080
+      API_USERNAME: ${ADMIN_USERNAME:-admin}
+      API_PASSWORD: ${ADMIN_PASSWORD:?run `make env` to generate deploy/.env}
+      SENSORS_ROUNDS: ${SENSORS_ROUNDS:-0}
+      SENSORS_INTERVAL_SECONDS: ${SENSORS_INTERVAL_SECONDS:-15}
+      SENSORS_CYCLE_ROUNDS: ${SENSORS_CYCLE_ROUNDS:-10}
+    depends_on:
+      api:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+      streamer:
+        condition: service_started
+    mem_limit: 256m
+    restart: on-failure
+
+  # ----------------------------------------------------------------- web ----
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+      args:
+        # Inlined into the browser bundle: must be reachable from the HOST browser.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    image: tilthwave-web:local
+    container_name: tilthwave-web
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 512m
+    restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   pgdata:
+  redpanda:

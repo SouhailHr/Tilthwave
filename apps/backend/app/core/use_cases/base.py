@@ -29,11 +29,11 @@ class BaseUseCase:
 
     def delete(self, id: int):
         """
-         Delete an entity by its ID using the repository.
+        Delete an entity by its ID using the repository.
 
-         @param id: ID of the entity to delete.
-         @return: Boolean indicating success of the deletion.
-         """
+        @param id: ID of the entity to delete.
+        @return: Boolean indicating success of the deletion.
+        """
         return self.repo.delete(id)
 
     def update(self, id: int, data: dict):
@@ -46,7 +46,7 @@ class BaseUseCase:
         """
         return self.repo.update(id, data)
 
-    def filter(self, filters=[], order_by="created_date", order_direction="asc"):
+    def filter(self, filters=None, order_by="created_date", order_direction="asc"):
         """
         Filter entities based on specified criteria and order the results.
 
@@ -58,4 +58,19 @@ class BaseUseCase:
         @param order_direction: The direction to order the results ('asc' or 'desc').
         @return: List of filtered entities.
         """
-        return self.repo.filter(filters, order_by, order_direction)
+        return self.repo.filter(filters or [], order_by, order_direction)
+
+    def first(self, filters=None, order_by="created_date", order_direction="desc"):
+        """
+        The single entity ranking first for the given filters and ordering, or None.
+        Use it instead of filter()[0]: only one row is fetched.
+        """
+        return self.repo.first(filters or [], order_by, order_direction)
+
+    def paginate(self, filters=None, order_by="created_date", order_direction="asc", limit=50, offset=0):
+        """
+        One page of entities plus the total count, paginated in the database.
+
+        @return: tuple (list of entities, total number of matching rows)
+        """
+        return self.repo.paginate(filters or [], order_by, order_direction, limit=limit, offset=offset)

@@ -1,40 +1,34 @@
-# Use the offical python image
+# syntax=docker/dockerfile:1.7
+# Tilthwave backend image — one image, four entrypoints (docker/{migrate,api,streamer,flow_runner}).
 FROM python:3.12-slim
 
-# 1- Setup the work dir
-WORKDIR /fwc
+WORKDIR /backend
 
-# Install PostgreSQL client
-RUN apt-get update && \
-    apt-get install -y postgresql-client && \
-    rm -rf /var/lib/apt/lists/*
+# curl: container healthcheck. Database dumps run in the db container (make db-dump).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app && useradd --system --gid app --home-dir /backend --shell /usr/sbin/nologin app
 
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/backend/.venv
 
-# Packages for using psycopg2 and Taskfile
-RUN        apt-get update && apt-get -y install openssh-client && apt-get -y  install build-essential curl file git \
-           && apt-get -y install libpq-dev python3-dev
-RUN        sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+# Dependencies first (cached layer), from the lockfile only. uv is mounted for the build step
+# only, so the runtime image does not carry the 60 MB binary.
+COPY pyproject.toml uv.lock ./
+RUN --mount=from=ghcr.io/astral-sh/uv:0.11.21,source=/uv,target=/bin/uv \
+    --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
+# Project files
+COPY --chown=app:app app/ app/
+COPY --chown=app:app alembic/ alembic/
+COPY --chown=app:app alembic.ini alembic.ini
+COPY --chown=app:app docker/ docker/
+RUN chmod +x docker/*/entrypoint.sh
 
+ENV PATH="/backend/.venv/bin:$PATH" \
+    PYTHONPATH=/backend/app
 
-# Installing packages (dedicated layer)
-RUN        pip install pip==24.0
-
-
-# Copy requirements file and install Python dependencies
-COPY requirements/base.txt /fwc/requirements/base.txt
-RUN pip install -r /fwc/requirements/base.txt
-
-# 2- Copy The project files
-
-COPY        app/ app/
-COPY        docker/ docker/
-RUN        chmod +x docker/streamer/entrypoint.sh
-RUN        chmod +x docker/api/entrypoint.sh
-COPY        Taskfile.yaml Taskfile.yaml
-COPY        alembic/ alembic/
-COPY        alembic.ini alembic.ini
-
-
-
-ENV         PYTHONPATH=/fwc/app/
+USER app

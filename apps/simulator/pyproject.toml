@@ -1,0 +1,39 @@
+[project]
+name = "tilthwave-simulator"
+version = "0.1.0"
+description = "Tilthwave sensor simulator: fake sensor readings and actuator responses over Kafka"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic==2.13.5",
+    "pydantic-settings==2.15.0",
+    "confluent-kafka==2.15.1",
+    "faststream[confluent,cli]==0.5.48",   # cli extra: the `faststream run` entrypoint
+    "requests==2.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11",
+    "pytest>=8",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["app"]
+
+[tool.ruff.lint]
+# Same deliberate selection as the backend; CI runs it blocking.
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["actuators", "config", "sensors", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["app"]
+testpaths = ["tests"]

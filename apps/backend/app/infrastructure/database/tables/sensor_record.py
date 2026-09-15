@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, JSON
+from sqlalchemy import JSON, Column, ForeignKey, Index, String, text
 from sqlalchemy.orm import relationship
 
 # To avoid potential complications with import order and circular dependencies.
@@ -11,11 +11,18 @@ class SensorRecord(TilthwaveBaseModel):
     """
     SensorRecordModel for storing information about data collected from sensors.
     """
-    __tablename__ = 'sensor_records'
 
-    sensor_serial_number = Column(String, ForeignKey('sensor.serial_number', onupdate="CASCADE", ondelete='SET NULL'),
-                                  nullable=True,
-                                  comment="Foreign key linking to a specific Sensor.")
+    __tablename__ = "sensor_records"
+    # Latest-reading lookups (flow runner, per sensor) and per-sensor listings; name follows the
+    # metadata naming convention and matches revision a1c2e3f4b5d6.
+    __table_args__ = (Index(None, "sensor_serial_number", text("created_date DESC")),)
+
+    sensor_serial_number = Column(
+        String,
+        ForeignKey("sensor.serial_number", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        comment="Foreign key linking to a specific Sensor.",
+    )
     data = Column(JSON, nullable=False, comment="JSON format containing the sensor data collected.")
 
     # Relationships

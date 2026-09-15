@@ -1,8 +1,8 @@
 import logging
 from collections import defaultdict
-from datetime import datetime
 
 from common import constants as global_constants
+from common.dates import command_timestamp, parse_db_datetime, utc_now
 from config.settings import settings
 from core.entities.water_source import WaterSource as WaterSourceEntity
 from core.use_cases.base import BaseUseCase
@@ -15,11 +15,6 @@ logger = logging.getLogger(__name__)
 
 class WaterSourceUseCase(BaseUseCase):
     ENTITY = WaterSourceEntity
-
-    # Get the current datetime.
-    current_datetime = datetime.now()
-    # Format the datetime as per the specified format
-    timestamp = current_datetime.strftime("%Y-%m-%d %H:%M")
 
     def __init__(self, repo, sensor_repo, sensor_record_repo, broker_repo=None):
         """
@@ -50,19 +45,16 @@ class WaterSourceUseCase(BaseUseCase):
         @param entity: Entity instance to be created.
         @return: The created entity.
         """
-        filter_by = [{
-            "attribute": "serial_number",
-            "value": entity.sensor_serial_number,
-            "condition": "eq"
-        }]
+        filter_by = [{"attribute": "serial_number", "value": entity.sensor_serial_number, "condition": "eq"}]
         if entity.sensor_serial_number:
             sensor_use_case = SensorUseCase(repo=self.sensor_repo)
             sensor = sensor_use_case.filter(filters=filter_by)
             if sensor and sensor[0].type == global_constants.SOURCE_SENSOR:
                 return self.repo.create(entity)
-            raise UseCaseException(class_name=self.__class__.__name__,
-                                   message=f"water source can only have a sensor "
-                                           f"of type {global_constants.SOURCE_SENSOR} ")
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"water source can only have a sensor of type {global_constants.SOURCE_SENSOR} ",
+            )
         return self.repo.create(entity)
 
     def update(self, id: int, data: dict):
@@ -80,18 +72,15 @@ class WaterSourceUseCase(BaseUseCase):
         """
         if data.get("sensor_serial_number"):
             sensor_serial_number = data["sensor_serial_number"]
-            filter_by = [{
-                "attribute": "serial_number",
-                "value": sensor_serial_number,
-                "condition": "eq"
-            }]
+            filter_by = [{"attribute": "serial_number", "value": sensor_serial_number, "condition": "eq"}]
             sensor_use_case = SensorUseCase(repo=self.sensor_repo)
             sensor = sensor_use_case.filter(filters=filter_by)
             if sensor and sensor[0].type == global_constants.SOURCE_SENSOR:
                 return self.repo.update(id, data)
-            raise UseCaseException(class_name=self.__class__.__name__,
-                                   message=f"water source can only have a sensor"
-                                           f" of type {global_constants.SOURCE_SENSOR}")
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"water source can only have a sensor of type {global_constants.SOURCE_SENSOR}",
+            )
 
         return self.repo.update(id, data)
 
@@ -104,34 +93,21 @@ class WaterSourceUseCase(BaseUseCase):
         @param serial_number: Serial number of the water source.
         @param data: Dictionary of data to update.
         @return: The updated entity.
-        @raises UseCaseException: If an error occurs during the update process.
         """
-        try:
-            # get the water source using the serial_number
-            source_filter_by = [{
-                "attribute": "serial_number",
-                "value": serial_number,
-                "condition": "eq"
-            }]
-            water_sources = self.repo.filter(filters=source_filter_by)
+        # get the water source using the serial_number
+        source_filter_by = [{"attribute": "serial_number", "value": serial_number, "condition": "eq"}]
+        water_sources = self.repo.filter(filters=source_filter_by)
+        if water_sources:
+            # Update the water source with the provided data
+            return self.repo.update(water_sources[0].id, data)
+        else:
+            # Remove the sensor serial number from the water source
+            sensor_serial_number = data["sensor_serial_number"]
+            filter_by_sensor = [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
+            water_sources = self.filter(filters=filter_by_sensor)
+            sensor_data = {"sensor_serial_number": None}
             if water_sources:
-                # Update the water source with the provided data
-                return self.repo.update(water_sources[0].id, data)
-            else:
-                # Remove the sensor serial number from the water source
-                sensor_serial_number = data["sensor_serial_number"]
-                filter_by_sensor = [{
-                    "attribute": "sensor_serial_number",
-                    "value": sensor_serial_number,
-                    "condition": "eq"
-                }]
-                water_sources = self.filter(filters=filter_by_sensor)
-                sensor_data = {"sensor_serial_number": None}
-                if water_sources:
-                    return self.repo.update(water_sources[0].id, sensor_data)
-        except Exception as e:
-            logger.debug(str(e))
-            raise UseCaseException(class_name=self.__class__.__name__, message=str(e))
+                return self.repo.update(water_sources[0].id, sensor_data)
 
     def update_by_sensor_serial_number(self, sensor_serial_number, data: dict):
         """
@@ -141,51 +117,45 @@ class WaterSourceUseCase(BaseUseCase):
         @param sensor_serial_number: Serial number of the sensor assigned to the water source .
         @param data: Dictionary of data to update.
         @return: The updated entity.
-        @raises UseCaseException: If an error occurs during the update process.
         """
-        try:
-            # get the water source using the serial_number
-            source_filter_by = [{
-                "attribute": "sensor_serial_number",
-                "value": sensor_serial_number,
-                "condition": "eq"
-            }]
-            water_sources = self.repo.filter(filters=source_filter_by)
-            if water_sources:
-                # Update the water source with the provided data
-                return self.repo.update(water_sources[0].id, data)
-            else:
-                logger.info(f"no water source found assigned to the sensor {sensor_serial_number}")
-        except Exception as e:
-            logger.debug(str(e))
-            raise UseCaseException(class_name=self.__class__.__name__, message=str(e))
+        # get the water source using the serial_number
+        source_filter_by = [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
+        water_sources = self.repo.filter(filters=source_filter_by)
+        if water_sources:
+            # Update the water source with the provided data
+            return self.repo.update(water_sources[0].id, data)
+        else:
+            logger.info(f"no water source found assigned to the sensor {sensor_serial_number}")
 
     def close_all_water_sources(self):
         """
-        Close all water sources in the farm
-        1- sending the command to close all water sources
+        Close all water sources in the farm that are currently On.
         logic:
             - Prepare the payload and send the event using the broker_repo
-        @return:
+        @raises BrokerError: if a close command could not be delivered (the caller decides
+                             whether to retry; the source may still be open)
         """
-        try:
-            water_sources = self.filter()
-            for water_source in water_sources:
-                if water_source.sensor_serial_number and water_source.status == global_constants.STATUS_ON:
-                    data_water_source_record = {
-                        "sensor_serial_number": water_source.sensor_serial_number,
-                        "data":
-                            {
-                                "type": "source",
-                                "status": global_constants.STATUS_OFF,  # operational status
-                                "timestamp": self.timestamp
-                            },
-                    }
+        for water_source in self.filter():
+            if water_source.sensor_serial_number and water_source.status == global_constants.STATUS_ON:
+                self.send_event(
+                    topic=settings.STREAMER.WATER_CONTROL_TOPIC,
+                    key="water_control_data",
+                    payload=self.build_status_command(water_source, global_constants.STATUS_OFF),
+                )
 
-                    self.send_event(topic=settings.STREAMER.WATER_CONTROL_TOPIC, key="water_control_data",
-                                    payload=data_water_source_record)
-        except Exception as e:
-            logger.error({str(e)})
+    @staticmethod
+    def build_status_command(water_source, status: str) -> dict:
+        """
+        Command payload asking the water source's actuator to switch to `status`.
+        """
+        return {
+            "sensor_serial_number": water_source.sensor_serial_number,
+            "data": {
+                "type": "source",
+                "status": status,  # operational status
+                "timestamp": command_timestamp(),
+            },
+        }
 
     def get_water_consumption_for_the_year_by_month(self, sensor_serial_number: str):
         """
@@ -199,22 +169,18 @@ class WaterSourceUseCase(BaseUseCase):
         @param sensor_serial_number: Serial number of the sensor.
         @return: Dictionary with water consumption per month.
         """
-        filter_by = [{
-            "attribute": "sensor_serial_number",
-            "value": sensor_serial_number,
-            "condition": "eq"
-        }]
-        current_year = datetime.now().year
+        filter_by = [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
+        current_year = utc_now().year
         records = self.sensor_record_repo.filter(filters=filter_by)
 
         # Dictionary to store consumption per month
         monthly_consumption = defaultdict(int)
 
         for record in records:
-            record_date = datetime.strptime(record.created_date, "%Y-%m-%d %H:%M:%S.%f")  # Adjust format as needed
+            record_date = parse_db_datetime(record.created_date)
             if record_date.year == current_year:
                 month = record_date.month
-                consumption = record.data.get('consumption', 0)
+                consumption = record.data.get("consumption", 0)
                 monthly_consumption[month] += consumption
 
         # Convert default dict to a regular dictionary and ensure all months are present
@@ -268,7 +234,6 @@ class WaterSourceUseCase(BaseUseCase):
             "total_water_sources": len(water_sources),
             "assigned_water_sources": len(assigned_dict["assigned"]),
             "non_assigned_water_sources": len(assigned_dict["non-assigned"]),
-
         }
 
         return stats_dict

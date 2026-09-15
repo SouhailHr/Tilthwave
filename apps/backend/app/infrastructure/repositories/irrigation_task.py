@@ -8,6 +8,7 @@ class IrrigationTaskDBRepository(BaseDBRepo):
     """
     IrrigationTaskDBRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = IrrigationTask
     ENTITY = IrrigationTaskEntity
     ADAPTOR = IrrigationTaskAdaptor

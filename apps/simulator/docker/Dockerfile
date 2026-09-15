@@ -1,34 +1,27 @@
-FROM python:3.12.1-slim-bullseye
+# syntax=docker/dockerfile:1.7
+# Tilthwave simulator image — two entrypoints (docker/{sensors,actuators}).
+FROM python:3.12-slim
 
+WORKDIR /simulator
 
-WORKDIR    /sensors-guard-sandbox
+RUN groupadd --system app && useradd --system --gid app --home-dir /simulator --shell /usr/sbin/nologin app
 
-# Installing packages (dedicated layer)
-RUN        pip install pip==23.3.1
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/simulator/.venv
 
-# Packages for using Taskfile
-RUN        apt-get update && apt-get -y install openssh-client && apt-get -y  install build-essential curl file git \
-           && apt-get -y install libpq-dev python3-dev
-RUN        sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+# Dependencies first (cached layer), from the lockfile only; uv only mounted at build time.
+COPY pyproject.toml uv.lock ./
+RUN --mount=from=ghcr.io/astral-sh/uv:0.11.21,source=/uv,target=/bin/uv \
+    --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
+# Project files. Configuration comes from environment variables (STREAMER_*, API_*, SENSORS_*).
+COPY --chown=app:app app/ app/
+COPY --chown=app:app docker/ docker/
+RUN chmod +x docker/*/entrypoint.sh
 
+ENV PATH="/simulator/.venv/bin:$PATH" \
+    PYTHONPATH=/simulator/app
 
-
-# Install requirements
-COPY       requirements/ /tmp/requirements/
-RUN        pip install -r /tmp/requirements/dev.txt
-RUN        rm -rf /tmp/requirements/
-
-# Project files
-COPY       app/ app/
-COPY       docker/streamer/entrypoint.sh docker/streamer/entrypoint.sh
-COPY       docker/sensor_mocker/entrypoint.sh docker/sensor_mocker/entrypoint.sh
-RUN        chmod +x docker/streamer/entrypoint.sh
-RUN        chmod +x docker/sensor_mocker/entrypoint.sh
-
-COPY       Taskfile.yaml/ Taskfile.yaml
-
-
-COPY       .env .env
-
-ENV        PYTHONPATH=/sensors-guard-sandbox/app/
+USER app

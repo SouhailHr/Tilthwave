@@ -9,8 +9,11 @@
 # System files
 .DS_Store
 Thumbs.db
-!/.env
+
 .env
 
 # Ignore Python bytecode directories
 __pycache__/
+
+# Virtualenv (uv sync)
+.venv/

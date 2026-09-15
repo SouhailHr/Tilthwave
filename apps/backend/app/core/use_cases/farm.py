@@ -1,7 +1,7 @@
-from core.entities.farm import Farm as FarmEntity
-from core.use_cases.base import BaseUseCase
 import logging
 
+from core.entities.farm import Farm as FarmEntity
+from core.use_cases.base import BaseUseCase
 from core.use_cases.water_source import WaterSourceUseCase
 from core.use_cases.zone import ZoneUseCase
 
@@ -27,12 +27,19 @@ class FarmUseCase(BaseUseCase):
         self.water_switcher_repo = water_switcher_repo
         self.water_source_repo = water_source_repo
         self.sensor_record_repo = sensor_record_repo
-        self.zone_use_case = ZoneUseCase(repo=self.zone_repo, sensor_repo=None, irrigation_task_repo=None,
-                                         sensor_record_repo=None, water_source_repo=None,
-                                         water_switcher_repo=self.water_switcher_repo,
-                                         zone_sensors_repo=None, tree_repo=tree_repo)
-        self.water_source_use_case = WaterSourceUseCase(repo=self.water_source_repo, sensor_repo=None,
-                                                        sensor_record_repo=sensor_record_repo, broker_repo=None)
+        self.zone_use_case = ZoneUseCase(
+            repo=self.zone_repo,
+            sensor_repo=None,
+            irrigation_task_repo=None,
+            sensor_record_repo=None,
+            water_source_repo=None,
+            water_switcher_repo=self.water_switcher_repo,
+            zone_sensors_repo=None,
+            tree_repo=tree_repo,
+        )
+        self.water_source_use_case = WaterSourceUseCase(
+            repo=self.water_source_repo, sensor_repo=None, sensor_record_repo=sensor_record_repo, broker_repo=None
+        )
 
     def get_all_zones(self, farm_name: str):
         """
@@ -41,9 +48,7 @@ class FarmUseCase(BaseUseCase):
         @return: List of zones that belongs to the farm
         """
 
-        filter_by = [
-            {"attribute": "farm_name", "value": farm_name, "condition": "eq"}
-        ]
+        filter_by = [{"attribute": "farm_name", "value": farm_name, "condition": "eq"}]
 
         zones = self.zone_use_case.filter(filters=filter_by)
         return zones
@@ -53,11 +58,9 @@ class FarmUseCase(BaseUseCase):
          Get total water sources in the farm
         @param farm_name:
         @return: int number of zones in the farm
-         """
+        """
 
-        filter_by = [
-            {"attribute": "farm_name", "value": farm_name, "condition": "eq"}
-        ]
+        filter_by = [{"attribute": "farm_name", "value": farm_name, "condition": "eq"}]
 
         water_sources = self.water_source_use_case.filter(filter_by)
 
@@ -70,7 +73,7 @@ class FarmUseCase(BaseUseCase):
          2 - for each zone get all water switcher and add them to the total
         @param farm_name:
         @return: int number of water switchers in the farm
-         """
+        """
         farm_water_switchers_count = 0
         zones = self.get_all_zones(farm_name=farm_name)
         for zone in zones:
@@ -83,7 +86,7 @@ class FarmUseCase(BaseUseCase):
          Get total trees in the farm
         @param farm_name:
         @return: int number of trees in the farm
-         """
+        """
 
         farm_trees_count = 0
         zones = self.get_all_zones(farm_name=farm_name)
@@ -122,8 +125,18 @@ class FarmUseCase(BaseUseCase):
 
         # Convert month numbers to month names
         month_names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ]
         result = {month_names[month - 1]: total_consumption_by_month[month] for month in total_consumption_by_month}
 
@@ -155,10 +168,12 @@ class FarmUseCase(BaseUseCase):
             }
         }
         """
-        farm_stats: dict = {"total_zones": len(self.get_all_zones(farm_name=name)),
-                            "total_water_sources": len(self.get_total_water_sources(farm_name=name)),
-                            "total_water_switchers": self.get_total_water_switchers(farm_name=name),
-                            "total_trees": self.get_total_trees(farm_name=name),
-                            "chart_data": self.get_total_water_consumption_by_month(farm_name=name)}
+        farm_stats: dict = {
+            "total_zones": len(self.get_all_zones(farm_name=name)),
+            "total_water_sources": len(self.get_total_water_sources(farm_name=name)),
+            "total_water_switchers": self.get_total_water_switchers(farm_name=name),
+            "total_trees": self.get_total_trees(farm_name=name),
+            "chart_data": self.get_total_water_consumption_by_month(farm_name=name),
+        }
 
         return farm_stats

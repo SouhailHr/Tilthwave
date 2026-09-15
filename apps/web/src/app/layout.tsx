@@ -3,6 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 
+// Every page is rendered per request: the Content-Security-Policy nonce set in middleware.ts
+// can only be stamped on Next's inline scripts when the HTML is not prerendered at build time.
+export const dynamic = "force-dynamic";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
