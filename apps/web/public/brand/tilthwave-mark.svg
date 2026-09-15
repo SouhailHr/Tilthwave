@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Tilthwave mark">
+  <title>Tilthwave</title>
+  <defs>
+    <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4A8E3A"/>
+      <stop offset="100%" stop-color="#1F4A28"/>
+    </linearGradient>
+    <filter id="leafShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.2"/>
+      <feOffset dx="0" dy="1.5" result="off"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Leaf body: asymmetric teardrop, tilted -->
+  <g filter="url(#leafShadow)">
+    <path d="M60 14
+             C 92 22, 104 50, 96 80
+             C 88 104, 60 110, 36 100
+             C 18 92, 14 70, 22 50
+             C 30 30, 44 18, 60 14 Z"
+          fill="url(#leafGrad)"/>
+  </g>
+
+  <!-- Sine-wave vein (the "wave" half of the name) -->
+  <path d="M30 92
+           C 38 80, 42 80, 50 70
+           C 58 60, 62 60, 70 50
+           C 78 40, 82 40, 90 30"
+        stroke="#FAF6EC" stroke-width="3.6" stroke-linecap="round" fill="none"
+        stroke-dasharray="0" opacity="0.95"/>
+
+  <!-- Three sensor nodes along the vein -->
+  <circle cx="42" cy="78" r="3.2" fill="#1B2E1B"/>
+  <circle cx="60" cy="60" r="3.2" fill="#1B2E1B"/>
+  <circle cx="78" cy="42" r="3.2" fill="#1B2E1B"/>
+
+  <!-- Subtle node halos -->
+  <circle cx="42" cy="78" r="6" fill="#FAF6EC" opacity="0.18"/>
+  <circle cx="60" cy="60" r="6" fill="#FAF6EC" opacity="0.18"/>
+  <circle cx="78" cy="42" r="6" fill="#FAF6EC" opacity="0.18"/>
+</svg>

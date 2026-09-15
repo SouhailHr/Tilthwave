@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1.7
+# Development image: runs `next dev` with HMR.
+#
+# In docker-compose.dev.yml the whole project (including node_modules) is
+# bind-mounted from the host. The image's job is just to ship a Node runtime
+# + a sensible default start command — deps live on the host now, so adding
+# an npm package is a host-side `npm install`, no image rebuild required.
+
+FROM node:22-alpine
+WORKDIR /app
+
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3000
+
+# `npm install` runs each start: cheap when the lockfile already matches
+# what's in node_modules, and self-heals if the host hasn't installed yet
+# (e.g. fresh clone). Then start the Next.js dev server.
+CMD ["sh", "-c", "npm install --no-audit --no-fund && npm run dev"]

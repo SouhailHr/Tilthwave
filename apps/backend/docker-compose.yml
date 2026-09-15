@@ -1,0 +1,102 @@
+version: "3.4"
+services:
+  db:
+    image: postgres:13.0
+    container_name: tilthwave-db
+    hostname: db
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Europe/Paris
+      POSTGRES_DB: tilthwave
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in apps/backend/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - tilthwave-network
+
+  adminer:
+    image: adminer
+    restart: always
+    environment:
+      TZ: Europe/Paris
+    depends_on:
+      - db
+    ports:
+      - "8070:8080"
+    networks:
+      - tilthwave-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: tilthwave-api
+    hostname: tilthwave-api
+    entrypoint: /fwc/docker/api/entrypoint.sh
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    volumes:
+      - .env:/fwc/.env
+      - ./alembic:/fwc/alembic
+      - ./app:/fwc/app
+      - ./docker/api:/fwc/docker/api  # Updated to match the location of the entrypoint script
+      # source in machine : destination in container
+    networks:
+      - tilthwave-network
+
+
+  streamer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: tilthwave-streamer
+    hostname: tilthwave-streamer
+    depends_on:
+      - db
+    entrypoint: /fwc/docker/streamer/entrypoint.sh
+    ports:
+      - "6068:6060"
+    volumes:
+      # source in machine : destination in container
+      - .env:/fwc/.env
+      - ./app:/fwc/app
+      - ./alembic:/fwc/alembic
+      # source in machine : destination in container
+      - ./docker/streamer:/fwc/docker/streamer  # Updated to match the location of the entrypoint script
+    networks:
+      - tilthwave-network
+
+
+
+  flow_runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: tilthwave-flow-runner
+    hostname: tilthwave-flow-runner
+    depends_on:
+      - db
+    entrypoint: /fwc/docker/flow_runner/entrypoint.sh
+    ports:
+      - "7070:7070"
+    volumes:
+      # source in machine : destination in container
+      - .env:/fwc/.env
+      - ./app:/fwc/app
+      - ./alembic:/fwc/alembic
+      # source in machine : destination in container
+      - ./docker/flow_runner:/fwc/docker/flow_runner  # Updated to match the location of the entrypoint script
+    networks:
+      - tilthwave-network
+
+volumes:
+  pgdata:
+
+networks:
+  tilthwave-network:
+    external: true  # Specify that this network is external

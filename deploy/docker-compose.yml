@@ -1,0 +1,53 @@
+# Tilthwave — combined stack (STARTER SKELETON, complete the TODOs).
+# Runs backend (api/streamer/flow-runner) + broker + simulator + web.
+# For standalone app dev, use each app's own compose instead.
+name: tilthwave
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # TODO: broker (Redpanda) — see apps/broker/docker-compose.yml for config
+  # broker:
+  #   build: ../apps/broker
+
+  api:
+    build: ../apps/backend
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    # TODO: entrypoint for the API service; expose port; reverse-proxy handles TLS
+
+  # TODO: streamer and flow-runner (same image as api, different entrypoints)
+  # streamer:
+  #   build: ../apps/backend
+  # flow-runner:
+  #   build: ../apps/backend
+
+  web:
+    build: ../apps/web
+    env_file: .env
+    depends_on:
+      - api
+
+  simulator:
+    build: ../apps/simulator
+    # depends_on: [broker]
+
+  # TODO: reverse proxy (Caddy/Traefik) terminating TLS for ${DOMAIN},
+  #       routing / -> web and /api -> api.
+
+volumes:
+  pgdata:

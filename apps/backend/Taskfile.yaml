@@ -1,0 +1,18 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  DC: $(which docker-compose)
+
+tasks:
+
+  makemigrations:
+    desc: "Make a new migrations file"
+    cmds:
+      - alembic revision --autogenerate -m {{.CLI_ARGS}}
+
+  migrate:
+    desc: "Apply migration"
+    cmds:
+      - alembic upgrade head

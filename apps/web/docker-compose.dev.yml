@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: fwc-front:dev
+    container_name: fwc-front-dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      NODE_ENV: development
+      # File watcher polling — needed when the host's filesystem doesn't
+      # forward inotify events into the container reliably.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      # Whole project bind-mounted, including node_modules. Linux host
+      # ⇒ same arch as the alpine container, so native modules work fine.
+      # Adding an npm package on the host (`npm i x`) is now picked up by
+      # the running container with no rebuild — same UX as editing source.
+      - .:/app
+      # .next is the dev cache — keep it container-local so the host
+      # doesn't accumulate the dev server's build artifacts.
+      - /app/.next
+    restart: unless-stopped

@@ -1,0 +1,16 @@
+# Ignore all IDEA project files
+.idea/
+
+# Ignore other common files
+*.log
+*.tmp
+*.bak
+
+# System files
+.DS_Store
+Thumbs.db
+!/.env
+.env
+
+# Ignore Python bytecode directories
+__pycache__/

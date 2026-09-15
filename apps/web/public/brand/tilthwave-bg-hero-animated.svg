@@ -1,0 +1,302 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900"
+     preserveAspectRatio="xMidYMid slice" role="img" aria-label="Tilthwave animated hero background">
+  <title>Tilthwave — animated hero</title>
+
+  <defs>
+    <!-- Night-field sky gradient: deep loam at top, fading to a green horizon glow -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#0F1F12"/>
+      <stop offset="55%" stop-color="#152B19"/>
+      <stop offset="85%" stop-color="#1F4A28"/>
+      <stop offset="100%" stop-color="#2A6B36"/>
+    </linearGradient>
+
+    <!-- Soft horizon halo -->
+    <radialGradient id="horizonGlow" cx="50%" cy="92%" r="60%">
+      <stop offset="0%"  stop-color="#76D67E" stop-opacity="0.55"/>
+      <stop offset="40%" stop-color="#4A8E3A" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#0F1F12" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Giant translucent leaf gradient -->
+    <linearGradient id="bigLeaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#76D67E" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#4A8E3A" stop-opacity="0.04"/>
+    </linearGradient>
+
+    <!-- Data wave gradient -->
+    <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"  stop-color="#76D67E" stop-opacity="0"/>
+      <stop offset="20%" stop-color="#76D67E" stop-opacity="0.85"/>
+      <stop offset="80%" stop-color="#E0A93A" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#E0A93A" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Sensor pulse gradient -->
+    <radialGradient id="pulse" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#FAF6EC" stop-opacity="1"/>
+      <stop offset="60%" stop-color="#76D67E" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#76D67E" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glow filter for the data wave -->
+    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Reusable particle (pollen / data mote) -->
+    <radialGradient id="mote" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FAF6EC" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#FAF6EC" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Soft contour line style -->
+    <linearGradient id="contour" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4A8E3A" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#76D67E" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#4A8E3A" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ============ LAYER 1: SKY ============ -->
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#horizonGlow)"/>
+
+  <!-- Drifting aurora-like light band (slow horizontal drift) -->
+  <g opacity="0.35">
+    <ellipse cx="800" cy="780" rx="900" ry="120" fill="#76D67E" opacity="0.18">
+      <animate attributeName="cx" values="600;1000;600" dur="22s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.10;0.22;0.10" dur="12s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- ============ LAYER 2: TOPOGRAPHIC CONTOURS (slow parallax) ============ -->
+  <g stroke="url(#contour)" fill="none" stroke-width="1">
+    <path d="M-100 740 Q 300 700 600 730 T 1200 720 T 1700 740"
+          opacity="0.45">
+      <animateTransform attributeName="transform" type="translate"
+                        values="0 0; -40 0; 0 0" dur="28s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-100 780 Q 400 750 700 770 T 1300 760 T 1700 780"
+          opacity="0.35">
+      <animateTransform attributeName="transform" type="translate"
+                        values="0 0; -60 0; 0 0" dur="34s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-100 820 Q 500 790 800 810 T 1400 800 T 1700 820"
+          opacity="0.28">
+      <animateTransform attributeName="transform" type="translate"
+                        values="0 0; -80 0; 0 0" dur="42s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-100 860 Q 350 840 750 850 T 1500 845 T 1700 860"
+          opacity="0.22">
+      <animateTransform attributeName="transform" type="translate"
+                        values="0 0; -100 0; 0 0" dur="50s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- ============ LAYER 3: GIANT TRANSLUCENT LEAF (gentle breathing) ============ -->
+  <g transform="translate(1050,180)" opacity="0.9">
+    <g>
+      <animateTransform attributeName="transform" type="rotate"
+                        values="-2 250 300; 2 250 300; -2 250 300"
+                        dur="14s" repeatCount="indefinite"/>
+      <path d="M250 40
+               C 430 80, 490 220, 460 360
+               C 430 480, 280 530, 160 490
+               C 60 460, 30 340, 70 220
+               C 110 110, 180 60, 250 40 Z"
+            fill="url(#bigLeaf)" stroke="#76D67E" stroke-width="1.5" stroke-opacity="0.35"/>
+      <!-- Vein -->
+      <path d="M120 470 C 170 410, 200 410, 240 350
+               C 280 290, 310 290, 350 230
+               C 390 170, 410 170, 440 110"
+            stroke="#FAF6EC" stroke-width="2" stroke-opacity="0.35" fill="none"
+            stroke-dasharray="4 6">
+        <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="8s" repeatCount="indefinite"/>
+      </path>
+    </g>
+  </g>
+
+  <!-- Second smaller leaf, opposite drift -->
+  <g transform="translate(-80,520)" opacity="0.5">
+    <g>
+      <animateTransform attributeName="transform" type="rotate"
+                        values="3 180 200; -3 180 200; 3 180 200"
+                        dur="18s" repeatCount="indefinite"/>
+      <path d="M180 30
+               C 320 60, 360 170, 340 270
+               C 320 360, 200 400, 110 370
+               C 30 345, 10 250, 40 165
+               C 70 90, 130 50, 180 30 Z"
+            fill="url(#bigLeaf)" stroke="#4A8E3A" stroke-width="1.5" stroke-opacity="0.3"/>
+    </g>
+  </g>
+
+  <!-- ============ LAYER 4: ANIMATED DATA WAVE (the "wave" half of the brand) ============ -->
+  <g filter="url(#glow)">
+    <!-- Primary wave -->
+    <path stroke="url(#waveGrad)" stroke-width="3" fill="none" stroke-linecap="round">
+      <animate attributeName="d" dur="9s" repeatCount="indefinite"
+        values="
+          M 0 480 Q 200 420 400 480 T 800 480 T 1200 480 T 1600 480;
+          M 0 480 Q 200 540 400 480 T 800 480 T 1200 480 T 1600 480;
+          M 0 480 Q 200 420 400 480 T 800 480 T 1200 480 T 1600 480
+        "/>
+    </path>
+    <!-- Secondary harmonic, faster, thinner -->
+    <path stroke="#76D67E" stroke-width="1.5" stroke-opacity="0.6" fill="none">
+      <animate attributeName="d" dur="6s" repeatCount="indefinite"
+        values="
+          M 0 500 Q 150 460 300 500 T 600 500 T 900 500 T 1200 500 T 1600 500;
+          M 0 500 Q 150 540 300 500 T 600 500 T 900 500 T 1200 500 T 1600 500;
+          M 0 500 Q 150 460 300 500 T 600 500 T 900 500 T 1200 500 T 1600 500
+        "/>
+    </path>
+    <!-- Tertiary, slowest, deepest -->
+    <path stroke="#E0A93A" stroke-width="1" stroke-opacity="0.45" fill="none">
+      <animate attributeName="d" dur="13s" repeatCount="indefinite"
+        values="
+          M 0 460 Q 250 400 500 460 T 1000 460 T 1500 460 T 1600 460;
+          M 0 460 Q 250 520 500 460 T 1000 460 T 1500 460 T 1600 460;
+          M 0 460 Q 250 400 500 460 T 1000 460 T 1500 460 T 1600 460
+        "/>
+    </path>
+  </g>
+
+  <!-- ============ LAYER 5: SENSOR CONSTELLATION (pulsing nodes + connection lines) ============ -->
+  <g>
+    <!-- Connection lines -->
+    <g stroke="#76D67E" stroke-width="1" stroke-opacity="0.25" fill="none">
+      <line x1="220" y1="280" x2="480" y2="200">
+        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="5s" repeatCount="indefinite"/>
+      </line>
+      <line x1="480" y1="200" x2="760" y2="320">
+        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="6s" repeatCount="indefinite"/>
+      </line>
+      <line x1="760" y1="320" x2="1100" y2="240">
+        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="7s" repeatCount="indefinite"/>
+      </line>
+      <line x1="1100" y1="240" x2="1380" y2="360">
+        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="5.5s" repeatCount="indefinite"/>
+      </line>
+      <line x1="220" y1="280" x2="760" y2="320">
+        <animate attributeName="stroke-opacity" values="0.05;0.25;0.05" dur="9s" repeatCount="indefinite"/>
+      </line>
+      <line x1="480" y1="200" x2="1100" y2="240">
+        <animate attributeName="stroke-opacity" values="0.05;0.25;0.05" dur="11s" repeatCount="indefinite"/>
+      </line>
+    </g>
+
+    <!-- Sensor nodes with pulsing halos -->
+    <g>
+      <!-- Node 1 -->
+      <circle cx="220" cy="280" r="20" fill="url(#pulse)">
+        <animate attributeName="r" values="14;28;14" dur="3.2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="220" cy="280" r="4" fill="#FAF6EC"/>
+
+      <!-- Node 2 -->
+      <circle cx="480" cy="200" r="20" fill="url(#pulse)">
+        <animate attributeName="r" values="14;28;14" dur="4s" begin="0.6s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="4s" begin="0.6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="480" cy="200" r="4" fill="#FAF6EC"/>
+
+      <!-- Node 3 (harvest gold accent) -->
+      <circle cx="760" cy="320" r="22" fill="url(#pulse)">
+        <animate attributeName="r" values="16;32;16" dur="3.6s" begin="1.2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3.6s" begin="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="760" cy="320" r="5" fill="#E0A93A"/>
+
+      <!-- Node 4 -->
+      <circle cx="1100" cy="240" r="20" fill="url(#pulse)">
+        <animate attributeName="r" values="14;28;14" dur="3.8s" begin="0.3s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3.8s" begin="0.3s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="1100" cy="240" r="4" fill="#FAF6EC"/>
+
+      <!-- Node 5 -->
+      <circle cx="1380" cy="360" r="20" fill="url(#pulse)">
+        <animate attributeName="r" values="14;28;14" dur="4.4s" begin="0.9s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="4.4s" begin="0.9s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="1380" cy="360" r="4" fill="#FAF6EC"/>
+    </g>
+
+    <!-- Data packets travelling along the network lines -->
+    <circle r="3" fill="#FAF6EC">
+      <animateMotion dur="4s" repeatCount="indefinite"
+        path="M 220 280 L 480 200"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="3" fill="#E0A93A">
+      <animateMotion dur="5s" repeatCount="indefinite" begin="1s"
+        path="M 480 200 L 760 320"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="5s" begin="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="3" fill="#FAF6EC">
+      <animateMotion dur="4.5s" repeatCount="indefinite" begin="0.5s"
+        path="M 760 320 L 1100 240"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="4.5s" begin="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="3" fill="#76D67E">
+      <animateMotion dur="4.2s" repeatCount="indefinite" begin="2s"
+        path="M 1100 240 L 1380 360"/>
+      <animate attributeName="opacity" values="0;1;1;0" dur="4.2s" begin="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ============ LAYER 6: FLOATING POLLEN / DATA MOTES ============ -->
+  <g>
+    <circle r="2.5" fill="url(#mote)">
+      <animate attributeName="cx" values="120;180;120" dur="14s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="700;120;700" dur="14s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.9;0" dur="14s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="3" fill="url(#mote)">
+      <animate attributeName="cx" values="340;380;340" dur="17s" begin="2s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="800;100;800" dur="17s" begin="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.85;0" dur="17s" begin="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="2" fill="url(#mote)">
+      <animate attributeName="cx" values="560;520;560" dur="12s" begin="1s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="780;80;780" dur="12s" begin="1s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.9;0" dur="12s" begin="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="2.5" fill="url(#mote)">
+      <animate attributeName="cx" values="780;840;780" dur="19s" begin="3s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="820;60;820" dur="19s" begin="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.8;0" dur="19s" begin="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="3" fill="url(#mote)">
+      <animate attributeName="cx" values="980;940;980" dur="15s" begin="0.5s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="760;100;760" dur="15s" begin="0.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.9;0" dur="15s" begin="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="2" fill="url(#mote)">
+      <animate attributeName="cx" values="1180;1240;1180" dur="16s" begin="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="800;120;800" dur="16s" begin="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.85;0" dur="16s" begin="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="2.5" fill="url(#mote)">
+      <animate attributeName="cx" values="1380;1340;1380" dur="13s" begin="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="780;90;780" dur="13s" begin="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.9;0" dur="13s" begin="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="2" fill="url(#mote)">
+      <animate attributeName="cx" values="1520;1480;1520" dur="18s" begin="4s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="800;80;800" dur="18s" begin="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.85;0" dur="18s" begin="4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ============ LAYER 7: SUBTLE GRAIN / VIGNETTE OVERLAY ============ -->
+  <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+    <stop offset="60%" stop-color="#000" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+  </radialGradient>
+  <rect width="1600" height="900" fill="url(#vignette)" pointer-events="none"/>
+</svg>

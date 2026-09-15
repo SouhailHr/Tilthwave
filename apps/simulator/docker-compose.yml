@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+
+  sensor-mocker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    hostname: sensors-guard-mocker
+    container_name: sensors-guard-mocker
+    entrypoint: docker/sensor_mocker/entrypoint.sh
+    environment:
+      TZ: Europe/Paris
+    volumes:
+      - ./app/:/sensors-guard-sandbox/app/
+      - .env:/sensors-guard-sandbox/.env
+      - ./docker/sensor_mocker:/sensors-guard-sandbox/docker/sensor_mocker
+
+    networks:
+      - farm-network-dev
+
+  streamer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    hostname: sensors-guard-streamer
+    container_name: sensors-guard-streamer
+    entrypoint: docker/streamer/entrypoint.sh
+    environment:
+      TZ: Europe/Paris
+    volumes:
+      - ./app/:/sensors-guard-sandbox/app/
+      - .env:/sensors-guard-sandbox/.env
+      - ./docker/streamer:/sensors-guard-sandbox/docker/streamer
+    networks:
+      - farm-network-dev
+
+volumes:
+  redpanda:
+
+networks:
+  farm-network-dev:
+    external: true  # Specify that this network is external
+

@@ -1,0 +1,57 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.14
+    container_name: farm-sandbox-redpanda
+    environment:
+      TZ: Europe/Paris
+    hostname: farm-sandbox-redpanda
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    expose:
+      - "8081"
+      - "8082"
+      - "29092"
+      - "9644"
+    ports:
+      - "9092:9092"
+    networks:
+      - farm-network-dev # to connect to the farm-network
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:v3.7.2
+    container_name: farm-redpanda-console
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:29092"]
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - "8082:8080"
+    depends_on:
+      - redpanda
+    networks:
+      - farm-network-dev
+
+volumes:
+  redpanda:
+networks:
+  farm-network-dev:
+    external: true  # Specify that this network is external

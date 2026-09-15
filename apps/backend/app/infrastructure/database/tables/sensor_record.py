@@ -1,0 +1,24 @@
+from sqlalchemy import Column, String, ForeignKey, JSON
+from sqlalchemy.orm import relationship
+
+# To avoid potential complications with import order and circular dependencies.
+# such as mappers failing to initialize because they can't locate related classes during their configuration.
+from infrastructure.database.tables.base import TilthwaveBaseModel
+from infrastructure.database.tables.sensor import Sensor
+
+
+class SensorRecord(TilthwaveBaseModel):
+    """
+    SensorRecordModel for storing information about data collected from sensors.
+    """
+    __tablename__ = 'sensor_records'
+
+    sensor_serial_number = Column(String, ForeignKey('sensor.serial_number', onupdate="CASCADE", ondelete='SET NULL'),
+                                  nullable=True,
+                                  comment="Foreign key linking to a specific Sensor.")
+    data = Column(JSON, nullable=False, comment="JSON format containing the sensor data collected.")
+
+    # Relationships
+
+    # Many-to-One relationship with Sensor. Many SensorRecords will be created for a Sensor
+    sensor = relationship(Sensor)

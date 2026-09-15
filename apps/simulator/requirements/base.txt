@@ -1,0 +1,12 @@
+# Settings
+pydantic==2.6.4
+pydantic-settings==2.2.1
+
+
+# Stream requirements
+
+confluent-kafka==2.3.0
+faststream[confluent]==0.4.2
+
+# HTTP client for fetching zones/sensors from the farm-watch-commander API
+requests==2.32.3

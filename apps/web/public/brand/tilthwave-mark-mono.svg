@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Tilthwave mark monochrome">
+  <title>Tilthwave mono</title>
+  <!-- Single-color form for embossing, stamps, favicons -->
+  <path fill="#1B2E1B" fill-rule="evenodd"
+        d="M60 14 C 92 22, 104 50, 96 80 C 88 104, 60 110, 36 100 C 18 92, 14 70, 22 50 C 30 30, 44 18, 60 14 Z
+           M30 92 C 38 80, 42 80, 50 70 C 58 60, 62 60, 70 50 C 78 40, 82 40, 90 30
+           M42 78 m-3.2,0 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0
+           M60 60 m-3.2,0 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0
+           M78 42 m-3.2,0 a3.2,3.2 0 1,0 6.4,0 a3.2,3.2 0 1,0 -6.4,0"/>
+  <!-- Vein cut from the leaf as negative path so it shows through -->
+  <path d="M30 92 C 38 80, 42 80, 50 70 C 58 60, 62 60, 70 50 C 78 40, 82 40, 90 30"
+        stroke="#FAF6EC" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+  <!-- Sensor dots punch through as loam-colored holes -->
+  <circle cx="42" cy="78" r="3.2" fill="#FAF6EC"/>
+  <circle cx="60" cy="60" r="3.2" fill="#FAF6EC"/>
+  <circle cx="78" cy="42" r="3.2" fill="#FAF6EC"/>
+  <circle cx="42" cy="78" r="1.6" fill="#1B2E1B"/>
+  <circle cx="60" cy="60" r="1.6" fill="#1B2E1B"/>
+  <circle cx="78" cy="42" r="1.6" fill="#1B2E1B"/>
+</svg>

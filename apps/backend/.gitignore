@@ -1,0 +1,25 @@
+# Ignore all IDEA project files
+.idea/
+
+# Ignore other common files
+*.log
+*.tmp
+*.bak
+
+# System files
+.DS_Store
+Thumbs.db
+# Environment (never commit real secrets; use .env.example as the template)
+.env
+
+# Ignore Python bytecode directories
+__pycache__/
+
+# Ignore dump file
+/app/infrastructure/data/dump.sql
+/app/infrastructure/data/database_dump.dump
+
+# Local databases / test artifacts
+*.db
+*.sqlite
+.pytest_cache/

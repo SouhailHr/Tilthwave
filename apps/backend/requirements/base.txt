@@ -1,0 +1,60 @@
+# Include python dependencies required to use your package on production
+# A few definitions:
+# - internal dependencies: internals are the ones we code ourselves @AXIONE.
+# - external dependencies: well, the others.
+# - main dependencies: the ones that we import and use on our python files.
+# - strict versions: set by ==
+# - ranged versions: set by <=A.B.C,>D.E.F
+#
+# Common rules
+# - all deps required by tests must be added in test.txt not here.
+# - all deps required by dev must be added in dev.txt not here.
+# - all external main deps are versioned with strict versions.
+# - all internal main deps are versioned with ranged versions for more flexibility: X.Y.Z.Aplha
+#   The Alpha is the distance from the last release
+#   Z is for an evolution that don't break
+#   Y may break the behavior
+#   X major refactoring/new version
+#   and for internal, we need to have >=X.Y.0,<X.Y+1.0
+
+
+
+# Settings
+pydantic==2.5.3
+pydantic-settings==2.1.0
+sentry-sdk==1.39.1
+
+# Security
+
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt<4.1
+python-multipart== 0.0.9
+
+
+
+# DB requirements
+psycopg2==2.9.5
+
+SQLAlchemy==2.0.7
+sqlalchemy-json==0.5.0
+alembic==1.10.2
+requests==2.28.2
+
+# Framework
+fastapi==0.110.3
+uvicorn==0.29.0
+email_validator==2.1.1
+dnspython==2.6.1
+fastapi-pagination == 0.12.24
+
+
+# Stream requirements
+
+confluent-kafka==2.3.0
+faststream[confluent]==0.4.2
+
+
+# Flow runner requirements
+
+APScheduler==3.10.4

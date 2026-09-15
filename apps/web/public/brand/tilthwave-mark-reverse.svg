@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Tilthwave mark reverse">
+  <title>Tilthwave reverse</title>
+  <rect width="120" height="120" rx="20" fill="#1B2E1B"/>
+  <path d="M60 18
+           C 90 26, 102 52, 94 80
+           C 86 102, 60 108, 38 98
+           C 22 90, 18 70, 26 52
+           C 32 34, 46 22, 60 18 Z"
+        fill="#76D67E" opacity="0.92"/>
+  <path d="M32 90
+           C 40 78, 44 78, 52 68
+           C 60 58, 64 58, 72 48
+           C 80 38, 84 38, 90 30"
+        stroke="#FAF6EC" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+  <circle cx="44" cy="76" r="3.2" fill="#1B2E1B"/>
+  <circle cx="60" cy="60" r="3.2" fill="#1B2E1B"/>
+  <circle cx="76" cy="44" r="3.2" fill="#1B2E1B"/>
+</svg>
