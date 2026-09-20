@@ -39,7 +39,7 @@ def test_list_and_get_never_expose_the_hash(client, auth_headers, make_farm, mak
     make_farm()
     user = make_user("jo")
     page = client.get("/users/", headers=auth_headers()).json()
-    assert page["total"] == 1 and all("password" not in item for item in page["items"])
+    assert page["total"] == 2 and all("password" not in item for item in page["items"])  # jo + the caller
     assert "password" not in client.get(f"/users/{user.id}", headers=auth_headers()).json()
 
 

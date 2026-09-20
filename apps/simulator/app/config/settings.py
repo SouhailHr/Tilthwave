@@ -20,7 +20,7 @@ class ApiSettings(BaseSettings):
     """Only the sensor simulator talks to the API; the actuator simulator runs without these."""
 
     BASE_URL: str = "http://api:8080"
-    USERNAME: str = "admin"
+    USERNAME: str = "simulator"  # the read-only worker seeded by the backend seed job
     PASSWORD: str = ""
     # The API may still be starting or seeding when the simulator boots: retry the login.
     LOGIN_MAX_ATTEMPTS: int = 30

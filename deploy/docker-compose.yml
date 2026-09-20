@@ -13,7 +13,7 @@
 #   streamer      backend: sensors topic -> sensor_records
 #   flow-runner   backend: evaluates zone triggers, drives irrigation (only service that commands the field)
 #   sim-actuators simulator: answers water-control commands on the broker
-#   sim-sensors   simulator: publishes fake sensor readings (logs in to the API)
+#   sim-sensors   simulator: publishes fake sensor readings (logs in to the API as the seeded worker)
 #   web           Next.js dashboard                              -> http://localhost:3000
 #
 # Host ports bind to BIND_ADDR (default 127.0.0.1) so the database, broker and console are never
@@ -202,6 +202,8 @@ services:
       <<: *backend-env
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run `make env` to generate deploy/.env}
+      SIM_USERNAME: ${SIM_USERNAME:-simulator}
+      SIM_PASSWORD: ${SIM_PASSWORD:?add SIM_PASSWORD to deploy/.env (see deploy/.env.example)}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -265,8 +267,9 @@ services:
     environment:
       <<: *simulator-env
       API_BASE_URL: http://api:8080
-      API_USERNAME: ${ADMIN_USERNAME:-admin}
-      API_PASSWORD: ${ADMIN_PASSWORD:?run `make env` to generate deploy/.env}
+      # Read-only worker account seeded by the seed job: the simulator never holds admin credentials.
+      API_USERNAME: ${SIM_USERNAME:-simulator}
+      API_PASSWORD: ${SIM_PASSWORD:?add SIM_PASSWORD to deploy/.env (see deploy/.env.example)}
       SENSORS_ROUNDS: ${SENSORS_ROUNDS:-0}
       SENSORS_INTERVAL_SECONDS: ${SENSORS_INTERVAL_SECONDS:-15}
       SENSORS_CYCLE_ROUNDS: ${SENSORS_CYCLE_ROUNDS:-10}

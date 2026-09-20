@@ -39,6 +39,7 @@ from adapters.farm import FarmAdaptor
 from adapters.sensor import SensorAdaptor
 from adapters.sensor_record import SensorRecordAdaptor
 from adapters.tree import TreeAdaptor
+from adapters.users import UserAdaptor
 from adapters.water_source import WaterSourceAdaptor
 from adapters.water_switcher import WaterSwitcherAdaptor
 from adapters.zone import ZoneAdaptor
@@ -46,6 +47,7 @@ from adapters.zone_sensors import ZoneSensorsAdaptor
 from common.dates import utc_now
 from common.logging import configure_logging
 from config.settings import settings
+from core.security.password import PasswordHasher
 from infrastructure.scripts.create_admin import bootstrap_admin
 from wiring import repositories
 
@@ -114,6 +116,39 @@ def seed_admin():
     log.info("✓  created Admin (username=%s, farm=%s)", username, FARM_NAME)
 
 
+def seed_simulator_user():
+    """
+    Create the read-only (worker) account the sensor simulator logs in with, so the simulator
+    never holds a superuser credential. Skipped, with a warning, when SIM_PASSWORD is not set.
+    """
+    username = os.environ.get("SIM_USERNAME", "simulator")
+    if _exists(user_repo, "username", username):
+        log.info("→  exists  Simulator user (username=%s)", username)
+        return
+    password = os.environ.get("SIM_PASSWORD")
+    if not password:
+        log.warning("SIM_PASSWORD is not set; not seeding the simulator user (the sensor simulator cannot log in)")
+        return
+    user_repo.create(
+        UserAdaptor.dict_to_entity(
+            {
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": PasswordHasher.hash(password),
+                "phone_number": "+0000000000",
+                "first_name": "Sensor",
+                "last_name": "Simulator",
+                "role": "worker",
+                "is_active": True,
+                "is_superuser": False,
+                "farm_name": FARM_NAME,
+                "performed_by": PERFORMED_BY,
+            }
+        )
+    )
+    log.info("✓  created Simulator user (username=%s, role=worker, farm=%s)", username, FARM_NAME)
+
+
 def seed_zones():
     common = {
         "farm_name": FARM_NAME,
@@ -157,6 +192,7 @@ def seed_sensors():
                 "serial_number": serial,
                 "type": type_,
                 "is_active": True,
+                "farm_name": FARM_NAME,
             },
             f"Sensor[{type_}]",
             "serial_number",
@@ -286,6 +322,8 @@ def main():
     seed_farm()
     log.info("--- Admin ---")
     seed_admin()
+    log.info("--- Simulator user ---")
+    seed_simulator_user()
     log.info("--- Zones ---")
     seed_zones()
     log.info("--- Sensors ---")

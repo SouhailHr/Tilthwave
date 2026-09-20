@@ -10,7 +10,8 @@ gen() { python3 -c "import secrets; print(secrets.token_urlsafe($1))"; }
 sed -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(gen 24)|" \
     -e "s|^API_SECRET_KEY=.*|API_SECRET_KEY=$(gen 48)|" \
     -e "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=$(gen 18)|" \
+    -e "s|^SIM_PASSWORD=.*|SIM_PASSWORD=$(gen 18)|" \
     .env.example > .env
 chmod 600 .env
-echo "deploy/.env created with generated POSTGRES_PASSWORD, API_SECRET_KEY and ADMIN_PASSWORD."
+echo "deploy/.env created with generated POSTGRES_PASSWORD, API_SECRET_KEY, ADMIN_PASSWORD and SIM_PASSWORD."
 echo "Dashboard login: user 'admin', password in deploy/.env (ADMIN_PASSWORD)."

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from common import constants as global_constants
+from interfaces.api.schemas.base import IDENTIFIER_DOC
 
 
 class SensorCreate(BaseModel):
@@ -34,6 +35,7 @@ class SensorUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    farm_name: str | None = Field(default=None, exclude=True, description=IDENTIFIER_DOC)
     type: str | None = Field(default=None, pattern=global_constants.SENSOR_TYPES)
     is_active: bool | None = None
     serial_number: str | None = Field(default=None, description="Unique serial number of the sensor")

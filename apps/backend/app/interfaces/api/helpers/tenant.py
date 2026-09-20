@@ -1,7 +1,10 @@
 """Pure-ASGI middleware that binds the caller's tenant (farm) for the request.
 
-Decodes the Bearer JWT once and stores {username, farm_name, role, is_superuser}
-in a ContextVar the repository layer reads to enforce per-farm isolation. Being
+Decodes the Bearer JWT once, loads the user row it names and stores {username,
+farm_name, role, is_superuser} in a ContextVar the repository layer reads to
+enforce per-farm isolation. Role and farm come from the database, not the token,
+and a missing or deactivated user is rejected: deactivating or demoting someone
+takes effect on their next request instead of when their token expires. Being
 a plain ASGI middleware (not BaseHTTPMiddleware), it sets the ContextVar in the
 same context that runs the endpoint, so the value is visible to sync handlers
 executed in the threadpool. Install it OUTERMOST so the value is set before any
@@ -12,10 +15,12 @@ so RBACMiddleware and the endpoint dependencies reuse them instead of decoding a
 """
 
 from jwt import InvalidTokenError
+from starlette.concurrency import run_in_threadpool
 
 from common import constants as global_constants
 from common.tenant_context import reset_tenant, set_tenant
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
+from wiring import api_use_cases
 
 # Request-state flag telling RBACMiddleware a bearer token was present but rejected.
 TOKEN_INVALID_STATE_KEY = "auth_token_invalid"
@@ -24,6 +29,15 @@ TOKEN_INVALID_STATE_KEY = "auth_token_invalid"
 class TenantContextMiddleware:
     def __init__(self, app):
         self.app = app
+
+    @staticmethod
+    def _active_user(user_id):
+        """The active user row a token names, or None (unknown id or deactivated account)."""
+        if user_id is None:
+            return None
+        # No tenant context is set yet, so this lookup is unscoped: the row itself tells the farm.
+        user = api_use_cases().users.get(user_id)
+        return user if user is not None and user.is_active else None
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -42,14 +56,19 @@ class TenantContextMiddleware:
             except InvalidTokenError:
                 state[TOKEN_INVALID_STATE_KEY] = True
             else:
-                role = claims.get("role")
-                state[CLAIMS_STATE_KEY] = claims
-                ctx = {
-                    "username": claims.get("username"),
-                    "farm_name": claims.get("farm_name"),
-                    "role": role,
-                    "is_superuser": role in global_constants.SUPERUSER_ROLES,
-                }
+                # The repositories are synchronous; keep the event loop free while the row loads.
+                user = await run_in_threadpool(self._active_user, claims.get("user_id"))
+                if user is None:
+                    state[TOKEN_INVALID_STATE_KEY] = True
+                else:
+                    claims = {**claims, "username": user.username, "role": user.role, "farm_name": user.farm_name}
+                    state[CLAIMS_STATE_KEY] = claims
+                    ctx = {
+                        "username": user.username,
+                        "farm_name": user.farm_name,
+                        "role": user.role,
+                        "is_superuser": user.role in global_constants.SUPERUSER_ROLES,
+                    }
         token_ctx = set_tenant(ctx)
         try:
             await self.app(scope, receive, send)
