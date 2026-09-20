@@ -13,9 +13,12 @@ class SensorRecord(TilthwaveBaseModel):
     """
 
     __tablename__ = "sensor_records"
-    # Latest-reading lookups (flow runner, per sensor) and per-sensor listings; name follows the
-    # metadata naming convention and matches revision a1c2e3f4b5d6.
-    __table_args__ = (Index(None, "sensor_serial_number", text("created_date DESC")),)
+    # Latest-reading lookups (flow runner, per sensor) and per-sensor listings. Named explicitly
+    # to match revision a1c2e3f4b5d6: the "ix" naming convention only sees Column objects, so the
+    # text() expression would be dropped from an auto-generated name and `alembic check` would fail.
+    __table_args__ = (
+        Index("ix_sensor_records_sensor_serial_number_created_date", "sensor_serial_number", text("created_date DESC")),
+    )
 
     sensor_serial_number = Column(
         String,
