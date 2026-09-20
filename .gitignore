@@ -35,3 +35,6 @@ Thumbs.db
 *.tmp
 *.bak
 deploy/dumps/
+
+# AXguard security reports (may contain secret matches)
+.findings/
