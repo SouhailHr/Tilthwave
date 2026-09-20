@@ -9,7 +9,7 @@ dependencies = [
     "pydantic==2.13.5",
     "pydantic-settings==2.15.0",
     "confluent-kafka==2.15.1",
-    "faststream[confluent,cli]==0.5.48",   # cli extra: the `faststream run` entrypoint
+    "faststream[confluent,cli]==0.7.5",   # cli extra: the `faststream run` entrypoint
     "requests==2.34.2",
 ]
 
