@@ -1,52 +1,33 @@
-# Sensor Mocker
+# Tilthwave simulator
 
-The Sensor Mocker is a tool designed to generate mock data about sensors and send it to a Redpanda queue. It simulates
-sensor readings for testing and development purposes.
+Two processes that stand in for the farm hardware:
 
-## Installation
+- **sensors** (`app/sensors`) — logs in to the API, discovers each zone's sensors, and publishes fake
+  temperature / moisture / saturation readings to the sensors topic. Values climb every round and wrap
+  after `SENSORS_CYCLE_ROUNDS` rounds so the backend's start and stop triggers are both exercised.
+- **actuators** (`app/actuators`) — subscribes to the water-control topic and answers every command
+  from the flow-runner with the status a real water source or switcher would report.
 
-To run the Sensor Mocker, you'll need Docker installed on your system.
-
-1. Clone this repository:
-
-    ```bash
-    git clone <repository-url>
-    cd BrokerSandbox
-    ```
-
-2. Create a `.env` file based on the provided `.env.example` and fill in the required configuration variables.
-
-3. Run the following command to start the Sensor Mocker:
+Both run as part of the full stack (`make up` at the repo root, services `sim-sensors` and `sim-actuators`).
 
 ## Configuration
 
-The Sensor Mocker can be configured via environment variables. Edit the `.env` file to adjust settings such as the
-Redpanda server address and sensor data generation parameters.
+Environment variables (see `.env.example`):
 
-Example:
-```bash
-STREAMER_BROKER_HOSTS=["farm-sandbox-redpanda:29092"]
-STREAMER_SENSORS_TOPIC="farm-commander.sensors.dev"
-STREAMER_WATER_CONTROL_TOPIC="farm-commander.water-control.dev"
-STREAMER_LOG_LEVEL="INFO"
-STREAMER_LOG_FILENAME="logs/streamer.log"
-```
+| Variable | Purpose |
+|---|---|
+| `STREAMER_BROKER_HOSTS` | JSON list of brokers, e.g. `["redpanda:29092"]` |
+| `STREAMER_SENSORS_TOPIC`, `STREAMER_WATER_CONTROL_TOPIC` | topic names |
+| `STREAMER_GROUP_ID` | consumer group of the actuator simulator |
+| `API_BASE_URL`, `API_USERNAME`, `API_PASSWORD` | API login used to discover zones (retries while the API starts) |
+| `SENSORS_ROUNDS` | rounds to publish, `0` = forever |
+| `SENSORS_INTERVAL_SECONDS` | pause between rounds |
 
-## Usage
-
-#####  Build and Run the Services:
+## Development
 
 ```bash
-docker-compose up --build
+uv sync
+uv run ruff check app
+uv run python app/sensors/generator.py          # needs a .env or the variables above
+uv run faststream run app/actuators/streamer:fast_stream
 ```
-
-Once the Sensor Mocker is running, it will continuously generate mock sensor data and publish it to the specified Redpanda queue.
-
-## Contributing
-
-Contributions are welcome! If you'd like to contribute to this project, please fork the repository and submit a pull
-request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).

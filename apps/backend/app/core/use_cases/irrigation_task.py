@@ -1,7 +1,8 @@
 from collections import defaultdict
+
+from common.dates import minutes_since, parse_db_datetime
 from core.entities.irrigation_task import IrrigationTask as IrrigationTaskEntity
 from core.use_cases.base import BaseUseCase
-from datetime import datetime
 
 
 class IrrigationTaskUseCase(BaseUseCase):
@@ -10,17 +11,13 @@ class IrrigationTaskUseCase(BaseUseCase):
     @staticmethod
     def get_task_in_progress_duration(task_in_progress):
         """
-        This method calculates the duration of an irrigation task in progress duration
+        This method calculates the duration of an irrigation task in progress duration.
+        created_date is stored in UTC, so "now" is taken in UTC as well (the container TZ is
+        the farm's local time and must not leak into durations).
         @param task_in_progress: an irrigation task in progress
         @return: int value represents duration in minutes
         """
-        created_date = task_in_progress.created_date
-        created_date = datetime.strptime(created_date, '%Y-%m-%d %H:%M:%S.%f')
-
-        # Calculate the duration in seconds
-        duration = int((datetime.now() - created_date).total_seconds() / 60)
-
-        return duration
+        return int(minutes_since(task_in_progress.created_date))
 
     def get_all_irrigation_tasks(self):
         """
@@ -62,7 +59,7 @@ class IrrigationTaskUseCase(BaseUseCase):
 
         # Count the number of tasks per month
         for task in irrigation_tasks:
-            task_date = datetime.strptime(task.created_date, '%Y-%m-%d %H:%M:%S.%f')
+            task_date = parse_db_datetime(task.created_date)
             month_key = (task_date.year, task_date.month)
             task_counts_per_month[month_key] += 1
 
@@ -86,8 +83,18 @@ class IrrigationTaskUseCase(BaseUseCase):
 
         # Initialize all months and zones with zero counts
         months = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ]
         zones = set(task.zone_name for task in irrigation_tasks)
         for month in months:
@@ -96,8 +103,8 @@ class IrrigationTaskUseCase(BaseUseCase):
 
         # Count the number of tasks per month and zone
         for task in irrigation_tasks:
-            task_date = datetime.strptime(task.created_date, '%Y-%m-%d %H:%M:%S.%f')
-            month_name = task_date.strftime('%B')
+            task_date = parse_db_datetime(task.created_date)
+            month_name = task_date.strftime("%B")
             chart_data[month_name][task.zone_name] += 1
 
         return chart_data
@@ -127,6 +134,6 @@ class IrrigationTaskUseCase(BaseUseCase):
             "total_tasks": len(self.get_all_irrigation_tasks()),
             "average_tasks_per_month": self.get_average_tasks_per_month(),
             "average_tasks_per_zone": self.get_average_tasks_per_zone(),
-            "chart_data": self.get_chart_data()
+            "chart_data": self.get_chart_data(),
         }
         return irrigation_tasks_stats

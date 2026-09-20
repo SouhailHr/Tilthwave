@@ -8,6 +8,7 @@ class TreeDBRepository(BaseDBRepo):
     """
     TreeDBRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = Tree
     ENTITY = TreeEntity
     ADAPTOR = TreeAdaptor

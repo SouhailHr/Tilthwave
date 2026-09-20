@@ -2,7 +2,6 @@ from common.exceptions import TilthwaveBaseException
 
 
 class UseCaseException(TilthwaveBaseException):
-
     def __init__(self, class_name=None, message=None, *args):
         super().__init__(message, *args)
 

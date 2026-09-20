@@ -11,23 +11,36 @@ class WaterSwitcher(TilthwaveBaseModel):
     """
     WaterSwitcher model for storing WaterSwitcher information.
     """
-    __tablename__ = 'water_switcher'
 
-    status = Column(String, nullable=False,
-                    comment='Operational status of the water switcher (e.g., "on", "off", "error").')
-    water_source_serial_number = Column(String, ForeignKey('water_source.serial_number', onupdate="CASCADE",
-                                                            ondelete='SET NULL'),
-                                        nullable=True,
-                                        comment='Foreign key linking to the Water Source table. '
-                                                'Indicates the source from which the switcher draws water.')
+    __tablename__ = "water_switcher"
 
-    sensor_serial_number = Column(String, ForeignKey('sensor.serial_number', onupdate="CASCADE", ondelete='SET NULL'),
-                                  nullable=True, unique=True,
-                                  comment="Foreign key linking to a specific Sensor.")
-    zone_name = Column(String, ForeignKey('zone.zone_name', onupdate="CASCADE", ondelete='SET NULL'), nullable=True,
-                       comment="Foreign key referencing the zone's name")
-    serial_number = Column(String(50), nullable=False, unique=True,
-                           comment='Unique serial number of the water switcher')
+    status = Column(
+        String, nullable=False, comment='Operational status of the water switcher (e.g., "on", "off", "error").'
+    )
+    water_source_serial_number = Column(
+        String,
+        ForeignKey("water_source.serial_number", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        comment="Foreign key linking to the Water Source table. "
+        "Indicates the source from which the switcher draws water.",
+    )
+
+    sensor_serial_number = Column(
+        String,
+        ForeignKey("sensor.serial_number", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+        comment="Foreign key linking to a specific Sensor.",
+    )
+    zone_name = Column(
+        String,
+        ForeignKey("zone.zone_name", onupdate="CASCADE", ondelete="SET NULL"),
+        nullable=True,
+        comment="Foreign key referencing the zone's name",
+    )
+    serial_number = Column(
+        String(50), nullable=False, unique=True, comment="Unique serial number of the water switcher"
+    )
 
     # Relationships
 

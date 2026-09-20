@@ -1,21 +1,22 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
-from fastapi import HTTPException, Depends
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+import jwt
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer
+from jwt import InvalidTokenError
 from starlette import status
 from starlette.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
 
 from config.settings import settings
+from core.security.password import PasswordHasher
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Where TenantContextMiddleware stores the decoded claims so the request is decoded once.
+CLAIMS_STATE_KEY = "auth_claims"
 
 
 class AuthHelper:
-
     @classmethod
     def verify_password(cls, plain_password, hashed_password):
         """
@@ -24,7 +25,7 @@ class AuthHelper:
         @param hashed_password:
         @return:
         """
-        return pwd_context.verify(plain_password, hashed_password)
+        return PasswordHasher.verify(plain_password, hashed_password)
 
     @classmethod
     def get_password_hash(cls, password):
@@ -33,20 +34,27 @@ class AuthHelper:
         @param password:
         @return: Hashed Password
         """
-        return pwd_context.hash(password)
+        return PasswordHasher.hash(password)
 
     @classmethod
-    def create_access_token(cls, data: dict):
+    def create_access_token(cls, data: dict) -> str:
         """
         Function to create access token
         @param data:
         @return: Encoded JWT
         """
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=settings.API.ACCESS_TOKEN_EXPIRE)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.API.ACCESS_TOKEN_EXPIRE)
         to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, settings.API.SECRET_KEY, algorithm=settings.API.ALGORITHM)
-        return encoded_jwt
+        return jwt.encode(to_encode, settings.API.SECRET_KEY, algorithm=settings.API.ALGORITHM)
+
+    @classmethod
+    def decode_token(cls, token: str) -> dict:
+        """
+        Decode and verify a token (signature, algorithm and expiry).
+        @raises InvalidTokenError: expired, tampered or malformed token
+        """
+        return jwt.decode(token, settings.API.SECRET_KEY, algorithms=[settings.API.ALGORITHM])
 
     @classmethod
     def verify_access_token(cls, token: str) -> JSONResponse:
@@ -57,36 +65,39 @@ class AuthHelper:
         @return: A message stating if the token is valid or not.
         """
         try:
-            # Attempt to decode the token using the same secret and algorithm used to create it
-            payload = jwt.decode(token, settings.API.SECRET_KEY, algorithms=[settings.API.ALGORITHM])
-            # Check token expire time
-            expire = payload.get("exp")
-            current_time = datetime.utcnow().timestamp()
-            if expire <= current_time:
-                return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content=f"token has ben expired")
-            return JSONResponse(status_code=status.HTTP_200_OK, content=f"token:{token}")
-        except JWTError as e:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail=f"Could not validate credentials. Error: {str(e)}")
+            cls.decode_token(token)
+        except InvalidTokenError as e:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token") from e
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"valid": True})
 
     @classmethod
-    def get_current_user(cls, token: str = Depends(oauth2_scheme)):
+    def _claims(cls, request: Request, token: str) -> dict:
+        """Claims for the request: the middleware's copy when present, else a fresh decode."""
+        claims = getattr(request.state, CLAIMS_STATE_KEY, None)
+        if claims is not None:
+            return claims
         try:
-            payload = jwt.decode(token, settings.API.SECRET_KEY, algorithms=[settings.API.ALGORITHM])
-            user_id: int = payload.get("user_id")
-            if user_id is None:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
-        except JWTError:
+            return cls.decode_token(token)
+        except InvalidTokenError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
+            ) from e
+
+    @classmethod
+    def get_current_user(cls, request: Request, token: str = Depends(oauth2_scheme)):
+        """
+        Dependency: the raw bearer token of an authenticated caller.
+        """
+        if cls._claims(request, token).get("user_id") is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
         return token
 
     @classmethod
-    def get_current_user_username(cls, token: str = Depends(oauth2_scheme)):
-        try:
-            payload = jwt.decode(token, settings.API.SECRET_KEY, algorithms=[settings.API.ALGORITHM])
-            username = payload.get("username")
-            if not username:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
-            return username
-        except JWTError:
+    def get_current_user_username(cls, request: Request, token: str = Depends(oauth2_scheme)):
+        """
+        Dependency: the username of the authenticated caller (used as performed_by).
+        """
+        username = cls._claims(request, token).get("username")
+        if not username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+        return username

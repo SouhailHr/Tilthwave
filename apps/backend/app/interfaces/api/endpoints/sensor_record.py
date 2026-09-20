@@ -1,32 +1,42 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
 from fastapi_pagination import Page
 
 from adapters.sensor_record import SensorRecordAdaptor
-from config.settings import settings
-from core.use_cases.sensor_record import SensorRecordUseCase
-from infrastructure.repositories.sensor_record import SensorRecordDBRepository
 from interfaces.api.endpoints.base import BaseCrud
+from interfaces.api.helpers.auth import AuthHelper
 from interfaces.api.schemas.sensor_record import SensorRecordCreate
+from wiring import api_use_cases
 
 router = APIRouter(prefix="/sensor-records", tags=["Sensor Records"])
-sensor_record_repo = SensorRecordDBRepository(uri=settings.DATABASE.URI)
-sensor_record_use_case = SensorRecordUseCase(repo=sensor_record_repo)
+use_cases = api_use_cases()
 logger = logging.getLogger(__name__)
 
 
 class SensorRecordCrudHelper(BaseCrud):
     ADAPTOR_CLASS = SensorRecordAdaptor
-    USE_CASE_INSTANCE = sensor_record_use_case
+    USE_CASE_INSTANCE = use_cases.sensor_record
+    IDENTIFIER = "sensor_serial_number"
 
 
-@router.post("/")
-def create(data: SensorRecordCreate):
+@router.post("/", status_code=201)
+def create(data: SensorRecordCreate, username: str = Depends(AuthHelper.get_current_user_username)):
     """
-    This Router creates a sensor record
+    This Router creates a sensor record (records normally arrive through the streamer)
     """
-    return SensorRecordCrudHelper.create(data=data)
+    return SensorRecordCrudHelper.create(data=data, performed_by=username)
+
+
+@router.get("/", response_model=Page[dict])
+def get_all(
+    filters: str | None = Query(None, description=SensorRecordCrudHelper.filters_doc()),
+    search: str | None = Query(None, description="Case-insensitive match on the identifier"),
+):
+    """
+    This Router gets one page of sensor records
+    """
+    return SensorRecordCrudHelper.get_all(filters_str=filters, search=search)
 
 
 @router.get("/{id}")
@@ -37,15 +47,7 @@ def get_by_id(id: int):
     return SensorRecordCrudHelper.get_by_id(id=id)
 
 
-@router.get("/", response_model=Page[dict])
-def get_all():
-    """
-    This Router gets all the sensors records
-    """
-    return SensorRecordCrudHelper.get_all()
-
-
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_by_id(id: int):
     """
     This Router deletes a sensor record by ID

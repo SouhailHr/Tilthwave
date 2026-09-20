@@ -1,19 +1,30 @@
 import json
 import logging
-from typing import List
 
-from fastapi import HTTPException
+from fastapi import Response
 from fastapi.responses import JSONResponse
-from fastapi_pagination.iterables import paginate
+from fastapi_pagination.api import create_page, resolve_params
 from starlette import status
+
+from common.exceptions import InvalidFilterError, NotFoundError
 
 logger = logging.getLogger(__name__)
 
 
 class BaseCrud:
+    """
+    Template Method for the REST resources: subclasses configure the three class attributes
+    and override a hook when a resource needs more than plain CRUD. Errors are not handled
+    here: domain exceptions propagate to the handlers in interfaces/api/helpers/errors.py.
+    """
+
     ADAPTOR_CLASS = None
     USE_CASE_INSTANCE = None
     IDENTIFIER = None
+
+    @classmethod
+    def _not_found(cls):
+        return NotFoundError(f"{cls.ADAPTOR_CLASS.ENTITY.__name__} not found")
 
     @classmethod
     def create(cls, data, performed_by=None):
@@ -25,17 +36,13 @@ class BaseCrud:
             4- Create an object using its use case
         @param data:
         @param performed_by:
-        @return Dict of the object
+        @return 201 with the dict of the object
         """
-        try:
-            data = data.model_dump()
-            data['performed_by'] = performed_by  # Set the username
-            entity = cls.ADAPTOR_CLASS.dict_to_entity(data)
-            result = cls.USE_CASE_INSTANCE.create(entity)
-            if result:
-                return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_dict())
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        data = data.model_dump()
+        data["performed_by"] = performed_by  # Set the username
+        entity = cls.ADAPTOR_CLASS.dict_to_entity(data)
+        result = cls.USE_CASE_INSTANCE.create(entity)
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=result.to_public_dict())
 
     @classmethod
     def get_by_identifier(cls, identifier):
@@ -44,19 +51,11 @@ class BaseCrud:
         @param identifier: String
         @return:
         """
-
-        filters = [
-            {"attribute": cls.IDENTIFIER, "value": identifier, "condition": "eq"}
-        ]
-        try:
-            result = cls.USE_CASE_INSTANCE.filter(filters)
-            if result:
-                obj = result[0]
-                return JSONResponse(status_code=status.HTTP_200_OK, content=obj.to_dict())
-            else:
-                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={})
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        filters = [{"attribute": cls.IDENTIFIER, "value": identifier, "condition": "eq"}]
+        result = cls.USE_CASE_INSTANCE.first(filters, order_by="id", order_direction="asc")
+        if not result:
+            raise cls._not_found()
+        return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
 
     @classmethod
     def get_by_id(cls, id: int):
@@ -67,14 +66,10 @@ class BaseCrud:
         @param id:
         @return Dict of the object
         """
-        try:
-            result = cls.USE_CASE_INSTANCE.get(id)
-            if result:
-                return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_dict())
-            else:
-                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={})
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        result = cls.USE_CASE_INSTANCE.get(id)
+        if not result:
+            raise cls._not_found()
+        return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
 
     @classmethod
     def delete_by_id(cls, id: int):
@@ -83,51 +78,64 @@ class BaseCrud:
             1- Search for an object by id
             2- If the object exists delete the object from the DB
         @param id:
-        @return Status code
+        @return 204 No Content
         """
-        try:
-            is_deleted = cls.USE_CASE_INSTANCE.delete(id=id)
-            if is_deleted:
-                return JSONResponse(status_code=status.HTTP_200_OK, content={})
-            else:
-                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={})
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        if not cls.USE_CASE_INSTANCE.delete(id=id):
+            raise cls._not_found()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @classmethod
-    def update_by_id(cls, id: int, data, performed_by=None):
+    def update_by_id(cls, id: int, data: dict, performed_by=None):
         """
         Logic:
             1- Search for an object by id
             2- If the object exists update the object from the DB
-            3- Status code
         @param id:
-        @param data:
+        @param data: dict of the fields to update (already validated by the resource's *Update schema)
         @param performed_by:
         @return Dict of the object
         """
+        data["performed_by"] = performed_by  # Set the username
+        result = cls.USE_CASE_INSTANCE.update(id=id, data=data)
+        if not result:
+            raise cls._not_found()
+        return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
+
+    @classmethod
+    def _enrich_item(cls, entity) -> dict:
+        """
+        Hook: the public dict of one listed entity. Override to add computed fields
+        (see SensorCrudHelper.assigned_to).
+        """
+        return entity.to_public_dict()
+
+    @classmethod
+    def filters_doc(cls) -> str:
+        """OpenAPI description of the `filters` query parameter for this resource."""
+        return f'JSON object, e.g. {{"search": "..."}} (matches {cls.IDENTIFIER}) or {{"<column>": "<value>"}}'
+
+    @classmethod
+    def _parse_filters_str(cls, filters_str, search=None) -> list[dict]:
+        """
+        Decode the `filters` query parameter (a JSON object) into Filter DSL entries.
+        A plain `search` query parameter is the same as {"search": ...} inside `filters`.
+        """
+        if search:
+            return cls.parse_filters({"search": search})
+        if not filters_str:
+            return []
         try:
-            data['performed_by'] = performed_by  # Set the username
-            result = cls.USE_CASE_INSTANCE.update(id=id, data=data)
-            if result:
-                return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_dict())
-            else:
-                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={})
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            filters_dict = json.loads(filters_str)
+        except json.JSONDecodeError as e:
+            raise InvalidFilterError("filters must be a JSON object") from e
+        if not isinstance(filters_dict, dict):
+            raise InvalidFilterError("filters must be a JSON object")
+        return cls.parse_filters(filters_dict=filters_dict)
 
     @classmethod
-    def _convert_list_entities_to_list_of_dict(cls, entities):
+    def get_all(cls, filters_str=None, search=None):
         """
-        Converting a list of entities to a dict
-        @return:
-        """
-        return [entity.to_dict() for entity in entities]
-
-    @classmethod
-    def get_all(cls, filters_str=None):
-        """
-            Retrieve all entities from the data source as a list of dictionaries.
+            Retrieve one page of entities, paginated in the database.
         @return       {
                     "items": [{...}, {...}],
                     "total": 567,
@@ -136,25 +144,13 @@ class BaseCrud:
                     "pages": 18
                 }
         """
-        filters_dict = {}
-        filters = []
-        if filters_str:
-            try:
-                filters_dict = json.loads(filters_str)
-            except json.JSONDecodeError:
-                logger.error("Failed to decode filters")
-        if filters_dict:
-            filters = cls.parse_filters(filters_dict=filters_dict)
-        try:
-            result = cls.USE_CASE_INSTANCE.filter(filters, order_by="created_date", order_direction="asc")
-            list_of_dict = cls._convert_list_entities_to_list_of_dict(entities=result)
-            if list_of_dict:
-                return paginate(list_of_dict, total=len(list_of_dict))
-            else:
-                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={})
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        filters = cls._parse_filters_str(filters_str, search)
+        params = resolve_params()
+        raw = params.to_raw_params()
+        entities, total = cls.USE_CASE_INSTANCE.paginate(
+            filters, order_by="created_date", order_direction="asc", limit=raw.limit, offset=raw.offset
+        )
+        return create_page([cls._enrich_item(entity) for entity in entities], total=total, params=params)
 
     @classmethod
     def get_stats(cls, entity_name=None):
@@ -163,80 +159,60 @@ class BaseCrud:
         @return dict stats
 
         """
-
-        try:
-            if entity_name:
-                result = cls.USE_CASE_INSTANCE.get_stats(name=entity_name)
-            else:
-                result = cls.USE_CASE_INSTANCE.get_stats()
-
-            if result:
-                return JSONResponse(status_code=status.HTTP_200_OK, content=result)
-            else:
-                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={})
-        except Exception as e:
-            logger.error(e)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        if entity_name:
+            result = cls.USE_CASE_INSTANCE.get_stats(name=entity_name)
+        else:
+            result = cls.USE_CASE_INSTANCE.get_stats()
+        if not result:
+            raise cls._not_found()
+        return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
     @classmethod
     def get_select_list(cls, filters_str=None):
         """
-        Example of filter filters=type__eq=switcher_sensor&is_active__eq=true
-        @param filters_str:
+        Options for a select input: [{"value": <IDENTIFIER>, "label": <IDENTIFIER>}, ...]
+        @param filters_str: same JSON object as get_all
         @return:
         """
-        filters = []
-        if filters_str:
-            filters = cls.parse_filters(filters_str)
+        filters = cls._parse_filters_str(filters_str)
         entities = cls.USE_CASE_INSTANCE.filter(filters)
         data = [
-            {"value": getattr(entity, cls.IDENTIFIER),
-             "label": getattr(entity, cls.IDENTIFIER)} for entity in entities]
-        try:
-            return JSONResponse(status_code=status.HTTP_200_OK, content=data)
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+            {"value": getattr(entity, cls.IDENTIFIER), "label": getattr(entity, cls.IDENTIFIER)} for entity in entities
+        ]
+        return JSONResponse(status_code=status.HTTP_200_OK, content=data)
 
     @classmethod
-    def parse_filters(cls, filters_dict: dict) -> List[dict]:
+    def parse_filters(cls, filters_dict: dict) -> list[dict]:
         """
-          Parses a filter string into a list of filter dictionaries.
+        Parses a filter string into a list of filter dictionaries.
 
-          Logic:
+        Logic:
 
-            We can have 2 type of filters format:
-                1- Generic Search: filters_dict = {"search":"XYUZ"} :
-                    ==> This means we need to make a search based ob IDENTIFIER field
-                2-Custom Search: filters_dict =  {"type":"moisture_sensor","zone_name":"Zone C"}
-                    ==> This means we need to filters by the requested filter's attributes
+          We can have 2 type of filters format:
+              1- Generic Search: filters_dict = {"search":"XYUZ"} :
+                  ==> This means we need to make a search based ob IDENTIFIER field
+              2-Custom Search: filters_dict =  {"type":"moisture_sensor","zone_name":"Zone C"}
+                  ==> This means we need to filters by the requested filter's attributes
 
-          @param filters_dict: a Dict that contains the filters.
-          @type filters_dict: dict
+        @param filters_dict: a Dict that contains the filters.
+        @type filters_dict: dict
 
-          @return: A list of dictionaries, each containing the keys 'attribute', 'value', and 'condition'.
-                   Each dictionary represents a filter parsed from the input string.
-                   If the input string is None or empty, an empty list is returned.
-          @rtype: tuple
+        @return: A list of dictionaries, each containing the keys 'attribute', 'value', and 'condition'.
+                 Each dictionary represents a filter parsed from the input string.
+                 If the input string is None or empty, an empty list is returned.
+        @rtype: tuple
 
-          """
+        """
         if not filters_dict:
             return []
         # 1- Check what type of filter we have
         filters = []
         if "search" in filters_dict.keys():
             # Generic Search
-            filters.append({
-                "attribute": cls.IDENTIFIER,
-                "value": filters_dict["search"],
-                "condition": "icontains"
-            })
+            filters.append({"attribute": cls.IDENTIFIER, "value": filters_dict["search"], "condition": "icontains"})
         else:
             # the filters_dict is int this format
             # {"attribute":value ,"attribute":value}
             for attribute, value in filters_dict.items():
-                filters.append({
-                    "attribute": attribute,
-                    "value": value,
-                    "condition": "eq"
-                })
+                filters.append({"attribute": attribute, "value": value, "condition": "eq"})
         return filters

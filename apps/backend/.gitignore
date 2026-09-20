@@ -23,3 +23,6 @@ __pycache__/
 *.db
 *.sqlite
 .pytest_cache/
+
+# Virtualenv (uv sync)
+.venv/

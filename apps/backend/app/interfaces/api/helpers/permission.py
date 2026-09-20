@@ -1,18 +1,19 @@
 import logging
 
-from jose import jwt, JWTError
 from starlette import status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 import common.constants as global_constants
-from config.settings import settings
+from interfaces.api.helpers.auth import CLAIMS_STATE_KEY
+from interfaces.api.helpers.tenant import TOKEN_INVALID_STATE_KEY
 
 logger = logging.getLogger(__name__)
 
 
 # Define role-based access control (RBAC) structure
+
 
 def translate_method_to_action(method: str) -> str:
     """
@@ -23,17 +24,17 @@ def translate_method_to_action(method: str) -> str:
     """
     # A Mapper for HTTP methods
     method_permission_mapping = {
-        'GET': 'read',
-        'HEAD': 'read',
-        'OPTIONS': 'read',
-        'POST': 'write',
-        'PUT': 'update',
-        'PATCH': 'update',
-        'DELETE': 'delete',
+        "GET": "read",
+        "HEAD": "read",
+        "OPTIONS": "read",
+        "POST": "write",
+        "PUT": "update",
+        "PATCH": "update",
+        "DELETE": "delete",
     }
     # Unknown/unmapped methods must not silently fall through to 'read'
     # (that let PATCH updates pass a read-only role gate); deny by default.
-    return method_permission_mapping.get(method.upper(), 'deny')
+    return method_permission_mapping.get(method.upper(), "deny")
 
 
 def has_permission(user_role, resource_name, required_permission):
@@ -57,37 +58,39 @@ def has_permission(user_role, resource_name, required_permission):
     return False
 
 
+def _unauthorized(detail: str) -> Response:
+    """401 with the JSON error envelope the web client expects and the RFC 6750 challenge header."""
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": detail}, headers={"WWW-Authenticate": "Bearer"}
+    )
+
+
 class RBACMiddleware(BaseHTTPMiddleware):
+    """
+    Coarse access control: <role> x <HTTP method> x <first path segment>, driven by
+    RESOURCES_FOR_ROLES. Relies on TenantContextMiddleware (outermost) having decoded the
+    token once into request.state.
+
+    401 = no usable identity (missing, expired or tampered token); 403 = identity known,
+    action not allowed. The web client redirects to login only on 401.
+    """
+
     async def dispatch(self, request: Request, call_next) -> Response:
         # Path of the current request
-        path = request.url.path.strip('/')
-        resource = path.split('/')[0]
-        # Skip permission checks for excluded paths
-        if any(resource.startswith(excluded_path) for excluded_path in global_constants.EXCLUDED_PATHS):
+        path = request.url.path.strip("/")
+        resource = path.split("/")[0]
+        # Skip permission checks for the public resources (exact match: /healthz is not /health)
+        if resource in global_constants.EXCLUDED_PATHS:
             return await call_next(request)
 
-        # Proceed with authorization if the path is not excluded
-        authorization: str = request.headers.get('Authorization')
+        if getattr(request.state, TOKEN_INVALID_STATE_KEY, False):
+            return _unauthorized("Invalid or expired token")
+        claims = getattr(request.state, CLAIMS_STATE_KEY, None)
+        if claims is None:
+            return _unauthorized("Not authenticated")
 
-        token = None
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization[7:]  # Strip "Bearer " from the start
-
-        if not token:
-            return Response(content="Authorization token missing", status_code=status.HTTP_403_FORBIDDEN)
-
-        try:
-            payload = jwt.decode(token, settings.API.SECRET_KEY, algorithms=[settings.API.ALGORITHM])
-            user_role = payload.get("role")
-
-        except JWTError as e:
-            return Response(content=f"Token validation error: {str(e)}", status_code=status.HTTP_403_FORBIDDEN)
-
-        request_method = request.method.upper()
-
-        action = translate_method_to_action(request_method)
-
-        if not has_permission(user_role, resource, action):
-            return Response(content="Insufficient permissions", status_code=status.HTTP_403_FORBIDDEN)
+        action = translate_method_to_action(request.method)
+        if not has_permission(claims.get("role"), resource, action):
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Insufficient permissions"})
 
         return await call_next(request)

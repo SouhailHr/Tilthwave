@@ -1,12 +1,7 @@
-#!/bin/sh
-
-
+#!/bin/bash
+# Streamer: consumes the sensors topic into the database.
+set -euo pipefail
 
 echo "*********************** RUNNING THE STREAMER ************************"
-#get number of cpu cores in the system
-nproc=$(nproc)
-
-echo "*********************** Number of used cores for multiprocessing: $nproc ************************"
-
-faststream run app/interfaces/streamer/run_streamer:fast_stream  --workers $nproc
-
+# One worker per topic partition; the sensors topic has one. Never set this above the partition count.
+exec faststream run interfaces.streamer.run_streamer:fast_stream --workers "${STREAMER_WORKERS:-1}"

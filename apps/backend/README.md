@@ -37,56 +37,74 @@ Event-driven communication with sensors to control irrigation.
 
 ## Usage
 
-#### Setting Up the Development Environment
+The backend runs as part of the full stack: `make up` at the repository root (see the root README).
+It ships as one image with four entrypoints under `docker/`: `migrate` (one-shot `alembic upgrade head`),
+`api`, `streamer` and `flow_runner`.
 
-##### 1 - Prerequisites 
-###### Docker
-###### Docker Compose
-
-##### 2 - Clone the Repository
-```bash
-git clone https://github.com/souhailharrathi/tilthwave.git
-cd tilthwave
-```
-##### 3 - Build and Run the Services:
+### Development
 
 ```bash
-docker-compose up --build
+uv sync                      # creates .venv from uv.lock
+uv run ruff check app tests  # lint (blocking in CI)
+uv run pytest -q             # tests run against SQLite, no services needed
 ```
+
+Modules are imported with `PYTHONPATH=app` (`from core.use_cases...`). Running a process locally
+against the docker stack:
+
+```bash
+cp .env.example .env         # POSTGRES_HOST=localhost, real API_SECRET_KEY (>= 32 chars)
+PYTHONPATH=app uv run uvicorn interfaces.api.main:app --reload --port 8080
+```
+
+### Architecture notes
+
+- `wiring.py` is the composition root: repositories and use cases are built once per process, with a
+  Kafka broker gateway only for the flow runner (`worker_use_cases`) and a no-op gateway everywhere else.
+- Requests are authorized by `RBACMiddleware` (role x method x resource) and scoped to the caller's farm by
+  `TenantContextMiddleware` + `TENANT_SCOPE` on each repository.
+- Domain exceptions (`common/exceptions.py`) are translated to HTTP responses in one place,
+  `interfaces/api/helpers/errors.py`; endpoints never build error bodies.
+- The flow runner publishes commands before persisting task state and enforces two safety limits
+  (`FLOW_RUNNER_MAX_IRRIGATION_MINUTES`, `FLOW_RUNNER_MAX_READING_AGE_MINUTES`).
 
 ## Configuration
 
-Environment Variables:
+Environment variables (all read by `config/settings.py`; a `.env` at `apps/backend/.env` is optional):
 
 1 - Database
 ```bash
- POSTGRES_HOST= YOUR DB HOST 
- POSTGRES_DB= YOUR DB 
- POSTGRES_USER= YOUR DB USER 
- POSTGRES_PASSWORD= YOUR DB PASSWORD 
- POSTGRES_PORT = YOUR DB HOST PORT 
- POSTGRES_DUMP_PATH = 'app/infrastructure/data/dump.sql'
+ POSTGRES_HOST= YOUR DB HOST
+ POSTGRES_DB= YOUR DB
+ POSTGRES_USER= YOUR DB USER
+ POSTGRES_PASSWORD= YOUR DB PASSWORD
+ POSTGRES_PORT= 5432
+ POSTGRES_URI= optional full SQLAlchemy URI (e.g. sqlite:///... for tests)
 ```
 
-2- Environment settings for FastAPI application
+2- API
 ```bash
-API_SECRET_KEY=YOUR_VERY_SECRET_KEY
-API_ALGORITHM=HS256 // YOU CAN CHANGE IT 
-API_ACCESS_TOKEN_EXPIRE=120  // YOU CAN CHANGE IT 
+API_SECRET_KEY=            # >= 32 random chars; placeholders are refused at startup
+API_ALGORITHM=HS256
+API_ACCESS_TOKEN_EXPIRE=120
+API_CORS_ORIGINS=["http://localhost:3000"]
+API_LOGIN_RATE_LIMIT_PER_MINUTE=10
 ```
 
-3 - Broker settings
+3 - Broker
 ```bash
- STREAMER_BROKER_HOSTS=["farm-sandbox-redpanda:29092"]
- STREAMER_SENSORS_TOPIC="tilthwave.sensors.dev"
- STREAMER_WATER_CONTROL_TOPIC="tilthwave.water-control.dev"
- STREAMER_LOG_LEVEL="INFO"
- STREAMER_LOG_FILENAME="logs/streamer.log"
+ STREAMER_BROKER_HOSTS=["redpanda:29092"]
+ STREAMER_SENSORS_TOPIC=tilthwave.sensors.dev
+ STREAMER_WATER_CONTROL_TOPIC=tilthwave.water-control.dev
+ STREAMER_GROUP_ID=tilthwave-backend-streamer
+ LOG_LEVEL=INFO
 ```
 
-4 - Settings for flow runner
+4 - Flow runner
 ```bash
- FLOW_RUNNER_MINUTES = 0.2 // YOU CAN CHANGE IT 
+ FLOW_RUNNER_MINUTES=0.2
+ FLOW_RUNNER_MAX_IRRIGATION_MINUTES=60
+ FLOW_RUNNER_MAX_READING_AGE_MINUTES=30
 ```
 
 ####  Source Code Links of other needed projects for the app 

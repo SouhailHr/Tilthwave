@@ -57,20 +57,18 @@ class SensorUseCase(BaseUseCase):
         @return:
         """
         from core.use_cases.zone import ZoneUseCase  # to resolve the circular import
+
         filters = []
         # 1- Get the Zone sensor serial numbers
-        zone_use_case = ZoneUseCase(repo=self.zone_repo, zone_sensors_repo=self.zone_sensors_repo,
-                                    sensor_repo=self.repo)
+        zone_use_case = ZoneUseCase(
+            repo=self.zone_repo, zone_sensors_repo=self.zone_sensors_repo, sensor_repo=self.repo
+        )
         zone_sensors_data = zone_use_case.get_zone_sensors(zone_name=zone_name)
         zone_sensors_serial_numbers = list(zone_sensors_data.values())
         if not zone_sensors_serial_numbers:
             # No sensors for this zone
             return []
-        serial_number_filter = {
-            'attribute': 'serial_number',
-            'value': zone_sensors_serial_numbers,
-            'condition': 'in'
-        }
+        serial_number_filter = {"attribute": "serial_number", "value": zone_sensors_serial_numbers, "condition": "in"}
         filters.append(serial_number_filter)
         return self.repo.filter(filters, order_by, order_direction)
 
@@ -95,9 +93,9 @@ class SensorUseCase(BaseUseCase):
             {"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"},
         ]
         if sensor_type == global_constants.SOURCE_SENSOR:
-            water_source_use_case = WaterSourceUseCase(repo=self.water_source_repo, sensor_repo=self.repo,
-                                                       sensor_record_repo=None
-                                                       )
+            water_source_use_case = WaterSourceUseCase(
+                repo=self.water_source_repo, sensor_repo=self.repo, sensor_record_repo=None
+            )
             sensors = water_source_use_case.filter(filters=filter_by)
             if sensors:
                 assigned = sensors[0].serial_number
@@ -159,40 +157,39 @@ class SensorUseCase(BaseUseCase):
 
         return stats_dict
 
-    def filter(self, filters=[], order_by="created_date", order_direction="asc"):
+    def _translate_filters(self, filters):
+        """
+        Replace a `zone_name` filter (not a Sensor column) by the `serial_number in (...)` filter
+        of that zone's sensors, so the Filter DSL can be applied by the repository.
+        """
+        translated = []
+        for item in filters or []:
+            if item["attribute"] == "zone_name":
+                from core.use_cases.zone import ZoneUseCase  # to resolve the circular import
+
+                zone_use_case = ZoneUseCase(
+                    repo=self.zone_repo, zone_sensors_repo=self.zone_sensors_repo, sensor_repo=self.repo
+                )
+                zone_sensors_data = zone_use_case.get_zone_sensors(zone_name=item["value"])
+                translated.append(
+                    {"attribute": "serial_number", "value": list(zone_sensors_data.values()), "condition": "in"}
+                )
+            else:
+                translated.append(item)
+        return translated
+
+    def filter(self, filters=None, order_by="created_date", order_direction="asc"):
         """
               get all the sensors using the passed filter in the params
         Logic:
-            1- Check if in the filter we have an FK
-            2- if FK exist do specific logic
-            3- Else do normal filter
-            4- add to the final data with Assigned to
+            1- Translate the FK filter (zone_name) into a serial_number filter
+            2- Do the normal filter
         @param filters:
         @param order_by:
         @param order_direction:
-        @return: list of dict of sensors data ready to be displayed in the front
+        @return: list of sensor entities
         """
-        new_filters = []
-        # 1- Check if we have an FK
-        for filter in filters:
-            if filter["attribute"] == "zone_name":
-                # Get all  the sensors ids for that zone_name
-                # 1- Get the Zone sensor serial numbers
-                from core.use_cases.zone import ZoneUseCase  # to resolve the circular import
+        return super().filter(self._translate_filters(filters), order_by, order_direction)
 
-                zone_use_case = ZoneUseCase(repo=self.zone_repo, zone_sensors_repo=self.zone_sensors_repo,
-                                            sensor_repo=self.repo)
-                zone_sensors_data = zone_use_case.get_zone_sensors(zone_name=filter["value"])
-                zone_sensors_serial_numbers = list(zone_sensors_data.values())
-                new_filters.append({
-                    "attribute": "serial_number",
-                    "value": zone_sensors_serial_numbers,
-                    "condition": "in"
-                })
-            else:
-                new_filters.append(filter)
-
-        result = super().filter(new_filters, order_by, order_direction)
-        return result
-
-
+    def paginate(self, filters=None, order_by="created_date", order_direction="asc", limit=50, offset=0):
+        return super().paginate(self._translate_filters(filters), order_by, order_direction, limit, offset)

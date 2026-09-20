@@ -6,8 +6,9 @@ from core.entities.base import BaseEntity
 @dataclasses.dataclass
 class WaterSwitcher(BaseEntity):
     """
-     WaterSwitcher is an entity that represents a water_switcher, extending BaseEntity.
+    WaterSwitcher is an entity that represents a water_switcher, extending BaseEntity.
     """
+
     status: str
     water_source_serial_number: str
     zone_name: str

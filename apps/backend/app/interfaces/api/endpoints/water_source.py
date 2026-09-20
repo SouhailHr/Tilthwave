@@ -1,84 +1,79 @@
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi_pagination import Page
 
 from adapters.water_source import WaterSourceAdaptor
-from config.settings import settings
-from core.use_cases.water_source import WaterSourceUseCase
-from infrastructure.repositories.sensor import SensorDBRepository
-from infrastructure.repositories.water_source import WaterSourceDBRepository
 from interfaces.api.endpoints.base import BaseCrud
 from interfaces.api.helpers.auth import AuthHelper
-from interfaces.api.schemas.water_source import WaterSourceCreate
+from interfaces.api.schemas.water_source import WaterSourceCreate, WaterSourceUpdate
+from wiring import api_use_cases
 
 router = APIRouter(prefix="/water-sources", tags=["Water Sources"])
-water_source_repo = WaterSourceDBRepository(uri=settings.DATABASE.URI)
-sensor_repo = SensorDBRepository(uri=settings.DATABASE.URI)
-water_source_use_case = WaterSourceUseCase(repo=water_source_repo,
-                                           sensor_repo=sensor_repo,
-                                           sensor_record_repo=None, broker_repo=None)
+use_cases = api_use_cases()
 logger = logging.getLogger(__name__)
 
 
 class WaterSourceCrudHelper(BaseCrud):
     ADAPTOR_CLASS = WaterSourceAdaptor
-    USE_CASE_INSTANCE = water_source_use_case
+    USE_CASE_INSTANCE = use_cases.water_source
     IDENTIFIER = "serial_number"
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 def create(data: WaterSourceCreate, username: str = Depends(AuthHelper.get_current_user_username)):
     """
-    This Router creates a water_source
+    This Router creates a Water source
     """
     return WaterSourceCrudHelper.create(data=data, performed_by=username)
 
 
-@router.get("/{id}")
-def get_by_id(id: int):
-    """
-    This Router gets a water_source by ID
-    """
-    return WaterSourceCrudHelper.get_by_id(id=id)
-
-
 @router.get("/", response_model=Page[dict])
-def get_all(filters: Optional[str] = Query(None)):
+def get_all(
+    filters: str | None = Query(None, description=WaterSourceCrudHelper.filters_doc()),
+    search: str | None = Query(None, description="Case-insensitive match on the identifier"),
+):
     """
-    This Router gets all the water_sources
+    This Router gets one page of Water sources
     """
-    return WaterSourceCrudHelper.get_all(filters_str=filters)
+    return WaterSourceCrudHelper.get_all(filters_str=filters, search=search)
 
 
 @router.get("/stats/")
-def get_water_sources_stats():
+def get_stats():
     """
-    This Router gets all the Water Sources stats
+    This Router gets the Water sources stats
     """
     return WaterSourceCrudHelper.get_stats()
 
 
 @router.get("/select-list/")
-def select_list():
+def select_list(filters: str | None = Query(None)):
     """
-    This Router  for the select list
+    This Router gets the Water sources as select options
     """
-    return WaterSourceCrudHelper.get_select_list()
+    return WaterSourceCrudHelper.get_select_list(filters_str=filters)
 
 
-@router.delete("/{id}")
+@router.get("/{id}")
+def get_by_id(id: int):
+    """
+    This Router gets a Water source by ID
+    """
+    return WaterSourceCrudHelper.get_by_id(id=id)
+
+
+@router.delete("/{id}", status_code=204)
 def delete_by_id(id: int):
     """
-    This Router deletes a water_source by ID
+    This Router deletes a Water source by ID
     """
     return WaterSourceCrudHelper.delete_by_id(id=id)
 
 
 @router.patch("/{id}")
-def update_by_id(id: int, data: dict, username: str = Depends(AuthHelper.get_current_user_username)):
+def update_by_id(id: int, data: WaterSourceUpdate, username: str = Depends(AuthHelper.get_current_user_username)):
     """
-     This Router updates a water_source by ID with the given Data
+    This Router updates a Water source by ID with the given fields
     """
-    return WaterSourceCrudHelper.update_by_id(id=id, data=data, performed_by=username)
+    return WaterSourceCrudHelper.update_by_id(id=id, data=data.model_dump(exclude_unset=True), performed_by=username)

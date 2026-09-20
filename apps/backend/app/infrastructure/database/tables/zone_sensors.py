@@ -11,13 +11,21 @@ class ZoneSensors(TilthwaveBaseModel):
     ZoneSensors model for storing the sensors of each zone information.
     """
 
-    __tablename__ = 'zone_sensors'  # Between table for zone and sensors to handle the Many-To-Many relationship
+    __tablename__ = "zone_sensors"  # Between table for zone and sensors to handle the Many-To-Many relationship
 
-    sensor_serial_number = Column(String, ForeignKey('sensor.serial_number', onupdate="CASCADE", ondelete='CASCADE'),
-                                  nullable=True, unique=True,
-                                  comment="Foreign key referencing the sensor's serial_number")
-    zone_name = Column(String, ForeignKey('zone.zone_name', onupdate="CASCADE", ondelete='CASCADE'), nullable=True,
-                       comment="Foreign key referencing the zone's name")
+    sensor_serial_number = Column(
+        String,
+        ForeignKey("sensor.serial_number", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+        comment="Foreign key referencing the sensor's serial_number",
+    )
+    zone_name = Column(
+        String,
+        ForeignKey("zone.zone_name", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=True,
+        comment="Foreign key referencing the zone's name",
+    )
 
     # Relationships
 

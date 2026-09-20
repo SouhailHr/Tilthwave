@@ -8,6 +8,7 @@ class FarmDBRepository(BaseDBRepo):
     """
     FarmRepository is a Class that Inherits from the Abstract Class BaseDBRepo
     """
+
     MODEL = Farm
     ENTITY = FarmEntity
     ADAPTOR = FarmAdaptor

@@ -6,8 +6,9 @@ from core.entities.base import BaseEntity
 @dataclasses.dataclass
 class WaterSource(BaseEntity):
     """
-     WaterSource is an entity that represents a water_source, extending BaseEntity.
+    WaterSource is an entity that represents a water_source, extending BaseEntity.
     """
+
     farm_name: str
     type: str
     water_pressure: float

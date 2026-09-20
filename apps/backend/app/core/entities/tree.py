@@ -6,8 +6,9 @@ from core.entities.base import BaseEntity
 @dataclasses.dataclass
 class Tree(BaseEntity):
     """
-     Tree is an entity that represents a tree, extending BaseEntity.
+    Tree is an entity that represents a tree, extending BaseEntity.
     """
+
     zone_name: str
     variety: str
     height: float

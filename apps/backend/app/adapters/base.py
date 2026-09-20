@@ -5,8 +5,7 @@ from adapters.exceptions import AdaptorException
 
 class BaseAdaptor:
     ENTITY = None
-    # Mapper for custom entities
-    # TODO  Fix MAPPERS LATER
+    # Per-entity mappers, merged over BASE_CUSTOM_MAPPER (e.g. TreeAdaptor converts planting_date)
     CUSTOM_MAPPER = {}
     # Mapper for base cases in all entities
     BASE_CUSTOM_MAPPER = {
@@ -22,30 +21,23 @@ class BaseAdaptor:
         """
         try:
             entity_field_names = [field.name for field in dataclasses.fields(cls.ENTITY)]
+            mappers = {**cls.BASE_CUSTOM_MAPPER, **cls.CUSTOM_MAPPER}
             data = dict()
-            entity_value = None
             for field in entity_field_names:
-                # 1- value from obj: obj_value
-                obj_value = getattr(obj, field)
-                # Check if the field is in the Mapper
-                if field in cls.BASE_CUSTOM_MAPPER.keys():
-                    # get field name in the model
-                    field_in_model = cls.BASE_CUSTOM_MAPPER[field]["field_in_model"]
-                    # get the object value
-                    obj_value = getattr(obj, field_in_model)
-                    # Check if we need to convert type
-                    if cls.BASE_CUSTOM_MAPPER[field]["convert_to"]:
-                        entity_value = cls.BASE_CUSTOM_MAPPER[field]["convert_to"](obj_value)
+                mapper = mappers.get(field)
+                if mapper:
+                    # read the mapped model field and convert it when a converter is configured
+                    entity_value = getattr(obj, mapper["field_in_model"])
+                    if mapper.get("convert_to") and entity_value is not None:
+                        entity_value = mapper["convert_to"](entity_value)
                 else:
-                    # assign obj_value to the entity_value
-                    entity_value = obj_value
-                # 2- add the entity_value to data
+                    entity_value = getattr(obj, field)
                 data[field] = entity_value
 
             entity = cls.ENTITY.from_dict(data=data)
             return entity
         except Exception as e:
-            raise AdaptorException(message=str(e))
+            raise AdaptorException(message=str(e)) from e
 
     @classmethod
     def dict_to_entity(cls, data: dict) -> ENTITY:
@@ -57,4 +49,4 @@ class BaseAdaptor:
         try:
             return cls.ENTITY.from_dict(data)
         except Exception as e:
-            raise AdaptorException(message=str(e))
+            raise AdaptorException(message=str(e)) from e

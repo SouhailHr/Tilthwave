@@ -37,17 +37,15 @@ class ZoneSensorsUseCase(BaseUseCase):
         @param entity: Entity instance to be created.
         @return: The created entity.
         """
-        filter_by = [{
-            "attribute": "serial_number",
-            "value": entity.sensor_serial_number,
-            "condition": "eq"
-        }]
+        filter_by = [{"attribute": "serial_number", "value": entity.sensor_serial_number, "condition": "eq"}]
         sensor_use_case = SensorUseCase(repo=self.sensor_repo)
         sensor = sensor_use_case.filter(filters=filter_by)
         if sensor and sensor[0].type in global_constants.ZONE_SENSORS:
             return self.repo.create(entity)
-        raise UseCaseException(class_name=self.__class__.__name__,
-                               message=f"zone can only have a sensor of types {global_constants.ZONE_SENSORS}")
+        raise UseCaseException(
+            class_name=self.__class__.__name__,
+            message=f"zone can only have a sensor of types {global_constants.ZONE_SENSORS}",
+        )
 
     def update(self, id: int, data: dict):
         """
@@ -64,17 +62,15 @@ class ZoneSensorsUseCase(BaseUseCase):
         """
         if data.get("sensor_serial_number"):
             sensor_serial_number = data["sensor_serial_number"]
-            filter_by = [{
-                "attribute": "serial_number",
-                "value": sensor_serial_number,
-                "condition": "eq"
-            }]
+            filter_by = [{"attribute": "serial_number", "value": sensor_serial_number, "condition": "eq"}]
             sensor_use_case = SensorUseCase(repo=self.sensor_repo)
             sensor = sensor_use_case.filter(filters=filter_by)
             if sensor and sensor[0].type in global_constants.ZONE_SENSORS:
                 return self.repo.update(id, data)
-            raise UseCaseException(class_name=self.__class__.__name__,
-                                   message=f"zone can only have a sensor of types {global_constants.ZONE_SENSORS}")
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"zone can only have a sensor of types {global_constants.ZONE_SENSORS}",
+            )
 
         return self.repo.update(id, data)
 
@@ -92,23 +88,18 @@ class ZoneSensorsUseCase(BaseUseCase):
         @param data: the data that needs to be updated in the zone sensors
         @return:
         """
-        try:
-            # get the zone_sensors using the serial_number
-            zone_sensors_filter_by = [{
-                "attribute": "sensor_serial_number",
-                "value": sensor_serial_number,
-                "condition": "eq"
-            }]
-            zone_sensors = self.repo.filter(filters=zone_sensors_filter_by)
-            if zone_sensors:
-                # check if data has zone name
-                if data.get("zone_name"):
-                    # Update the relation
-                    return self.repo.update(zone_sensors[0].id, data)
-                # delete the relation
-                return self.repo.delete(id=zone_sensors[0].id)
-            # Create the relation
-            zone_sensors_entity = ZoneSensorsAdaptor.dict_to_entity(data)
-            return self.repo.create(zone_sensors_entity)
-        except Exception as e:
-            logger.debug(str(e))
+        # get the zone_sensors using the serial_number
+        zone_sensors_filter_by = [
+            {"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}
+        ]
+        zone_sensors = self.repo.filter(filters=zone_sensors_filter_by)
+        if zone_sensors:
+            # check if data has zone name
+            if data.get("zone_name"):
+                # Update the relation
+                return self.repo.update(zone_sensors[0].id, data)
+            # delete the relation
+            return self.repo.delete(id=zone_sensors[0].id)
+        # Create the relation
+        zone_sensors_entity = ZoneSensorsAdaptor.dict_to_entity(data)
+        return self.repo.create(zone_sensors_entity)
