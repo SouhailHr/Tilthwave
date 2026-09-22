@@ -12,4 +12,4 @@ class SensorRecordDBRepository(BaseDBRepo):
     MODEL = SensorRecord
     ENTITY = SensorRecordEntity
     ADAPTOR = SensorRecordAdaptor
-    TENANT_SCOPE = None  # TODO: sensor has no farm linkage; cannot tenant-scope yet
+    TENANT_SCOPE = ("via_sensor",)  # record -> sensor.farm_name

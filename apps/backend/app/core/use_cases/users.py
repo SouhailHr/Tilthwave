@@ -8,6 +8,10 @@ from core.use_cases.exceptions import UseCaseException
 
 logger = logging.getLogger(__name__)
 
+# Verified against when the username does not exist, so a login attempt costs one bcrypt check
+# either way and response time does not reveal which usernames are taken.
+_UNKNOWN_USER_HASH = PasswordHasher.hash("not-a-real-password")
+
 
 class UserUseCase(BaseUseCase):
     ENTITY = UserEntity
@@ -49,8 +53,12 @@ class UserUseCase(BaseUseCase):
         # Assuming the filter returns a list of users, we take the first one if it exists
         user = users[0] if users else None
 
-        if user and self.verify_password(password, user.password):
+        if user is None:
+            self.verify_password(password, _UNKNOWN_USER_HASH)  # same cost as a real check
+            return None
+        if self.verify_password(password, user.password):
             return user
+        return None
 
     def update(self, id: int, data: dict):
         """

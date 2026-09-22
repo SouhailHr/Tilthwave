@@ -8,7 +8,8 @@ def test_users_are_scoped_to_the_callers_farm(client, auth_headers, make_farm, m
     make_user("alice", farm_name=FARM_A)
     make_user("bob", farm_name=FARM_B)
     page = client.get("/users/", headers=auth_headers(farm_name=FARM_A)).json()
-    assert [u["username"] for u in page["items"]] == ["alice"]
+    names = {u["username"] for u in page["items"]}
+    assert "alice" in names and "bob" not in names  # "admin" is the caller's own row
 
 
 def test_cross_farm_object_is_404_for_get_patch_and_delete(client, auth_headers, make_farm, make_zone):

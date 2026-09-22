@@ -29,6 +29,7 @@ class BaseDBRepo:
     #   ("column", "<farm column>") direct farm column on the model
     #   ("self", "<farm column>")   the farm row itself
     #   ("via_zone",)               model.zone_name -> zone.farm_name
+    #   ("via_sensor",)             model.sensor_serial_number -> sensor.farm_name
     #   None                        not tenant-scoped (no farm linkage)
     TENANT_SCOPE = None
 
@@ -93,6 +94,11 @@ class BaseDBRepo:
 
             owned_zones = session.query(Zone.zone_name).filter(Zone.farm_name == farm)
             return query.filter(self.MODEL.zone_name.in_(owned_zones))
+        if kind == "via_sensor":
+            from infrastructure.database.tables.sensor import Sensor
+
+            owned_sensors = session.query(Sensor.serial_number).filter(Sensor.farm_name == farm)
+            return query.filter(self.MODEL.sensor_serial_number.in_(owned_sensors))
         return query
 
     def _bind_tenant(self, data: dict, session) -> dict:

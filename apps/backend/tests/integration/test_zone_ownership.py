@@ -52,7 +52,9 @@ def test_tree_create_and_move_stay_within_the_callers_farm(client, auth_headers,
 def test_zone_sensor_link_cannot_attach_to_another_farms_zone(client, auth_headers, make_farm, make_zone, repos):
     _two_farms(make_farm, make_zone)
     repos.sensor.create(
-        SensorAdaptor.dict_to_entity({"serial_number": "MSN9", "type": "moisture_sensor", "is_active": True})
+        SensorAdaptor.dict_to_entity(
+            {"serial_number": "MSN9", "type": "moisture_sensor", "is_active": True, "farm_name": FARM_A}
+        )
     )
     response = client.post(
         "/zone-sensors/",

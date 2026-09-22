@@ -137,10 +137,22 @@ def make_user(repos):
 
 
 @pytest.fixture
-def token_for():
+def token_for(repos, make_user):
+    """
+    A signed token for a user that exists in the database (created on demand, or aligned to the
+    requested role/farm when it already exists): the middleware validates the row on every request.
+    Pass user_id to mint a token for a row that does not exist.
+    """
     from interfaces.api.helpers.auth import AuthHelper
 
-    def _token(username="admin", role="admin", farm_name=FARM_A, user_id=1):
+    def _token(username="admin", role="admin", farm_name=FARM_A, user_id=None):
+        if user_id is None:
+            user = repos.users.first([{"attribute": "username", "value": username, "condition": "eq"}])
+            if user is None:
+                user = make_user(username, role=role, farm_name=farm_name)
+            elif user.role != role or user.farm_name != farm_name:
+                user = repos.users.update(user.id, {"role": role, "farm_name": farm_name})
+            user_id = user.id
         return AuthHelper.create_access_token(
             {"role": role, "username": username, "user_id": user_id, "user_full_name": username, "farm_name": farm_name}
         )

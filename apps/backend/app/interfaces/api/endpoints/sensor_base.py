@@ -5,6 +5,7 @@ from starlette import status
 
 from adapters.sensor import SensorAdaptor
 from adapters.zone_sensors import ZoneSensorsAdaptor
+from common.exceptions import NotFoundError
 from core.use_cases.exceptions import UseCaseException
 from interfaces.api.endpoints.base import BaseCrud
 from wiring import api_use_cases
@@ -36,6 +37,25 @@ class SensorCrudHelper(BaseCrud):
         return UseCaseException(
             class_name=cls.__name__, message="assigned_to_type must be one of: zone, water_switcher, water_source"
         )
+
+    @classmethod
+    def _require_target(cls, use_case, attribute, value, label):
+        """
+        The relation target (zone / switcher / source) must exist within the caller's farm.
+        Checked before any write so a wrong or foreign target is a 404 with nothing persisted
+        (the tenant filter hides other farms' rows, hence "not found", not "forbidden").
+        """
+        if value is None or use_case.first([{"attribute": attribute, "value": value, "condition": "eq"}]) is None:
+            raise NotFoundError(f"{label} not found")
+
+    @classmethod
+    def _check_assignment(cls, assigned_to_type, zone_name, water_switcher, water_source):
+        if assigned_to_type == "zone":
+            cls._require_target(use_cases.zone, "zone_name", zone_name, "Zone")
+        elif assigned_to_type == "water_switcher":
+            cls._require_target(use_cases.water_switcher, "serial_number", water_switcher, "Water switcher")
+        elif assigned_to_type == "water_source":
+            cls._require_target(use_cases.water_source, "serial_number", water_source, "Water source")
 
     # ---- create -----------------------------------------------------------------------------
 
@@ -113,6 +133,7 @@ class SensorCrudHelper(BaseCrud):
         handler = handler_mapping.get(data.assigned_to_type)
         if not handler:
             raise cls._invalid_assignment()
+        cls._check_assignment(data.assigned_to_type, data.zone_name, data.water_switcher, data.water_source)
         result = handler(data=data, performed_by=performed_by)
         return JSONResponse(status_code=status.HTTP_201_CREATED, content=result.to_public_dict())
 
@@ -177,6 +198,9 @@ class SensorCrudHelper(BaseCrud):
         handler = handler_mapping.get(data.get("assigned_to_type"), None)
         if handler is None:
             raise cls._invalid_assignment()
+        cls._check_assignment(
+            data.get("assigned_to_type"), data.get("zone_name"), data.get("water_switcher"), data.get("water_source")
+        )
         result = handler(id=id, data=data, performed_by=performed_by)
         if not result:
             raise cls._not_found()

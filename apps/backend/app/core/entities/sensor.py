@@ -12,6 +12,7 @@ class Sensor(BaseEntity):
     type: str
     serial_number: str
     is_active: bool = True
+    farm_name: str = None
     id: int = None
     updated_date: str = None
     created_date: str = None
