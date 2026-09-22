@@ -1,4 +1,5 @@
 from adapters.sensor import SensorAdaptor
+from adapters.water_source import WaterSourceAdaptor
 from adapters.water_switcher import WaterSwitcherAdaptor
 from core.use_cases.exceptions import UseCaseException
 from tests.conftest import FARM_A
@@ -63,19 +64,69 @@ def test_unknown_events_are_rejected_not_swallowed():
             EventHandler().process(dict(event))
 
 
-def test_flow_runner_exits_after_consecutive_failures(monkeypatch, tmp_path):
-    import interfaces.flow_runner.flow_runner as flow_runner
+def test_status_event_updates_the_source_then_records_it(repos, make_farm):
+    from interfaces.streamer.event_handler import EventHandler
 
-    helper = flow_runner.ZoneAutomaticIrrigationHelper
-    monkeypatch.setattr(flow_runner, "HEARTBEAT_FILE", tmp_path / "hb")
-    monkeypatch.setattr(flow_runner, "MAX_CONSECUTIVE_FAILURES", 3)
-    helper.consecutive_failures = 0
-    helper._record_tick(failures=0)
-    assert (tmp_path / "hb").exists()
-    helper._record_tick(failures=1)
-    helper._record_tick(failures=1)
-    import pytest
+    make_farm(FARM_A)
+    repos.sensor.create(
+        SensorAdaptor.dict_to_entity({"serial_number": "SRC1", "type": "source_sensor", "is_active": True})
+    )
+    repos.water_source.create(
+        WaterSourceAdaptor.dict_to_entity(
+            {
+                "serial_number": "WS1",
+                "farm_name": FARM_A,
+                "type": "well",
+                "water_pressure": 2.5,
+                "water_volume": 5000.0,
+                "status": "Off",
+                "sensor_serial_number": "SRC1",
+            }
+        )
+    )
+    EventHandler().process(
+        {
+            "event_type": "status_data",
+            "sensor_serial_number": "SRC1",
+            "data": {"type": "source", "status": "On", "timestamp": "x"},
+        }
+    )
+    assert repos.water_source.first([]).status == "On"
+    assert len(repos.sensor_record.filter([])) == 1
 
-    with pytest.raises(SystemExit):
-        helper._record_tick(failures=1)
-    helper.consecutive_failures = 0
+
+def test_data_record_event_saves_the_reading_and_touches_no_actuator(repos, make_farm, make_zone):
+    from interfaces.streamer.event_handler import EventHandler
+
+    make_farm(FARM_A)
+    make_zone("Zone A")
+    repos.sensor.create(
+        SensorAdaptor.dict_to_entity({"serial_number": "MSN1", "type": "moisture_sensor", "is_active": True})
+    )
+    repos.sensor.create(
+        SensorAdaptor.dict_to_entity({"serial_number": "SWA1", "type": "switcher_sensor", "is_active": True})
+    )
+    repos.water_switcher.create(
+        WaterSwitcherAdaptor.dict_to_entity(
+            {
+                "serial_number": "SW1",
+                "status": "Off",
+                "water_source_serial_number": None,
+                "zone_name": "Zone A",
+                "sensor_serial_number": "SWA1",
+            }
+        )
+    )
+    EventHandler().process(
+        {
+            "event_type": "data_record",
+            "sensor_serial_number": "MSN1",
+            "data": {"type": "moisture", "value": 42, "timestamp": "2026-09-22 10:00:00"},
+        }
+    )
+    records = repos.sensor_record.filter([])
+    assert len(records) == 1
+    assert records[0].sensor_serial_number == "MSN1"
+    assert records[0].performed_by == "streamer"
+    assert records[0].data["value"] == 42
+    assert repos.water_switcher.first([]).status == "Off"

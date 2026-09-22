@@ -16,32 +16,18 @@ password flow, newest-first lists, full timestamps, sensor assignment, the user-
 
 ## Fix first
 
-Ordered by outage / data-loss / cross-tenant risk. Each is small.
+Ordered by cross-tenant / data-loss risk. Each is small. The two control-loop items that
+headed this list (the flow runner's swallowed `sys.exit`, the streamer skipping messages during a
+DB outage) were fixed in `fix/control-loop-safety`.
 
-1. **[A] The flow runner cannot exit.** `flow_runner.py:199` calls `sys.exit(1)` inside an
-   APScheduler job; `apscheduler/executors/base.py` catches `BaseException`, so the exit is logged
-   as a job error and the loop keeps ticking. Compose does not restart unhealthy containers, so
-   after ten failed ticks the process sits there forever. The two DB calls at `:173` and `:181` are
-   also outside the `try`, so a Postgres outage never increments `consecutive_failures`. Fix:
-   `logging.shutdown(); os._exit(1)`, or an `EVENT_JOB_ERROR` listener that shuts the scheduler
-   down; bring `:173`/`:181` into the failure accounting; add a test that runs one real scheduler
-   tick (the existing test only asserts `_record_tick` raises).
-2. **[A] The streamer drops messages during a DB outage.** `run_streamer.py:39` uses
-   `auto_commit=False` with FastStream's default one-try watcher. On a handler exception the
-   watcher calls `reject()`; the confluent `KafkaMessage` overrides `ack` (commit) and `nack` (seek
-   back) but not `reject`, so nothing seeks and the next successful message's commit seals the
-   skip. A lost `status_data` `On` confirmation means `close_all_water_sources` never closes that
-   source. Fix: `except DBReposException: sleep(backoff); raise NackMessage()`; let
-   `UseCaseException` / `AdaptorException` still reject (poison message = skip, logged). Add a
-   compose healthcheck for the streamer; a wedged consumer is invisible today.
-3. **[A] Cross-tenant farm creation** (Medium, CWE-284). `repositories/base.py:104-128`
+1. **[A] Cross-tenant farm creation** (Medium, CWE-284). `repositories/base.py:104-128`
    `_bind_tenant` handles `column` and `via_zone`; `repositories/farm.py:15` declares
    `("self", "farm_name")`; `constants.py` gives `owner` write on farms. An owner of farm A can
    `POST /farms {"farm_name": "B"}` and create a row that nobody can see or delete through the API
    (blocks onboarding that name until someone touches the DB). Fix: treat `self` like `column` in
    `_bind_tenant`. Latent twin: no `via_sensor` branch either; unreachable today because
    `sensor-records` is read-only for every role, so add the branch before granting write.
-4. **[A] `Idempotency-Key` is advertised and never honoured.** The web sends one per create
+2. **[A] `Idempotency-Key` is advertised and never honoured.** The web sends one per create
    (`_entity.ts:31-32`); the backend's only reference is the CORS allow-list (`main.py:51`).
    `irrigation_task` and `sensor_records` have no unique key, so a retried POST creates two tasks
    the flow runner acts on; on keyed resources the retry is a 409 shown as an error although the
@@ -205,9 +191,10 @@ Operations
   streamer and flow runner share nothing but the wall clock; the web already reads `request_id`.
   Fix: a small ASGI middleware setting `X-Request-ID` into a ContextVar + `logging.Filter`, included
   in the 500 body.
-- **[A] Observability is level 1**: plain-text logs via `basicConfig`, no metrics, no streamer
-  healthcheck, healthchecks cannot trigger restarts (`restart: unless-stopped` fires on exit only).
-  Either monitor `docker ps` health externally or run an autoheal sidecar.
+- **[A] Observability is level 1**: plain-text logs via `basicConfig`, no metrics, and
+  healthchecks cannot trigger restarts (`restart: unless-stopped` fires on exit only; the streamer
+  now has one, `/health`, but a failing check still only shows in `docker ps`). Either monitor
+  health externally or run an autoheal sidecar.
 - **[A] `UVICORN_WORKERS` falls back to `2` in `docker/api/entrypoint.sh:18`** but `1` in compose;
   a non-compose run doubles the login rate limit.
 - **[A] `mail.py:45-47` logs and continues after the 202**; the user never learns the reset mail
@@ -247,7 +234,7 @@ Structure (from the design-patterns inventory; sized by the tech-debt audit)
   `zone_sensors.py` create + update) and `update_by_serial_number` cloned between water source and
   switcher. One `require_sensor_of_type(serial, allowed)`.
 - **[A] Tenancy is half a Strategy**: `_apply_tenant` knows four scope kinds, `_bind_tenant` two
-  (the root cause of "Fix first" #3). Make `TENANT_SCOPE` an object with both `apply(query)` and
+  (the root cause of "Fix first" #1). Make `TENANT_SCOPE` an object with both `apply(query)` and
   `bind(data)` so a kind cannot be added to one side only; extracting it from the 439-line
   `BaseDBRepo` also makes it unit-testable.
 - **[A] `get_irrigation_tasks` returns `None` instead of `[]`**, forcing `or []` in the flow runner
@@ -260,7 +247,7 @@ Structure (from the design-patterns inventory; sized by the tech-debt audit)
   Tests must call `configure()` between them; add an autouse fixture that resets the class state,
   or make it an instance built in `run()`.
 - **`faststream` pinned at 0.5.48** (backend and simulator). 0.7 removed the `auto_commit`
-  subscriber kwarg; the ack-after-handler semantics ("Fix first" #2) must be re-verified on 0.7.
+  subscriber kwarg; the nack-on-database-error handling in `run_streamer.py` must be re-verified on 0.7.
 
 Tests (backend suite is behavioural and green: 126 tests, SQLite, real middleware; gaps only)
 
@@ -316,12 +303,11 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 
 ## Suggested PR order
 
-1. `fix/control-loop-safety`: Fix first #1 and #2, streamer healthcheck, a real scheduler-tick
-   test, the `data_record` streamer test.
-2. `fix/tenancy-bind-self`: Fix first #3, `PRIVATE_FIELDS` out of the Filter DSL, `/farms` scope
+1. ~~`fix/control-loop-safety`~~ done.
+2. `fix/tenancy-bind-self`: Fix first #1, `PRIVATE_FIELDS` out of the Filter DSL, `/farms` scope
    test, CSRF breadth test.
 3. `fix/web-contract-bugs`: trailing slashes, page reset, `toApiError` in fetchers, users edit
-   dialog, field errors onto the form; decide Fix first #4.
+   dialog, field errors onto the form; decide Fix first #2.
 4. `chore/ci-hardening`: pip-audit pin, simulator tests in CI, action SHAs, Node 22 in
    `Dockerfile.dev`, fixture tokens via `session_claims`.
 5. `perf/set-queries`: the `irrigation_task` index and the three N+1 shapes behind new

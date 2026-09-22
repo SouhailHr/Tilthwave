@@ -161,6 +161,19 @@ def token_for(repos, make_user):
     return _token
 
 
+@pytest.fixture(autouse=True)
+def _reset_flow_runner_state():
+    """
+    The control loop keeps its collaborators and failure count as class attributes (set by
+    configure()); a test that changes them must not leak into the next one.
+    """
+    yield
+    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
+
+    helper.zone_use_case = helper.irrigation_task_use_case = helper.water_source_use_case = None
+    helper.consecutive_failures = 0
+
+
 @pytest.fixture
 def auth_headers(token_for):
     def _headers(**claims):

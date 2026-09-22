@@ -230,6 +230,14 @@ services:
         condition: service_completed_successfully
       broker-init:
         condition: service_completed_successfully
+    # /health pings the broker from inside the consumer process (run_streamer.py); a consumer
+    # that lost its broker connection, or a process that stopped serving, fails it.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     mem_limit: 512m
     restart: unless-stopped
 
