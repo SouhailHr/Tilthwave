@@ -69,4 +69,4 @@ def test_login_with_wrong_password_is_400(client, make_farm, make_user):
     make_user("jo")
     response = client.post("/auth/login", json={"username": "jo", "password": "nope"})
     assert response.status_code == 400
-    assert response.json() == {"detail": "Incorrect username or password"}
+    assert response.json()["detail"] == "Incorrect username or password"

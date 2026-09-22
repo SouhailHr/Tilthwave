@@ -7,7 +7,10 @@ once; modules only ever do `logger = logging.getLogger(__name__)`.
 
 import logging
 
-_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
+from common.request_context import RequestIdFilter
+
+# request_id is "-" outside an API request (see common.request_context).
+_FORMAT = "%(asctime)s %(levelname)-8s [%(request_id)s] %(name)s: %(message)s"
 
 # Third-party loggers that are far too chatty at DEBUG for an application log.
 _NOISY_LOGGERS = ("sqlalchemy.engine", "urllib3", "apscheduler")
@@ -23,5 +26,7 @@ def configure_logging(level: str = "INFO") -> None:
     if not isinstance(numeric_level, int):
         numeric_level = logging.INFO
     logging.basicConfig(level=numeric_level, format=_FORMAT, force=True)
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(RequestIdFilter())
     for name in _NOISY_LOGGERS:
         logging.getLogger(name).setLevel(max(numeric_level, logging.WARNING))

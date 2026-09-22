@@ -20,9 +20,10 @@ class SensorCreate(BaseModel):
     water_source: str | None = None
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {"type": "temperature_sensor", "is_active": True, "serial_number": "SENTEMP00123"}
-        }
+        },
     )
 
 

@@ -38,7 +38,7 @@ def test_forgot_emails_a_reset_link_for_a_username_or_an_email(client, make_farm
     make_user("pat")  # email pat@example.com
 
     response = _forgot(client, "pat")
-    assert response.status_code == 202 and response.json() == {"detail": FORGOT_DETAIL}
+    assert response.status_code == 202 and response.json()["detail"] == FORGOT_DETAIL
     assert len(outbox) == 1
     to, subject, body = outbox[0]
     assert to == "pat@example.com" and "Reset" in subject and LINK.search(body)
@@ -52,7 +52,7 @@ def test_forgot_answers_identically_and_sends_nothing_for_unknown_or_inactive(
 ):
     make_farm(FARM_A)
     known = _forgot(client, "nobody-here")
-    assert known.status_code == 202 and known.json() == {"detail": FORGOT_DETAIL}
+    assert known.status_code == 202 and known.json()["detail"] == FORGOT_DETAIL
 
     make_user("gone")
     row = repos.users.first([{"attribute": "username", "value": "gone", "condition": "eq"}])
@@ -75,7 +75,7 @@ def test_reset_sets_the_new_password_and_the_link_is_single_use(client, make_far
 
     # Same link again: the password it was issued against is gone, so it no longer matches.
     again = client.post("/auth/password/reset", json={"token": token, "new_password": "Another-Passw0rd!"})
-    assert again.status_code == 400 and again.json() == {"detail": RESET_INVALID_DETAIL}
+    assert again.status_code == 400 and again.json()["detail"] == RESET_INVALID_DETAIL
     assert client.post("/auth/login", json={"username": "pat", "password": NEW_PASSWORD}).status_code == 200
 
 
@@ -86,7 +86,7 @@ def test_reset_rejects_tampered_expired_and_wrong_purpose_tokens(client, make_fa
     token = _token_from(outbox)
 
     tampered = client.post("/auth/password/reset", json={"token": token + "x", "new_password": NEW_PASSWORD})
-    assert tampered.status_code == 400 and tampered.json() == {"detail": RESET_INVALID_DETAIL}
+    assert tampered.status_code == 400 and tampered.json()["detail"] == RESET_INVALID_DETAIL
 
     monkeypatch.setattr(AuthHelper, "RESET_TOKEN_MINUTES", -1)
     _forgot(client, "pat")
@@ -106,7 +106,7 @@ def test_a_reset_token_is_never_accepted_as_a_session(client, make_farm, make_us
     token = _token_from(outbox)
     response = client.get("/zones/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid or expired token"}
+    assert response.json()["detail"] == "Invalid or expired token"
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
 

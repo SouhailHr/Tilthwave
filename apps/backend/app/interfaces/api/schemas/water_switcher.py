@@ -19,6 +19,7 @@ class WaterSwitcherCreate(BaseModel):
     serial_number: str = Field(description="Unique serial number of the Water switcher")
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "sensor_serial_number": "WSWSN123457",
@@ -27,7 +28,7 @@ class WaterSwitcherCreate(BaseModel):
                 "status": "On",
                 "serial_number": "WS00123",
             }
-        }
+        },
     )
 
 

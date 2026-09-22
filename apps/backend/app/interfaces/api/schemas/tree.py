@@ -19,6 +19,7 @@ class TreeCreate(BaseModel):
     serial_number: str = Field(description="Unique serial number of the tree")
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "zone_name": "Zone 1",
@@ -29,7 +30,7 @@ class TreeCreate(BaseModel):
                 "trunk_diameter": 0.3,
                 "serial_number": "OLIVE00123",
             }
-        }
+        },
     )
 
 

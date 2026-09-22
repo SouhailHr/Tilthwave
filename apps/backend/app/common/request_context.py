@@ -1,0 +1,31 @@
+"""
+The id of the request being handled, for anything that logs or answers during it.
+
+Set by the API's RequestIdMiddleware for the duration of one request; empty everywhere else
+(streamer, flow runner, scripts), where the log filter prints "-".
+"""
+
+import logging
+from contextvars import ContextVar
+
+_request_id: ContextVar[str] = ContextVar("request_id", default="")
+
+
+def set_request_id(value: str):
+    return _request_id.set(value)
+
+
+def reset_request_id(token) -> None:
+    _request_id.reset(token)
+
+
+def current_request_id() -> str:
+    return _request_id.get()
+
+
+class RequestIdFilter(logging.Filter):
+    """Adds `request_id` to every record so the log format can print it."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = current_request_id() or "-"
+        return True

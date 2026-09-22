@@ -26,6 +26,11 @@ class Mailer:
 
     def send(self, to: str, subject: str, body: str) -> None:
         if not self.configured:
+            if settings.API.COOKIE_SECURE:
+                # A TLS deployment whose SMTP was forgotten: the body holds a live reset link, and
+                # production logs are not a place for it. Say what was dropped, not what it said.
+                logger.error("SMTP_HOST is not set: email to %s (%s) NOT sent and not logged", to, subject)
+                return
             logger.warning(
                 "SMTP_HOST is not set: email NOT sent, shown here instead.\nTo: %s\nSubject: %s\n%s", to, subject, body
             )

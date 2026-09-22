@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse, Response
 import common.constants as global_constants
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY
 from interfaces.api.helpers.cookies import UNSAFE_METHODS, csrf_ok
+from interfaces.api.helpers.errors import error_body
 from interfaces.api.helpers.tenant import AUTH_VIA_STATE_KEY, TOKEN_INVALID_STATE_KEY
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,9 @@ def has_permission(user_role, resource_name, required_permission):
 def _unauthorized(detail: str) -> Response:
     """401 with the JSON error envelope the web client expects and the RFC 6750 challenge header."""
     return JSONResponse(
-        status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": detail}, headers={"WWW-Authenticate": "Bearer"}
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content=error_body(detail, "unauthenticated"),
+        headers={"WWW-Authenticate": "Bearer"},
     )
 
 
@@ -93,7 +96,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
             and not csrf_ok(request)
         ):
             return JSONResponse(
-                status_code=status.HTTP_403_FORBIDDEN, content={"detail": "CSRF token missing or invalid"}
+                status_code=status.HTTP_403_FORBIDDEN, content=error_body("CSRF token missing or invalid", "csrf")
             )
 
         # Skip permission checks for the public resources (exact match: /healthz is not /health)
@@ -108,6 +111,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
         action = translate_method_to_action(request.method)
         if not has_permission(claims.get("role"), resource, action):
-            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Insufficient permissions"})
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN, content=error_body("Insufficient permissions", "forbidden")
+            )
 
         return await call_next(request)

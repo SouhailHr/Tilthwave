@@ -54,7 +54,7 @@ def test_cookie_mutation_needs_the_csrf_header(client, make_farm, make_user):
 
     response = client.post("/zones/", json=zone_payload())
     assert response.status_code == 403
-    assert response.json() == {"detail": "CSRF token missing or invalid"}
+    assert response.json()["detail"] == "CSRF token missing or invalid"
 
     response = client.post("/zones/", json=zone_payload(), headers={"X-CSRF-Token": "not-the-cookie"})
     assert response.status_code == 403
@@ -81,7 +81,7 @@ def test_me_reports_the_cookie_session_from_the_database(client, make_farm, make
 def test_me_is_401_without_a_session(client):
     response = client.get("/auth/me")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.json()["detail"] == "Not authenticated"
     assert response.headers["www-authenticate"] == "Bearer"
 
 
@@ -91,7 +91,7 @@ def test_logout_via_cookie_needs_the_csrf_header(client, make_farm, make_user):
     _cookie_login(client, make_farm, make_user)
     response = client.post("/auth/logout")
     assert response.status_code == 403
-    assert response.json() == {"detail": "CSRF token missing or invalid"}
+    assert response.json()["detail"] == "CSRF token missing or invalid"
     assert client.get("/auth/me").status_code == 200  # still signed in
 
 
@@ -107,7 +107,7 @@ def test_logout_clears_the_session(client, make_farm, make_user):
     assert client.get("/auth/me").status_code == 401
     response = client.get("/zones/")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.json()["detail"] == "Not authenticated"
 
 
 def test_deactivated_user_loses_the_cookie_session_immediately(client, make_farm, make_user, repos):
@@ -119,7 +119,7 @@ def test_deactivated_user_loses_the_cookie_session_immediately(client, make_farm
 
     response = client.get("/zones/")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid or expired token"}
+    assert response.json()["detail"] == "Invalid or expired token"
     assert client.get("/auth/me").status_code == 401
 
 
@@ -128,7 +128,7 @@ def test_tampered_cookie_is_401(client, make_farm, make_user):
     client.cookies.set("tw_access", client.cookies.get("tw_access") + "x")
     response = client.get("/zones/")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid or expired token"}
+    assert response.json()["detail"] == "Invalid or expired token"
 
 
 def test_csrf_gate_covers_patch_delete_and_the_password_routes(client, make_farm, make_user):

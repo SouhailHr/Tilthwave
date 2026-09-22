@@ -15,12 +15,13 @@ class IrrigationTaskCreate(BaseModel):
     )
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "zone_name": "Zone 1",
                 "status": "pending",
             }
-        }
+        },
     )
 
 

@@ -12,12 +12,13 @@ class ZoneSensorCreate(BaseModel):
     zone_name: str = Field(description="The Zone name ,is required")
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "sensor_serial_number": "TSN123456",
                 "zone_name": "Zone 1",
             }
-        }
+        },
     )
 
 

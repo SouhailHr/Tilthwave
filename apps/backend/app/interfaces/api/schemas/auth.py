@@ -16,12 +16,13 @@ class AuthLogin(BaseModel):
     )
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "username": "johndoe",
                 "password": "securepassword",
             }
-        }
+        },
     )
 
 
@@ -33,19 +34,24 @@ class AuthVerifyToken(BaseModel):
     token: str
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "token": "put your token here please ",
             }
-        }
+        },
     )
 
 
 class PasswordForgot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     identifier: str = Field(min_length=1, max_length=256, description="Username or email address.")
 
 
 class PasswordReset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     token: str = Field(min_length=1, description="The token from the reset link.")
     new_password: str = Field(min_length=8, max_length=72)
 

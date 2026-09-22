@@ -25,7 +25,7 @@ def test_irrigation_task_cannot_target_another_farms_zone(client, auth_headers, 
         headers=auth_headers(farm_name=FARM_A),
     )
     assert response.status_code == 404
-    assert response.json() == {"detail": "Zone not found"}
+    assert response.json()["detail"] == "Zone not found"
     assert repos.irrigation_task.filter([]) == []
 
 

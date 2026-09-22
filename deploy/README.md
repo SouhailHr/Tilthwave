@@ -79,7 +79,9 @@ environment, and deploys from git. One-time setup:
    Tokens, an API token with deploy rights).
 
 `migrate`, `seed` and `broker-init` exit on purpose (`restart: "no"`); Coolify excludes such
-services from the application's health verdict. `web` and `api` carry healthchecks Coolify reads.
+services from the application's health verdict. `web` and `api` carry healthchecks Coolify reads. Those healthchecks are liveness only (`/health`, `/api/health`): a database outage does not
+make the containers unhealthy, so nothing restarts them for a problem a restart cannot fix.
+Readiness, for monitoring, is `/health/ready` on the API and `/api/health/ready` on the web.
 
 Each `vX.Y.Z` tag then runs `release.yml`: images are built and pushed, `TILTHWAVE_TAG` is set
 on the Coolify application through its API, and a deploy is triggered. Rolling back is re-running

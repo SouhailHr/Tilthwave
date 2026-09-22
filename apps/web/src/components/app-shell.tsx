@@ -42,6 +42,8 @@ import { cn } from "@/lib/utils";
 
 interface NavItem {
   href: string;
+  /** Shown only to these roles; the API refuses the others anyway (RBAC). */
+  roles?: readonly string[];
   label: string;
   icon: LucideIcon;
 }
@@ -55,7 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/water-sources", label: "Water sources", icon: Droplets },
   { href: "/water-switchers", label: "Water switchers", icon: Waves },
   { href: "/irrigation-tasks", label: "Irrigation tasks", icon: Activity },
-  { href: "/users", label: "Users", icon: Users },
+  { href: "/users", label: "Users", icon: Users, roles: ["admin", "owner"] },
 ];
 
 function BrandLockup({ className }: { className?: string }) {
@@ -83,9 +85,11 @@ function BrandLockup({ className }: { className?: string }) {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const role = useSession().data?.role;
+  const items = NAV_ITEMS.filter((item) => !item.roles || (role !== undefined && item.roles.includes(role)));
   return (
     <nav className="flex flex-col gap-0.5 p-2">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      {items.map(({ href, label, icon: Icon }) => {
         const active =
           href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (

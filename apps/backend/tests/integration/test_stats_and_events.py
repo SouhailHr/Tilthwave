@@ -12,16 +12,19 @@ def test_tree_stats_on_an_empty_table_is_200(client, auth_headers):
     assert isinstance(response.json()["tree_average_age"], str)
 
 
-def test_health_reports_503_when_the_database_is_unreachable(client, monkeypatch):
+def test_readiness_reports_503_when_the_database_is_unreachable_but_liveness_stays_200(client, monkeypatch):
+    """A database outage is not a reason to restart the API: /health (the container healthcheck)
+    keeps answering; /health/ready is the probe that looks at the database."""
     from infrastructure.repositories.base import BaseDBRepo
 
     def broken(*_args, **_kwargs):
         raise RuntimeError("connection refused")
 
     monkeypatch.setattr(BaseDBRepo, "get_engine", staticmethod(broken))
-    response = client.get("/health")
+    response = client.get("/health/ready")
     assert response.status_code == 503
     assert response.json() == {"status": "degraded", "database": "unreachable"}
+    assert client.get("/health").status_code == 200
 
 
 def test_status_event_updates_the_switcher_then_records_it(repos, make_farm, make_zone):

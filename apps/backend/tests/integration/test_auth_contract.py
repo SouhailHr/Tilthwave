@@ -1,8 +1,9 @@
 from tests.conftest import zone_payload
 
 
-def test_health_is_public_and_checks_the_database(client):
-    response = client.get("/health")
+def test_health_probes_are_public(client):
+    assert client.get("/health").json() == {"status": "ok"}  # liveness: never looks at the database
+    response = client.get("/health/ready")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "database": "ok"}
 
@@ -10,7 +11,7 @@ def test_health_is_public_and_checks_the_database(client):
 def test_missing_token_is_401_json(client):
     response = client.get("/users/")
     assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.json()["detail"] == "Not authenticated"
     assert response.headers["www-authenticate"] == "Bearer"
 
 
@@ -25,7 +26,7 @@ def test_read_only_role_cannot_patch(client, auth_headers, make_farm, make_zone)
     zone = make_zone()
     response = client.patch(f"/zones/{zone.id}", json={"size": 5}, headers=auth_headers(role="worker"))
     assert response.status_code == 403
-    assert response.json() == {"detail": "Insufficient permissions"}
+    assert response.json()["detail"] == "Insufficient permissions"
 
 
 def test_worker_may_update_trees(client, auth_headers):
@@ -60,7 +61,7 @@ def test_unknown_filter_attribute_is_400(client, auth_headers):
 def test_not_found_is_404_json(client, auth_headers):
     response = client.get("/zones/4242", headers=auth_headers())
     assert response.status_code == 404
-    assert response.json() == {"detail": "Zone not found"}
+    assert response.json()["detail"] == "Zone not found"
 
 
 def test_duplicate_is_409_without_sql_in_the_body(client, auth_headers, make_farm, make_zone):
