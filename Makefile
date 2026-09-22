@@ -16,6 +16,11 @@ up: env ## Build and start everything in the background
 up-fg: env ## Build and start everything in the foreground
 	$(COMPOSE) up --build
 
+deploy: env ## Pull the release images named by TILTHWAVE_TAG in deploy/.env and start without building
+	@tag=$$(sed -n 's/^TILTHWAVE_TAG=//p' deploy/.env); case "$$tag" in ""|local) echo "deploy/.env: set TILTHWAVE_TAG to a release tag (v1.2.3) first"; exit 1;; esac
+	$(COMPOSE) pull
+	$(COMPOSE) up -d --no-build
+
 down: ## Stop and remove containers (data volumes kept)
 	$(COMPOSE) down
 

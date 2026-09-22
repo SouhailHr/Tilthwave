@@ -13,6 +13,29 @@ make db-dump # pg_dump into deploy/dumps/ (gitignored) — run it before `make m
 `.env.example` documents each variable. Outgoing mail (`SMTP_*`) is optional: left blank, the API
 logs password-reset links instead of sending them.
 
+## Releases
+
+A git tag `vX.Y.Z` is a production release: `.github/workflows/release.yml` builds the backend,
+simulator and web images from the tagged commit and pushes them to
+`ghcr.io/souhailhr/tilthwave-{backend,simulator,web}` as `vX.Y.Z`, `X.Y.Z` and `sha-<commit>`.
+Nothing is published on ordinary pushes; `make up` keeps building from the checkout
+(`TILTHWAVE_TAG=local`).
+
+The web bundle bakes the public API URL in, so the workflow reads it from the repository variable
+`NEXT_PUBLIC_API_BASE_URL` (`gh variable set NEXT_PUBLIC_API_BASE_URL --body https://...`) and
+refuses to build the web image until it is set.
+
+On the production host (the repository is private, so its packages are too: `docker login
+ghcr.io` with a token that has `read:packages`):
+
+```bash
+git fetch --tags && git checkout vX.Y.Z                       # the compose file of that release
+sed -i 's/^TILTHWAVE_TAG=.*/TILTHWAVE_TAG=vX.Y.Z/' deploy/.env
+make deploy                                                   # pull, then up -d --no-build
+```
+
+Rolling back is the same commands with the previous tag.
+
 ## Production checklist
 
 Production adds a TLS reverse proxy in front of `web` and `api` and publishes nothing else. The
