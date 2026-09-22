@@ -23,7 +23,11 @@ dependencies = [
     "fastapi-pagination==0.16.0",
     # Streamer
     "confluent-kafka==2.15.1",
-    "faststream[confluent,cli]==0.7.5",   # cli extra: the `faststream run` entrypoint
+    "faststream[confluent,cli]==0.5.48",   # cli extra: the `faststream run` entrypoint
+    # NOTE: pinned back from 0.7.5 (see Dependabot PR #8) - 0.7.x drops the `auto_commit` kwarg
+    # from KafkaRegistrator.subscriber(), which interfaces/streamer/run_streamer.py relies on.
+    # Upgrading needs a code change (deferred to the faststream migration follow-up), not a
+    # version bump alone.
     # Flow runner
     "APScheduler==3.11.0",
 ]
