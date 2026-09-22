@@ -129,3 +129,26 @@ def test_tampered_cookie_is_401(client, make_farm, make_user):
     response = client.get("/zones/")
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid or expired token"}
+
+
+def test_csrf_gate_covers_patch_delete_and_the_password_routes(client, make_farm, make_user):
+    _cookie_login(client, make_farm, make_user)
+    csrf = {"X-CSRF-Token": client.cookies.get("tw_csrf")}
+    zone_id = client.post("/zones/", json=zone_payload(), headers=csrf).json()["id"]
+
+    assert client.patch(f"/zones/{zone_id}", json={"size": 2}).status_code == 403
+    assert client.delete(f"/zones/{zone_id}").status_code == 403
+    assert client.post("/auth/password/forgot", json={"identifier": "cookie-admin"}).status_code == 403
+    assert (
+        client.post("/auth/password/reset", json={"token": "x", "new_password": "Another-Passw0rd"}).status_code == 403
+    )
+
+    assert client.patch(f"/zones/{zone_id}", json={"size": 2}, headers=csrf).status_code == 200
+    assert client.post("/auth/password/forgot", json={"identifier": "cookie-admin"}, headers=csrf).status_code == 202
+    assert client.delete(f"/zones/{zone_id}", headers=csrf).status_code == 204
+
+
+def test_bearer_header_wins_over_a_cookie_session_and_needs_no_csrf(client, auth_headers, make_farm, make_user):
+    _cookie_login(client, make_farm, make_user)  # the jar now carries tw_access, no CSRF header sent below
+    response = client.post("/zones/", json=zone_payload(), headers=auth_headers())
+    assert response.status_code == 201
