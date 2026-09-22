@@ -38,3 +38,7 @@ deploy/dumps/
 
 # AXguard security reports (may contain secret matches)
 .findings/
+
+# coverage output (reported in CI, never committed)
+.coverage
+coverage/

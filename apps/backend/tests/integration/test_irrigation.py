@@ -8,6 +8,7 @@ from datetime import timedelta
 import pytest
 
 import common.constants as global_constants
+from adapters.irrigation_task import IrrigationTaskAdaptor
 from adapters.sensor import SensorAdaptor
 from adapters.sensor_record import SensorRecordAdaptor
 from adapters.water_source import WaterSourceAdaptor
@@ -185,3 +186,53 @@ def test_auto_irrigation_tick_starts_then_hard_stops(repos, farm_with_zone):
     helper.auto_irrigation()
     assert repos.irrigation_task.get(tasks[0].id).status == global_constants.IRRIGATION_TASK_COMPLETED
     assert [c["data"]["status"] for c in broker.commands] == ["On", "On", "Off"]
+
+
+@pytest.mark.parametrize(
+    ("moisture_age", "saturation_age", "running", "expected"),
+    [
+        # just inside MAX_READING_AGE_MINUTES (30) is not stale; "exactly 30" cannot be pinned with
+        # a real clock, the reading is 30.0001 minutes old by the time it is checked
+        (29, 29, False, ("start", "start trigger reached")),
+        # one fresh and one stale sensor: the zone is blind
+        (0, 45, False, (None, None)),
+        (0, 45, True, ("stop", "no fresh readings")),
+        # a missing reading type while irrigating must stop, not carry on blind
+        (0, None, True, ("stop", "no fresh readings")),
+        (0, None, False, (None, None)),
+    ],
+)
+def test_blind_zone_boundaries(repos, farm_with_zone, moisture_age, saturation_age, running, expected):
+    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
+
+    use_cases = _use_cases_with(repos, RecordingBroker())
+    helper.configure(use_cases)
+    zone = repos.zone.first([])
+    task = use_cases.zone.start_irrigation("Zone A") if running else None
+    _record(repos, "MSN1", "moisture", 20, age_minutes=moisture_age)
+    if saturation_age is not None:
+        _record(repos, "SAT1", "saturation", 30, age_minutes=saturation_age)
+    assert helper._check_start_stop(zone, task) == expected
+
+
+def test_two_in_progress_tasks_for_one_zone_are_handled_from_the_oldest(repos, farm_with_zone):
+    """A duplicated task (a retried start) must not make the tick raise or leave a valve open."""
+    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
+
+    broker = RecordingBroker()
+    helper.configure(_use_cases_with(repos, broker))
+    _record(repos, "MSN1", "moisture", 20)
+    _record(repos, "SAT1", "saturation", 30)
+    for _ in range(2):
+        repos.irrigation_task.create(
+            IrrigationTaskAdaptor.dict_to_entity(
+                {"zone_name": "Zone A", "status": global_constants.IRRIGATION_TASK_IN_PROGRESS}
+            )
+        )
+    _clear_records(repos)
+    _record(repos, "MSN1", "moisture", 90)
+    _record(repos, "SAT1", "saturation", 95)
+    helper.auto_irrigation()
+    tasks = repos.irrigation_task.filter([], order_by="id", order_direction="asc")
+    assert tasks[0].status == global_constants.IRRIGATION_TASK_COMPLETED  # the oldest was stopped
+    assert tasks[1].status == global_constants.IRRIGATION_TASK_IN_PROGRESS  # the next tick takes the other

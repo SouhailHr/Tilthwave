@@ -3,7 +3,8 @@ Test bootstrap.
 
 The settings module reads the environment at import time, so the environment is prepared
 here, before any application module is imported. The whole graph (wiring.repositories()) then
-runs against a throwaway SQLite file: no Postgres, no broker, a few hundred milliseconds.
+runs against a throwaway SQLite file (no Postgres, no broker, a few hundred milliseconds), or
+against the Postgres named by TILTHWAVE_TEST_DATABASE_URI when set (CI does both).
 """
 
 import os
@@ -13,10 +14,14 @@ import tempfile
 import pytest
 
 _TMP_DB = os.path.join(tempfile.mkdtemp(prefix="tilthwave-tests-"), "tilthwave.db")
+# SQLite by default. CI also runs the suite once on Postgres (TILTHWAVE_TEST_DATABASE_URI), the
+# engine production uses: SQLite does not enforce foreign keys, so a test that passes here can
+# still hit an IntegrityError there.
+_TEST_DB_URI = os.environ.get("TILTHWAVE_TEST_DATABASE_URI") or f"sqlite:///{_TMP_DB}"
 
 os.environ.update(
     {
-        "POSTGRES_URI": f"sqlite:///{_TMP_DB}",
+        "POSTGRES_URI": _TEST_DB_URI,
         "POSTGRES_HOST": "unused",
         "POSTGRES_USER": "unused",
         "POSTGRES_PASSWORD": "unused",
@@ -111,11 +116,15 @@ def make_farm(repos):
 
 
 @pytest.fixture
-def make_user(repos):
+def make_user(repos, make_farm):
     from adapters.users import UserAdaptor
     from core.security.password import PasswordHasher
 
     def _make(username, role="admin", farm_name=FARM_A, password="Passw0rd-Test!"):
+        # users.farm_name is a foreign key: create the farm on demand so a test that only needs a
+        # caller does not depend on SQLite ignoring the constraint (Postgres enforces it).
+        if farm_name and repos.farm.first([{"attribute": "farm_name", "value": farm_name, "condition": "eq"}]) is None:
+            make_farm(farm_name)
         return repos.users.create(
             UserAdaptor.dict_to_entity(
                 {

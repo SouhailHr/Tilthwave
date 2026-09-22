@@ -48,18 +48,19 @@ is removed from this file, not struck through; git history has the rest.
 
 Data and migrations
 
-- **Sensor records grow without bound.** No retention, rollup or cleanup; ~24k rows/week from the
-  simulator at 15 s rounds. `sensor_records.data` is `JSON`, not `JSONB`. **[A]** Nothing queries
-  `data` in SQL today except the monthly consumption sum, so JSONB brings little yet, but
-  converting later is a full rewrite under `ACCESS EXCLUSIVE`; decide now (convert while cheap, or
-  record the decision to stay). No partition key either, and partitioning later means recreating
-  the table. **[A]** Three wire timestamp formats reach `data.timestamp` (`%H:%M:%S` from the
-  sensor simulator, `%H:%M` from the actuator simulator and the backend); settle that before any
-  JSONB migration.
-- **[A] At-least-once with no dedupe.** A redelivered reading inserts a second `sensor_records`
-  row; harmless for latest-reading logic, double-counts the consumption sum. A unique index on
-  `(sensor_serial_number, data->>'timestamp')` once `data` is JSONB, and translate the
-  `IntegrityError` to a skip.
+- **Sensor records: retention, JSONB, partitioning, dedupe. Decision deferred (2026-09-23) until
+  the first non-demo farm is sized.** At demo volume (~24k rows/week, ~1.2M a year, a few hundred
+  MB) nothing here bites within a year. The questions to answer before then, with the defaults that
+  would be taken: (1) how long raw readings must exist and who reads them (default: raw 90 days,
+  monthly consumption rolled up forever; an hourly rollup if history charts are wanted); (2) the
+  fleet and cadence to size for (default: 50 zones at one reading a minute, ~20M live rows);
+  (3) partitioning (default: none, retention bounds the table; monthly partitions if raw is kept
+  forever); (4) JSON → JSONB (default: convert, one `ALTER` while small; a rewrite under an
+  exclusive lock later); (5) what a duplicate is, for the at-least-once streamer (default: a
+  producer-side `event_id` with a unique index and a skipped `IntegrityError`; keying on
+  `(sensor, timestamp)` is wrong while confirmations carry minute precision). The `%H:%M:%S` vs
+  `%H:%M` timestamp mismatch between the sensor and actuator simulators is normalised in the same
+  change.
 - **[A] `ON UPDATE CASCADE` from `sensor.serial_number` into `sensor_records`**: renaming a serial
   rewrites every record row. Make `serial_number` read-only in the repo, or accept and document.
 - **Concurrent edits.** PATCH has no `ETag` / `If-Match`; two admins editing the same row is
@@ -93,16 +94,12 @@ Security (accepted risk)
 - **[A] No server-side revocation**: a captured JWT stays valid up to 120 min after logout; only a
   password change or deactivation kills it. Accepted for the stateless design.
 
-Tests (163, behavioural, SQLite with the real middleware; gaps only)
+Tests (behavioural, run on SQLite and on Postgres in CI, with coverage reported; gaps only)
 
-- **[A] Blind-zone boundaries**: exactly `MAX_READING_AGE_MINUTES`, one fresh + one stale sensor,
-  saturation present but moisture missing while a task runs (must stop); two in-progress tasks.
-- **[A] Routes with no HTTP test**: `/water-sources`, `/water-switchers` GET/PATCH/DELETE,
-  `/irrigation-tasks`, `/zone-sensors`.
-- **[A] Password *reset* invalidating live sessions is untested** (only change-password is).
-- **[A] Postgres never runs the tests**; SQLite does not enforce FKs by default, so every
-  FK-violation → 409 path behaves differently in production. The migrations job already has a
-  Postgres service.
+- **Web page tests**: none for `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the
+  `useCreateEntity` / `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts`.
+- **No coverage threshold**: collection only; set a floor once the numbers have been read a few
+  times.
 
 Decisions recorded (not work items)
 
@@ -137,7 +134,6 @@ Decisions recorded (not work items)
   `docker login ghcr.io` on the server, the GitHub variables `NEXT_PUBLIC_API_BASE_URL`,
   `COOLIFY_URL`, `COOLIFY_APP_UUID` and secret `COOLIFY_TOKEN`, then the first `v0.1.0` tag.
   Nothing verifies the Coolify environment holds the production values from the checklist.
-- **[A] No coverage collection anywhere** (no `pytest-cov`, no `@vitest/coverage-v8`).
 - **Base images by tag without digest** (`python:3.12-slim`, `node:22-alpine`,
   `postgres:16-alpine`, Redpanda, console). Dependabot covers the docker ecosystem, so digests
   would stay maintained. **[A]** `apps/web/Dockerfile.dev` runs `npm install` (not `ci`) at

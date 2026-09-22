@@ -127,3 +127,15 @@ def test_without_smtp_the_link_is_logged_instead_of_sent(client, make_farm, make
         assert _forgot(client, "pat").status_code == 202
     logged = "\n".join(caplog.messages)
     assert "SMTP_HOST is not set" in logged and "pat@example.com" in logged and LINK.search(logged)
+
+
+def test_a_reset_signs_every_live_session_out(client, make_farm, make_user, outbox, auth_headers):
+    """The fingerprint in a session token stops matching once the password is reset (not only changed)."""
+    make_farm(FARM_A)
+    make_user("alice")
+    live = auth_headers(username="alice")
+    assert client.get("/auth/me", headers=live).status_code == 200
+    _forgot(client, "alice")
+    reset = client.post("/auth/password/reset", json={"token": _token_from(outbox), "new_password": "Another-Passw0rd"})
+    assert reset.status_code == 204
+    assert client.get("/auth/me", headers=live).status_code == 401
