@@ -6,7 +6,8 @@
 # + a sensible default start command — deps live on the host now, so adding
 # an npm package is a host-side `npm install`, no image rebuild required.
 
-FROM node:25-alpine
+# Same major as the production image, CI and package.json engines.
+FROM node:22-alpine
 WORKDIR /app
 
 ENV HOSTNAME=0.0.0.0

@@ -14,8 +14,8 @@ container healthcheck in deploy/docker-compose.yml, served by uvicorn on the --h
 docker/streamer/entrypoint.sh passes to `faststream run`.
 """
 
-import asyncio
 import logging
+import time
 
 from faststream.asgi import AsgiFastStream, make_ping_asgi
 from faststream.confluent import KafkaBroker
@@ -54,8 +54,12 @@ event_handler = EventHandler()
     auto_offset_reset="earliest",
     auto_commit=False,
 )
-async def sensors_streamer(event: dict):
+def sensors_streamer(event: dict):
     """
+    A plain `def`: FastStream runs sync handlers in a worker thread, so the synchronous
+    SQLAlchemy work (insert, commit) no longer blocks the event loop that polls the broker; an
+    `async def` here made every insert, and every reconnect wait, stall consumption.
+
     Two kinds of failure, two acknowledgements.
 
     With auto_commit=False FastStream rejects a message whose handler raised. For this broker a
@@ -71,7 +75,7 @@ async def sensors_streamer(event: dict):
         event_handler.process(event=event)
     except DBReposException:
         logger.exception("Database unavailable; re-consuming the event in %ss", DB_RETRY_SECONDS)
-        await asyncio.sleep(DB_RETRY_SECONDS)
+        time.sleep(DB_RETRY_SECONDS)
         raise NackMessage() from None
     except Exception:
         logger.exception("Failed to process event %s; skipping it", event)

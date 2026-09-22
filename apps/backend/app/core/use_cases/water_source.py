@@ -1,8 +1,7 @@
 import logging
-from collections import defaultdict
 
 from common import constants as global_constants
-from common.dates import command_timestamp, parse_db_datetime, utc_now
+from common.dates import command_timestamp, utc_now
 from config.settings import settings
 from core.entities.water_source import WaterSource as WaterSourceEntity
 from core.use_cases.base import BaseUseCase
@@ -169,24 +168,8 @@ class WaterSourceUseCase(BaseUseCase):
         @param sensor_serial_number: Serial number of the sensor.
         @return: Dictionary with water consumption per month.
         """
-        filter_by = [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
-        current_year = utc_now().year
-        records = self.sensor_record_repo.filter(filters=filter_by)
-
-        # Dictionary to store consumption per month
-        monthly_consumption = defaultdict(int)
-
-        for record in records:
-            record_date = parse_db_datetime(record.created_date)
-            if record_date.year == current_year:
-                month = record_date.month
-                consumption = record.data.get("consumption", 0)
-                monthly_consumption[month] += consumption
-
-        # Convert default dict to a regular dictionary and ensure all months are present
-        consumption_per_month = {month: monthly_consumption.get(month, 0) for month in range(1, 13)}
-
-        return consumption_per_month
+        monthly = self.sensor_record_repo.monthly_consumption([sensor_serial_number], utc_now().year)
+        return {month: monthly.get(month, 0) for month in range(1, 13)}
 
     def get_all_water_sources(self):
         """

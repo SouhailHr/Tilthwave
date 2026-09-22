@@ -49,7 +49,7 @@ describe("login", () => {
 
     expect(post).toHaveBeenCalledTimes(1);
     const [url, body, config] = post.mock.calls[0];
-    expect(url).toBe("/auth/login/");
+    expect(url).toBe("/auth/login");
     expect(body).toEqual({ username: "admin", password: "pw", use_cookie: true });
     expect(config?.headers?.["Idempotency-Key"]).toBeUndefined(); // never on a login
     expect(session).toEqual(me);

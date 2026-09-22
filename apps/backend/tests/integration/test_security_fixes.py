@@ -179,3 +179,22 @@ def test_hsts_header_follows_the_cookie_secure_setting(client, monkeypatch):
 
     monkeypatch.setattr(settings.API, "COOKIE_SECURE", True)
     assert client.get("/health").headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+
+
+def test_a_token_without_the_password_fingerprint_is_not_a_session(client, make_farm, make_user):
+    """
+    Every token login issues carries pfp (AuthHelper.session_claims). The leniency for pfp-less
+    tokens existed for test fixtures that minted claims by hand; the fixtures now mint the real
+    shape, so a token without it is rejected like any other stale one.
+    """
+    from interfaces.api.helpers.auth import AuthHelper
+    from tests.conftest import FARM_A
+
+    make_farm(FARM_A)
+    user = make_user("alice")
+    bare = AuthHelper.create_access_token(
+        {"role": user.role, "username": user.username, "user_id": user.id, "farm_name": FARM_A}
+    )
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {bare}"}).status_code == 401
+    real = AuthHelper.create_access_token(AuthHelper.session_claims(user))
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {real}"}).status_code == 200

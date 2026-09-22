@@ -29,9 +29,14 @@ from interfaces.api.helpers.tenant import TenantContextMiddleware
 configure_logging(settings.LOG_LEVEL)
 
 # Interactive docs only when API_DOCS_ENABLED=true: they map the whole attack surface.
+# redirect_slashes=False: a path with the wrong trailing slash is a 404, not a 307. The redirect
+# ran the whole middleware chain twice and, behind a proxy not in FORWARDED_ALLOW_IPS, sent the
+# browser to an http:// Location where the Secure session cookie is not sent. Collections end
+# with a slash (/zones/), items do not (/zones/1); clients are expected to get that right.
 app = FastAPI(
     title="Tilthwave API",
     debug=False,
+    redirect_slashes=False,
     docs_url="/docs" if settings.API.DOCS_ENABLED else None,
     redoc_url=None,
     openapi_url="/openapi.json" if settings.API.DOCS_ENABLED else None,
@@ -48,7 +53,7 @@ app.add_middleware(
     allow_origins=settings.API.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-CSRF-Token"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 app.add_middleware(TenantContextMiddleware)
 

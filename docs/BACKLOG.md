@@ -16,42 +16,12 @@ password flow, newest-first lists, full timestamps, sensor assignment, the user-
 
 ## Fix first
 
-One item left. The control-loop items (`fix/control-loop-safety`) and the cross-tenant farm
-creation (`fix/tenancy-bind-self`) that headed this list are fixed.
-
-1. **[A] `Idempotency-Key` is advertised and never honoured.** The web sends one per create
-   (`_entity.ts:31-32`); the backend's only reference is the CORS allow-list (`main.py:51`).
-   `irrigation_task` and `sensor_records` have no unique key, so a retried POST creates two tasks
-   the flow runner acts on; on keyed resources the retry is a 409 shown as an error although the
-   first attempt succeeded. Decide: implement (a dependency on the create routes keyed
-   `(user_id, key)` that replays the stored response for ~24 h) or remove the header, the CORS
-   entry and the comment at `_entity.ts:25`.
+Empty: the control-loop items (`fix/control-loop-safety`), the cross-tenant farm creation
+(`fix/tenancy-bind-self`) and the `Idempotency-Key` decision (removed, `fix/web-contract-bugs`:
+mutations never auto-retry and the form disables submit while pending, so the header only made the
+contract lie) are done.
 
 ## Web (`apps/web`)
-
-Bugs
-
-- **[A] Search never resets pagination.** `entity-table.tsx:76` says "Reset to page 1 when the
-  debounced search value changes"; nothing calls `setPage(1)`. Searching from page 3 shows an empty
-  page. Fix: `useEffect(() => setPage(1), [debouncedSearch])`.
-- **[A] List/detail queries surface raw Axios errors.** `_entity.ts:68,79` type the error as
-  `ApiError` but the fetchers never call `toApiError`, so the dashboard, table and settings error
-  states print "Request failed with status code 500". Fix: `.catch((e) => { throw toApiError(e) })`
-  in the fetchers.
-- **[A] Trailing-slash 307 on every by-id call and on login.** `_entity.ts:18,40,44` call
-  `/{resource}/{id}/` and `auth.ts:39` `/auth/login/`; the backend routes are `/{id}` and `/login`
-  with `redirect_slashes` at its default. The whole middleware chain (including the tenant user
-  lookup) runs twice per call, and behind a proxy whose address is not in `FORWARDED_ALLOW_IPS` the
-  redirect `Location` is `http://`, so the `Secure` cookie is dropped and the second hop is a 401.
-  Fix: drop the slashes, then `FastAPI(redirect_slashes=False)` so any future mismatch is a loud
-  404.
-- **[A] Users edit dialog offers a Farm select the API discards.** `schemas/users.py:61` has
-  `farm_name ... exclude=True`; `users/page.tsx` puts it in `editFields` and sends it: 200, success
-  toast, farm unchanged. `UpdateUserInput` also still permits `is_superuser` and `password`, which
-  `extra="forbid"` rejects with 422. Fix: drop `farm_name` from the edit fields (or add an
-  admin-only `farm_name` to `UserUpdate`); narrow `UpdateUserInput` to what `UserUpdate` accepts.
-- **[A] 422 field errors are parsed and never shown.** `errors.ts:51` builds `fieldErrors`;
-  `EntityForm` never calls `form.setError` with them, so a 422 shows "Field required" with no field.
 
 Debt
 
@@ -69,8 +39,7 @@ Debt
   `min(8).max(72)` ×3 and the confirm-password refine ×2. Fix: `status-ui.ts`, shared
   `passwordSchema`.
 - **[A] Dead exports.** `users.ts` `fetchUsers`/`fetchUser`/`useUsers`/`useUser`/`useDeleteUser`
-  (the other seven `api/*.ts` were trimmed), `errors.ts` `toastDescription`, `useDisclosure`
-  `toggle`/`setOpen`; `_entity.ts` is imported by components despite the private-looking name.
+  (the other seven `api/*.ts` were trimmed), `useDisclosure` `toggle`/`setOpen`; `_entity.ts` is imported by components despite the private-looking name.
 - **Response validation.** Only `/auth/me` is Zod-parsed; the login body is discarded and the
   profile and every entity list are hand-typed and trusted. The decision behind it (OpenAPI codegen
   vs hand-written types) is open.
@@ -86,13 +55,12 @@ Debt
   query plus pure helpers; the RSC split buys little. Low priority.
 - **Env.** `NEXT_PUBLIC_API_BASE_URL` is not validated at build time (the release workflow
   refuses to build without it; `next build` itself does not).
-- **[A] Tests: no form or page is tested.** `entity-form.tsx`, `entity-table.tsx`,
-  `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the `useCreateEntity` /
-  `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts` (two simultaneous
-  401s must emit `auth:expired` once). `_entity.test.ts` reaches into
-  `api.interceptors.response.handlers[0]`; drive it through `api.get()` with a mocked adapter.
-  First test to write: `entity-form.test.tsx` (empty submit → field errors, valid submit → parsed
-  values, 422 → errors mapped onto fields).
+- **[A] Tests: pages are untested.** `entity-form.tsx` and `entity-table.tsx` now have their
+  first tests (`fix/web-contract-bugs`); still none for `entity-crud-page.tsx`, the
+  login/forgot/reset/settings pages, the `useCreateEntity` / `useUpdateEntity` invalidation, and
+  the `isRedirecting` guard in `client.ts` (two simultaneous 401s must emit `auth:expired` once).
+  `_entity.test.ts` reaches into `api.interceptors.response.handlers[0]`; drive it through
+  `api.get()` with a mocked adapter.
 
 ## Backend (`apps/backend`)
 
@@ -114,33 +82,16 @@ Correctness and contract
 - **[A] Timestamps are `str(datetime)` of a naive UTC column** ("2026-09-15 16:06:56.266864"),
   not ISO 8601. The web compensates in `utils/dates.ts`; any new client using `Date.parse` reads
   them as local time. Fix: `d.replace(tzinfo=UTC).isoformat()` in the adapter.
-- **[A] Streamer handler is `async def` calling sync SQLAlchemy** (`run_streamer.py:41-46`), so
-  every insert blocks the event loop and a DB stall stalls Kafka polling. Make it `def` (FastStream
-  runs sync handlers in a thread); set `expire_on_commit=False` to drop the `refresh` round trip.
 - **[A] Simulator retries a wrong password forever, silently.** `api_client.py:29-47` treats 400
   as "admin not seeded yet" and the backend returns 400 for bad credentials. Log the body on 400.
 
-Performance (all O(N) where O(1) is easy; the Repository only exposes per-entity
-`filter` / `first` / `count`, so every facade above it composes N small queries)
+Performance (`perf/set-queries` gave the repository set-oriented reads: `count_by`,
+`latest_per_sensor`, `monthly_consumption`; the tick, the dashboard and the sensor list use them)
 
-- **[A] Flow-runner tick ≈ 400 queries at 50 zones**: per zone the in-progress task, the zone
-  sensors, one sensor lookup per zone-sensor for its type and one `first()` per sensor for the
-  latest record; then `produce()` + `flush(5)` synchronously per command, so a slow broker makes
-  the heartbeat stale. Fix: reuse the one in-progress-tasks query already made at `:181`,
-  `zone_sensors JOIN sensor` for all zones, `SELECT DISTINCT ON (sensor_serial_number) ... ORDER BY
-  sensor_serial_number, created_date DESC` (uses the existing index); one flush per zone.
-- **[A] `/dashboard/summary` ≈ 125 queries** and loads every `sensor_record` of every water
-  source into Python for the yearly sum; polled every 30 s per open tab. Fix: `GROUP BY status`
-  (3 queries instead of 16 counts), `COUNT(*) WHERE zone_name IN (subquery)` for switchers and
-  trees, `SUM((data->>'consumption')::numeric) GROUP BY date_trunc('month', created_date)`.
-- **[A] Sensor list `_enrich_item` is a per-row query**: 21 queries for a page of 20, 101 for the
-  FK picker. Fix: an `_enrich_items(entities)` hook with three `IN` queries.
-- **[A] `/zones/stats/{zone}` loads all records of all zone sensors to keep 15** (`zone.py:336`),
-  and runs the in-progress/completed task queries twice each (`:376-389`). No web caller.
-- **[A] Missing index `irrigation_task(zone_name, status)`**; the flow runner filters on it per
-  zone per tick and the dashboard counts by status.
-- **[A] Engine pool is default** (5 + 10, no `pool_recycle`) while the API threadpool allows 40
-  concurrent handlers. Set `pool_size`, `max_overflow`, `pool_recycle=1800`.
+- **[A] Every command still does `produce()` + `flush(5)` synchronously** (`zone.py:290-296`): a
+  tick that starts many zones on a slow broker runs minutes. Kept on purpose for now: the
+  publish-then-persist invariant needs the ack before the task row changes. One flush per zone
+  would need the gateway to batch acks; revisit if ticks ever approach `FLOW_RUNNER_MINUTES`.
 
 Data and migrations
 
@@ -151,21 +102,6 @@ Data and migrations
   partition key either, and partitioning later means recreating the table. **[A]** Three wire
   timestamp formats reach `data.timestamp` (`%H:%M:%S` from the sensor simulator, `%H:%M` from the
   actuator simulator and the backend); settle that before any JSONB migration.
-- **[A] Migration lock safety.** `alembic/env.py` runs all pending revisions in one transaction
-  with no `lock_timeout`; `a1c2e3f4b5d6` built the `sensor_records` index without `CONCURRENTLY`.
-  Safe on a fresh stack (`migrate` runs before every consumer), not for `make migrate` on a running
-  one. Fix: `transaction_per_migration=True`, `SET lock_timeout`, an advisory lock, and
-  `postgresql_concurrently=True` inside `autocommit_block()` for any future index on the growth
-  table.
-- **[A] `created_date` is nullable with an ORM-only default** (`tables/base.py:16`). Every
-  "latest reading" is `ORDER BY created_date DESC LIMIT 1` and Postgres sorts NULL first under
-  `DESC`, so any row inserted outside the ORM becomes the flow runner's current reading. Fix:
-  `server_default=now()`, backfill, `SET NOT NULL`, mirrored in the model so `alembic check` stays
-  green.
-- **[A] `b2d3e4f5a6c7` downgrade destroys tenancy it cannot re-derive**: it drops
-  `sensor.farm_name`, and a re-upgrade only backfills sensors that have a link row. Snapshot before
-  dropping. Related: CI inserts its fixtures after `upgrade head`, so the backfill always runs on
-  an empty table and a wrong JOIN would pass.
 - **[A] At-least-once with no dedupe.** A redelivered reading inserts a second `sensor_records`
   row; harmless for latest-reading logic, double-counts the consumption sum. A unique index on
   `(sensor_serial_number, data->>'timestamp')` once `data` is JSONB, and translate the
@@ -246,30 +182,22 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 - **[A] Blind-zone boundaries**: exactly `MAX_READING_AGE_MINUTES`, one fresh + one stale sensor,
   saturation present but moisture missing while a task runs (must stop); two in-progress tasks.
 - **[A] Routes with no HTTP test**: `/water-sources`, `/water-switchers` GET/PATCH/DELETE, `/irrigation-tasks`, `/zone-sensors`.
-- **[A] Fixture tokens are minted without `pfp`** (`conftest.py:157-159`), so the suite runs on a
-  token shape production never issues and `tenant.py:91` keeps a leniency branch for it. Mint via
-  `AuthHelper.session_claims(user)`, then consider dropping the leniency. Password *reset*
-  invalidating live sessions is untested (only change-password is).
+- **[A] Password *reset* invalidating live sessions is untested** (only change-password is).
 - **[A] Postgres never runs the tests**; SQLite does not enforce FKs by default, so every
   FK-violation → 409 path behaves differently in production. The migrations job already has a
   Postgres service.
 
 ## Deploy / CI (`deploy`, `.github`)
 
-- **[A] `uvx pip-audit` has no interpreter pin** (`ci.yml:30,95`): locally it picked Python 3.14
-  and failed building `psycopg2-binary`; the same happens when the runner image's default moves.
-  The export is pinned and hashed, so `--disable-pip` works and is faster. Drop the dead
-  `--ignore-vuln PYSEC-2025-183` (affects PyJWT ≤ 2.10.1; 2.14 is installed).
-- **[A] The simulator job never runs `uv run pytest`** (lint + audit only); its 9 tests are dead in
-  CI. No coverage collection anywhere.
+- **[A] No coverage collection anywhere** (no `pytest-cov`, no `@vitest/coverage-v8`).
 - **Production profile.** Production is Coolify (`deploy/README.md`): its Traefik is the TLS
   proxy, its environment is the prod profile, `db-backup` is the backup schedule, HSTS is sent by
   the apps. Still open: `SMTP_TIMEOUT_SECONDS` exists in settings but compose does not forward
   it; nothing verifies the Coolify environment holds the production values from the checklist.
-- **GitHub Actions pinned by tag, not SHA** in `ci.yml` (5 sites; `release.yml` is SHA-pinned); base images by tag without digest
+- **Base images by tag without digest**
   (`python:3.12-slim`, `node:22-alpine`, `postgres:16-alpine`, Redpanda, console). Dependabot
-  covers both ecosystems, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev` runs
-  Node 25 while prod, CI and `engines` are Node 22, and runs `npm install` (not `ci`) at start.
+  covers the docker ecosystem, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev`
+  runs `npm install` (not `ci`) at start, so it can rewrite the lockfile from inside the container.
 - **[A] Upgradeable without blockers**: `vite` 7 → 8, `jsdom` 25 → 29 (dev-only), SQLAlchemy
   2.0.43 → 2.0.54, stale transitives (`uv lock --upgrade`; `uv lock --check` does not catch
   drift). Still blocked upstream: ESLint 10 (Next's plugin peers, not eslint-config-next itself),
@@ -292,11 +220,8 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 2. ~~`fix/tenancy-bind-self`~~ done.
 3. `fix/web-contract-bugs`: trailing slashes, page reset, `toApiError` in fetchers, users edit
    dialog, field errors onto the form; decide Fix first #1.
-4. `chore/ci-hardening`: pip-audit pin, simulator tests in CI, action SHAs, Node 22 in
-   `Dockerfile.dev`, fixture tokens via `session_claims`.
-5. `perf/set-queries`: the `irrigation_task` index and the three N+1 shapes behind new
-   set-oriented repository methods; sync streamer handler.
-6. `chore/migration-safety`: per-migration transactions and lock timeout, `created_date`
-   NOT NULL, the `b2d3` snapshot, CI backfill fixture.
+4. ~~`chore/ci-hardening`~~ done.
+5. ~~`perf/set-queries`~~ done.
+6. ~~`chore/migration-safety`~~ done.
 7. `refactor/use-case-wiring`: delete the unconsumed surface, inject collaborators, the sensor-type
    guard, `TENANT_SCOPE` as an object. Largest; last.

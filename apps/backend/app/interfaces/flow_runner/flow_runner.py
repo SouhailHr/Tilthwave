@@ -101,7 +101,7 @@ class ZoneAutomaticIrrigationHelper:
         cls.zone_use_case.stop_irrigation(task_in_progress=task_to_stop)
 
     @classmethod
-    def _check_start_stop(cls, zone, task_in_progress):
+    def _check_start_stop(cls, zone, task_in_progress, zone_sensors_records=None):
         """
         Decide whether irrigation must be started or stopped for the zone.
         Logic:
@@ -109,6 +109,8 @@ class ZoneAutomaticIrrigationHelper:
             2- zone triggers against the latest moisture and saturation
         @param zone: A dict that contains a Zone data
         @param task_in_progress: the zone's irrigation task in progress, or None
+        @param zone_sensors_records: the zone's latest readings, as the tick fetched them for
+               every zone at once; None fetches this zone's own
         @return: (str START | STOP | None, reason)
         """
         zone_name = zone.get("zone_name")
@@ -119,7 +121,8 @@ class ZoneAutomaticIrrigationHelper:
             if running_for >= settings.FLOW_RUNNER.MAX_IRRIGATION_MINUTES:
                 return cls.STOP, f"hard stop: running for {running_for} min"
 
-        zone_sensors_records = cls.zone_use_case.get_latest_zone_data(zone_name=zone_name)
+        if zone_sensors_records is None:
+            zone_sensors_records = cls.zone_use_case.get_latest_zone_data(zone_name=zone_name)
         current_saturation = cls._get_value_from_sensors_record(zone_sensors_records, "saturation")
         current_moisture = cls._get_value_from_sensors_record(zone_sensors_records, "moisture")
         logger.info(
@@ -148,15 +151,8 @@ class ZoneAutomaticIrrigationHelper:
         return None, None
 
     @classmethod
-    def _handle_zone(cls, zone):
-        tasks_in_progress = (
-            cls.zone_use_case.get_irrigation_tasks(
-                zone_name=zone.get("zone_name"), task_status=global_constants.IRRIGATION_TASK_IN_PROGRESS
-            )
-            or []
-        )
-        task_in_progress = tasks_in_progress[0] if tasks_in_progress else None
-        condition, reason = cls._check_start_stop(zone, task_in_progress)
+    def _handle_zone(cls, zone, task_in_progress, zone_sensors_records):
+        condition, reason = cls._check_start_stop(zone, task_in_progress, zone_sensors_records)
         if condition == cls.START:
             cls.start_irrigation(zone=zone)
         elif condition == cls.STOP:
@@ -174,9 +170,20 @@ class ZoneAutomaticIrrigationHelper:
         """
         failures = 0
         zones = [zone.to_dict() for zone in cls.zone_use_case.filter()]
+        # Everything a zone's evaluation reads is fetched once for all zones: the open tasks
+        # (one query) and the latest reading of every zone sensor (two). A tick is then a fixed
+        # handful of queries plus the commands it actually sends, not O(zones x sensors).
+        open_tasks = cls.zone_use_case.get_all_irrigation_tasks(
+            task_status=global_constants.IRRIGATION_TASK_IN_PROGRESS
+        )
+        task_by_zone: dict = {}
+        for task in open_tasks or []:
+            task_by_zone.setdefault(task.zone_name, task)  # oldest first, as the per-zone query returned
+        readings = cls.zone_use_case.latest_zone_readings([zone.get("zone_name") for zone in zones])
         for zone in zones:
+            name = zone.get("zone_name")
             try:
-                cls._handle_zone(zone)
+                cls._handle_zone(zone, task_by_zone.get(name), readings.get(name, []))
             except Exception:
                 failures += 1
                 logger.exception("Could not evaluate zone %s", zone.get("zone_name"))

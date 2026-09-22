@@ -214,6 +214,30 @@ class ZoneUseCase(BaseUseCase):
         }
         return sensors
 
+    def latest_zone_readings(self, zone_names) -> dict:
+        """
+        The latest reading of every sensor of every given zone, in two queries for all zones
+        together (the zone->sensor links, then the newest record per sensor), instead of one
+        link query per zone plus one record query per sensor. The flow runner asks this once per
+        tick for every zone it evaluates.
+        @return: {zone_name: [{"type", "value", ..., "recorded_at"}, ...]}; zones without a
+                 fresh reading are absent
+        """
+        zone_names = list(zone_names)
+        if not zone_names:
+            return {}
+        links = self.zone_sensors_repo.filter([{"attribute": "zone_name", "value": zone_names, "condition": "in"}])
+        serials = sorted({link.sensor_serial_number for link in links})
+        latest = {
+            record.sensor_serial_number: record for record in self.sensor_record_use_case.latest_per_sensor(serials)
+        }
+        readings: dict = {}
+        for link in links:
+            record = latest.get(link.sensor_serial_number)
+            if record:
+                readings.setdefault(link.zone_name, []).append({**record.data, "recorded_at": record.created_date})
+        return readings
+
     def get_latest_zone_data(self, zone_name: str):
         """
          This method gets the zone latest sensor records
@@ -222,13 +246,7 @@ class ZoneUseCase(BaseUseCase):
         eg :
         [{"type": "saturation", "value": 20, "recorded_at": "2026-09-15 16:07:14.123"}, ...]
         """
-        records = []
-        sensors = self.get_zone_sensors(zone_name)
-        for sensor_serial_number in sensors.values():
-            record = self.sensor_record_use_case.get_latest_sensor_record(sensor_serial_number)
-            if record:
-                records.append({**record.data, "recorded_at": record.created_date})
-        return records
+        return self.latest_zone_readings([zone_name]).get(zone_name, [])
 
     def get_zone_water_switchers(self, zone_name: str):
         """
@@ -323,7 +341,7 @@ class ZoneUseCase(BaseUseCase):
 
     def get_zone_data(self, zone_name: str):
         """
-         This method gets the zone latest 10 sensor records for moisture and saturation
+         This method gets the zone latest 15 sensor records for moisture and saturation
         @param zone_name: str representing a zone by its name
         @return: dict of data ,
         eg :
@@ -332,8 +350,8 @@ class ZoneUseCase(BaseUseCase):
         sensors = self.get_zone_sensors(zone_name)
         # use the method that gets the sensor last record by serial number from sensor_records
         for sensor_serial_number in sensors.values():
-            records = self.sensor_record_use_case.get_get_sensor_records(sensor_serial_number)
-            for record in records[:15]:
+            records = self.sensor_record_use_case.get_get_sensor_records(sensor_serial_number, limit=15)
+            for record in records:
                 data = record.data
                 timestamp = data["timestamp"]
                 time = timestamp[:16]
@@ -372,21 +390,20 @@ class ZoneUseCase(BaseUseCase):
         """
         zone_data = self.get_zone_data(zone_name=name)
         sorted_zone_data = dict(sorted(zone_data.items()))
-        # We check if the irrigation_tasks_in_progress is None or not
-        if self.get_irrigation_tasks(zone_name=name, task_status=global_constants.IRRIGATION_TASK_IN_PROGRESS) is None:
-            irrigation_tasks_in_progress = 0
-        else:
-            irrigation_tasks_in_progress = len(
-                self.get_irrigation_tasks(zone_name=name, task_status=global_constants.IRRIGATION_TASK_IN_PROGRESS)
-            )
-
-        # We check if the irrigation_tasks_in_completed is None or not
-        if self.get_irrigation_tasks(zone_name=name, task_status=global_constants.IRRIGATION_TASK_COMPLETED) is None:
-            irrigation_tasks_completed = 0
-        else:
-            irrigation_tasks_completed = len(
-                self.get_irrigation_tasks(zone_name=name, task_status=global_constants.IRRIGATION_TASK_COMPLETED)
-            )
+        zone_filter = {"attribute": "zone_name", "value": name, "condition": "eq"}
+        task_count = self.irrigation_task_use_case.repo.count
+        irrigation_tasks_in_progress = task_count(
+            [
+                zone_filter,
+                {"attribute": "status", "value": global_constants.IRRIGATION_TASK_IN_PROGRESS, "condition": "eq"},
+            ]
+        )
+        irrigation_tasks_completed = task_count(
+            [
+                zone_filter,
+                {"attribute": "status", "value": global_constants.IRRIGATION_TASK_COMPLETED, "condition": "eq"},
+            ]
+        )
 
         stats_dict = {
             "total_trees": len(self.get_zone_trees(zone_name=name)),

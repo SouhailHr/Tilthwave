@@ -104,10 +104,17 @@ class BaseCrud:
     @classmethod
     def _enrich_item(cls, entity) -> dict:
         """
-        Hook: the public dict of one listed entity. Override to add computed fields
-        (see SensorCrudHelper.assigned_to).
+        Hook: the public dict of one listed entity. Override to add computed fields.
         """
         return entity.to_public_dict()
+
+    @classmethod
+    def _enrich_items(cls, entities) -> list[dict]:
+        """
+        Hook: the public dicts of one page. Override when the computed fields need a lookup, so
+        it is done once for the page rather than once per row (see SensorCrudHelper).
+        """
+        return [cls._enrich_item(entity) for entity in entities]
 
     @classmethod
     def filters_doc(cls) -> str:
@@ -154,7 +161,7 @@ class BaseCrud:
         entities, total = cls.USE_CASE_INSTANCE.paginate(
             filters, order_by="id", order_direction="desc", limit=raw.limit, offset=raw.offset
         )
-        return create_page([cls._enrich_item(entity) for entity in entities], total=total, params=params)
+        return create_page(cls._enrich_items(entities), total=total, params=params)
 
     @classmethod
     def get_stats(cls, entity_name=None):

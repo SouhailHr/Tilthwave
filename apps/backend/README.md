@@ -29,8 +29,13 @@ cp .env.example .env         # POSTGRES_HOST=localhost, real API_SECRET_KEY (>= 
 PYTHONPATH=app uv run uvicorn interfaces.api.main:app --reload --port 8080
 ```
 
-Migrations: `make migrate` / `make migration-create m="..."` at the repo root. CI runs
-`alembic upgrade head`, `alembic check` (models must match the migrations) and a full downgrade.
+Migrations: `make migrate` / `make migration-create m="..."` at the repo root. CI populates the
+tables at the last pre-backfill revision, then runs `alembic upgrade head`, `alembic check` (models
+must match the migrations) and a full downgrade/upgrade, so every backfill and downgrade is
+exercised on real rows. `alembic/migrations/env.py` takes a session advisory lock (one runner at a
+time), sets `lock_timeout = 5s` (DDL that cannot get its lock fails rather than stalling every
+writer behind it; rerun when the table is quiet) and commits one transaction per revision. Any
+future index on `sensor_records` goes in an `autocommit_block()` with `postgresql_concurrently=True`.
 
 ## Layout
 
@@ -104,6 +109,9 @@ time does not reveal whether the account exists.
 
 Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (the compose stack sets it; the default
 is off).
+
+URL shape is part of the contract: collections end with a slash (`/zones/`), items do not
+(`/zones/1`), and a mismatch is a 404, never a redirect (`redirect_slashes=False`).
 
 | Prefix | Notes |
 |---|---|

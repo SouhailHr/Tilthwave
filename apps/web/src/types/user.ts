@@ -28,4 +28,8 @@ export interface CreateUserInput {
   is_superuser?: boolean | null;
 }
 
-export type UpdateUserInput = Partial<Omit<CreateUserInput, "username">>;
+// What PATCH /users/{id} accepts (UserUpdate has extra="forbid"): no username, farm, password or
+// superuser flag. A password changes through Settings or the reset link.
+export type UpdateUserInput = Partial<
+  Pick<CreateUserInput, "email" | "phone_number" | "first_name" | "last_name" | "role" | "is_active">
+>;
