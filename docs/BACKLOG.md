@@ -214,32 +214,24 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 - **[A] Blind-zone boundaries**: exactly `MAX_READING_AGE_MINUTES`, one fresh + one stale sensor,
   saturation present but moisture missing while a task runs (must stop); two in-progress tasks.
 - **[A] Routes with no HTTP test**: `/water-sources`, `/water-switchers` GET/PATCH/DELETE, `/irrigation-tasks`, `/zone-sensors`.
-- **[A] Fixture tokens are minted without `pfp`** (`conftest.py:157-159`), so the suite runs on a
-  token shape production never issues and `tenant.py:91` keeps a leniency branch for it. Mint via
-  `AuthHelper.session_claims(user)`, then consider dropping the leniency. Password *reset*
-  invalidating live sessions is untested (only change-password is).
+- **[A] Password *reset* invalidating live sessions is untested** (only change-password is).
 - **[A] Postgres never runs the tests**; SQLite does not enforce FKs by default, so every
   FK-violation → 409 path behaves differently in production. The migrations job already has a
   Postgres service.
 
 ## Deploy / CI (`deploy`, `.github`)
 
-- **[A] `uvx pip-audit` has no interpreter pin** (`ci.yml:30,95`): locally it picked Python 3.14
-  and failed building `psycopg2-binary`; the same happens when the runner image's default moves.
-  The export is pinned and hashed, so `--disable-pip` works and is faster. Drop the dead
-  `--ignore-vuln PYSEC-2025-183` (affects PyJWT ≤ 2.10.1; 2.14 is installed).
-- **[A] The simulator job never runs `uv run pytest`** (lint + audit only); its 9 tests are dead in
-  CI. No coverage collection anywhere.
+- **[A] No coverage collection anywhere** (no `pytest-cov`, no `@vitest/coverage-v8`).
 - **Production profile.** `deploy/README.md` describes a TLS reverse proxy, but the repo holds no
   proxy config and no "prod" env profile that flips `API_COOKIE_SECURE=true`,
   `API_DOCS_ENABLED=false`, a real `SMTP_HOST`, `API_WEB_BASE_URL`, `API_COOKIE_DOMAIN` and
   `BIND_ADDR` together. **[A]** No backup schedule either (`make db-dump` is manual);
   `.env.example` `DOMAIN=` is unused; `SMTP_TIMEOUT_SECONDS` exists in settings but compose does
   not forward it.
-- **GitHub Actions pinned by tag, not SHA** in `ci.yml` (5 sites; `release.yml` is SHA-pinned); base images by tag without digest
+- **Base images by tag without digest**
   (`python:3.12-slim`, `node:22-alpine`, `postgres:16-alpine`, Redpanda, console). Dependabot
-  covers both ecosystems, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev` runs
-  Node 25 while prod, CI and `engines` are Node 22, and runs `npm install` (not `ci`) at start.
+  covers the docker ecosystem, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev`
+  runs `npm install` (not `ci`) at start, so it can rewrite the lockfile from inside the container.
 - **[A] Upgradeable without blockers**: `vite` 7 → 8, `jsdom` 25 → 29 (dev-only), SQLAlchemy
   2.0.43 → 2.0.54, stale transitives (`uv lock --upgrade`; `uv lock --check` does not catch
   drift). Still blocked upstream: ESLint 10 (Next's plugin peers, not eslint-config-next itself),
@@ -260,9 +252,9 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 
 1. ~~`fix/control-loop-safety`~~ done.
 2. ~~`fix/tenancy-bind-self`~~ done.
-3. ~~`fix/web-contract-bugs`~~ done.
-4. `chore/ci-hardening`: pip-audit pin, simulator tests in CI, action SHAs, Node 22 in
-   `Dockerfile.dev`, fixture tokens via `session_claims`.
+3. `fix/web-contract-bugs`: trailing slashes, page reset, `toApiError` in fetchers, users edit
+   dialog, field errors onto the form; decide Fix first #1.
+4. ~~`chore/ci-hardening`~~ done.
 5. `perf/set-queries`: the `irrigation_task` index and the three N+1 shapes behind new
    set-oriented repository methods; sync streamer handler.
 6. `chore/migration-safety`: per-migration transactions and lock timeout, `created_date`
