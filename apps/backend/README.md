@@ -66,7 +66,14 @@ tests/                        pytest, SQLite
   `interfaces/api/helpers/errors.py`; endpoints never build error bodies.
 - **Flow runner safety.** Commands are published before task state is persisted, and two limits
   apply: `FLOW_RUNNER_MAX_IRRIGATION_MINUTES` (a task is stopped regardless of readings) and
-  `FLOW_RUNNER_MAX_READING_AGE_MINUTES` (stale readings never start irrigation).
+  `FLOW_RUNNER_MAX_READING_AGE_MINUTES` (stale readings never start irrigation). A tick with any
+  failure leaves the heartbeat file stale (the container healthcheck); ten failing ticks in a row
+  stop the scheduler and end the process with exit code 1, so the restart policy takes over
+  (`ControlLoop` in `flow_runner.py`; a `sys.exit` inside the job would be swallowed by APScheduler).
+- **Streamer acknowledgements.** Offsets are committed only after the handler returned. A database
+  error nacks the message (seek back, retry after `DB_RETRY_SECONDS`) so an outage loses nothing;
+  a bad payload is rejected and skipped. `/health` on port 8081 (inside the container) pings the
+  broker and is the compose healthcheck.
 - **Lists** are newest-first by default (`order_by=id desc`), paginated with `page` / `size`.
 
 ## Authentication

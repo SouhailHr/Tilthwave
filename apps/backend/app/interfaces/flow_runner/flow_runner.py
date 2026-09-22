@@ -16,6 +16,7 @@ import pathlib
 import signal
 import sys
 
+from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 import common.constants as global_constants
@@ -30,6 +31,10 @@ logger = logging.getLogger(__name__)
 HEARTBEAT_FILE = pathlib.Path("/tmp/flow-runner.heartbeat")
 # Consecutive failed ticks before the process exits and lets the restart policy take over.
 MAX_CONSECUTIVE_FAILURES = 10
+
+
+class ControlLoopFailed(RuntimeError):
+    """MAX_CONSECUTIVE_FAILURES ticks failed in a row; the process must end (see ControlLoop)."""
 
 
 class ZoneAutomaticIrrigationHelper:
@@ -158,16 +163,14 @@ class ZoneAutomaticIrrigationHelper:
             cls.stop_irrigation(zone=zone, task_to_stop=task_in_progress, reason=reason)
 
     @classmethod
-    def auto_irrigation(cls):
+    def auto_irrigation(cls) -> int:
         """
         One control-loop tick: for each zone, start or stop irrigation as needed, then close the
         water sources when nothing is irrigating.
 
         A failure in one zone (e.g. the broker is down) is logged and must not prevent the other
-        zones from being evaluated; the next tick retries. A tick with any failure does not
-        refresh the heartbeat, and MAX_CONSECUTIVE_FAILURES failed ticks in a row end the process,
-        so a broken loop is visible to the container healthcheck and restart policy instead of
-        logging forever while a valve may be open.
+        zones from being evaluated; the next tick retries.
+        @return: how many steps of this tick failed
         """
         failures = 0
         zones = [zone.to_dict() for zone in cls.zone_use_case.filter()]
@@ -185,6 +188,24 @@ class ZoneAutomaticIrrigationHelper:
                 failures += 1
                 logger.exception("Could not close all water sources; retrying next tick")
 
+        return failures
+
+    @classmethod
+    def tick(cls) -> None:
+        """
+        The scheduled job: one tick plus the failure accounting.
+
+        A tick with any failure does not refresh the heartbeat, so a broken loop goes stale for
+        the container healthcheck; MAX_CONSECUTIVE_FAILURES failed ticks in a row raise
+        ControlLoopFailed, which ControlLoop turns into a process exit. A failure before any zone
+        could be evaluated (the database is down, so listing the zones raised) is a failed tick
+        like any other and counts the same way.
+        """
+        try:
+            failures = cls.auto_irrigation()
+        except Exception:
+            failures = 1
+            logger.exception("Tick failed before the zones could be evaluated")
         cls._record_tick(failures)
 
     @classmethod
@@ -195,30 +216,61 @@ class ZoneAutomaticIrrigationHelper:
             return
         cls.consecutive_failures += 1
         if cls.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
-            logger.critical("%d consecutive failing ticks; exiting so the container restarts", cls.consecutive_failures)
-            sys.exit(1)
+            raise ControlLoopFailed(f"{cls.consecutive_failures} consecutive failing ticks")
+
+
+class ControlLoop:
+    """
+    The scheduler around the tick, plus the one thing APScheduler will not do for us: end the
+    process when the loop gives up.
+
+    A job that raises SystemExit stops nothing: the executor catches BaseException, logs "Job
+    raised an exception" and schedules the next run, so an exit inside the tick leaves the
+    container unhealthy but alive, forever. Instead the tick raises ControlLoopFailed, the
+    EVENT_JOB_ERROR listener below stops the scheduler, start() returns and run() exits non-zero,
+    which is what the restart policy reacts to. Any other exception from a tick is one bad tick:
+    already logged, retried on the next run.
+    """
+
+    def __init__(self, scheduler_cls=BlockingScheduler, **job_options):
+        self.failure: ControlLoopFailed | None = None
+        self.scheduler = scheduler_cls()
+        self.scheduler.add_job(
+            ZoneAutomaticIrrigationHelper.tick,
+            "interval",
+            minutes=settings.FLOW_RUNNER.MINUTES,
+            max_instances=1,
+            coalesce=True,
+            **job_options,
+        )
+        self.scheduler.add_listener(self._on_job_error, EVENT_JOB_ERROR)
+
+    def _on_job_error(self, event) -> None:
+        if not isinstance(event.exception, ControlLoopFailed):
+            return
+        self.failure = event.exception
+        logger.critical("%s; stopping so the container restarts", event.exception)
+        self.scheduler.shutdown(wait=False)
+
+    def start(self) -> int:
+        """Blocks until the scheduler stops. Returns the process exit code."""
+        self.scheduler.start()
+        return 1 if self.failure else 0
 
 
 def run():
     configure_logging(settings.LOG_LEVEL)
     ZoneAutomaticIrrigationHelper.configure(worker_use_cases())
     logger.info("................ Starting Flow Runner (every %s min) .........", settings.FLOW_RUNNER.MINUTES)
-    scheduler = BlockingScheduler()
-    scheduler.add_job(
-        ZoneAutomaticIrrigationHelper.auto_irrigation,
-        "interval",
-        minutes=settings.FLOW_RUNNER.MINUTES,
-        max_instances=1,
-        coalesce=True,
-    )
+    loop = ControlLoop()
 
     def shutdown(signum, _frame):
         logger.info("Received signal %s, shutting down the scheduler", signum)
-        scheduler.shutdown(wait=False)
+        loop.scheduler.shutdown(wait=False)
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
-    scheduler.start()  # blocks until shutdown; no busy loop
+    sys.exit(loop.start())  # blocks until shutdown; no busy loop
 
 
 if __name__ == "__main__":
