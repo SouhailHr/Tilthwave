@@ -82,33 +82,16 @@ Correctness and contract
 - **[A] Timestamps are `str(datetime)` of a naive UTC column** ("2026-09-15 16:06:56.266864"),
   not ISO 8601. The web compensates in `utils/dates.ts`; any new client using `Date.parse` reads
   them as local time. Fix: `d.replace(tzinfo=UTC).isoformat()` in the adapter.
-- **[A] Streamer handler is `async def` calling sync SQLAlchemy** (`run_streamer.py:41-46`), so
-  every insert blocks the event loop and a DB stall stalls Kafka polling. Make it `def` (FastStream
-  runs sync handlers in a thread); set `expire_on_commit=False` to drop the `refresh` round trip.
 - **[A] Simulator retries a wrong password forever, silently.** `api_client.py:29-47` treats 400
   as "admin not seeded yet" and the backend returns 400 for bad credentials. Log the body on 400.
 
-Performance (all O(N) where O(1) is easy; the Repository only exposes per-entity
-`filter` / `first` / `count`, so every facade above it composes N small queries)
+Performance (`perf/set-queries` gave the repository set-oriented reads: `count_by`,
+`latest_per_sensor`, `monthly_consumption`; the tick, the dashboard and the sensor list use them)
 
-- **[A] Flow-runner tick ≈ 400 queries at 50 zones**: per zone the in-progress task, the zone
-  sensors, one sensor lookup per zone-sensor for its type and one `first()` per sensor for the
-  latest record; then `produce()` + `flush(5)` synchronously per command, so a slow broker makes
-  the heartbeat stale. Fix: reuse the one in-progress-tasks query already made at `:181`,
-  `zone_sensors JOIN sensor` for all zones, `SELECT DISTINCT ON (sensor_serial_number) ... ORDER BY
-  sensor_serial_number, created_date DESC` (uses the existing index); one flush per zone.
-- **[A] `/dashboard/summary` ≈ 125 queries** and loads every `sensor_record` of every water
-  source into Python for the yearly sum; polled every 30 s per open tab. Fix: `GROUP BY status`
-  (3 queries instead of 16 counts), `COUNT(*) WHERE zone_name IN (subquery)` for switchers and
-  trees, `SUM((data->>'consumption')::numeric) GROUP BY date_trunc('month', created_date)`.
-- **[A] Sensor list `_enrich_item` is a per-row query**: 21 queries for a page of 20, 101 for the
-  FK picker. Fix: an `_enrich_items(entities)` hook with three `IN` queries.
-- **[A] `/zones/stats/{zone}` loads all records of all zone sensors to keep 15** (`zone.py:336`),
-  and runs the in-progress/completed task queries twice each (`:376-389`). No web caller.
-- **[A] Missing index `irrigation_task(zone_name, status)`**; the flow runner filters on it per
-  zone per tick and the dashboard counts by status.
-- **[A] Engine pool is default** (5 + 10, no `pool_recycle`) while the API threadpool allows 40
-  concurrent handlers. Set `pool_size`, `max_overflow`, `pool_recycle=1800`.
+- **[A] Every command still does `produce()` + `flush(5)` synchronously** (`zone.py:290-296`): a
+  tick that starts many zones on a slow broker runs minutes. Kept on purpose for now: the
+  publish-then-persist invariant needs the ack before the task row changes. One flush per zone
+  would need the gateway to batch acks; revisit if ticks ever approach `FLOW_RUNNER_MINUTES`.
 
 Data and migrations
 
@@ -240,8 +223,7 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 3. `fix/web-contract-bugs`: trailing slashes, page reset, `toApiError` in fetchers, users edit
    dialog, field errors onto the form; decide Fix first #1.
 4. ~~`chore/ci-hardening`~~ done.
-5. `perf/set-queries`: the `irrigation_task` index and the three N+1 shapes behind new
-   set-oriented repository methods; sync streamer handler.
+5. ~~`perf/set-queries`~~ done.
 6. ~~`chore/migration-safety`~~ done.
 7. `refactor/use-case-wiring`: delete the unconsumed surface, inject collaborators, the sensor-type
    guard, `TENANT_SCOPE` as an object. Largest; last.

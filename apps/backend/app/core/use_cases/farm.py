@@ -1,5 +1,6 @@
 import logging
 
+from common.dates import utc_now
 from core.entities.farm import Farm as FarmEntity
 from core.use_cases.base import BaseUseCase
 from core.use_cases.water_source import WaterSourceUseCase
@@ -66,81 +67,61 @@ class FarmUseCase(BaseUseCase):
 
         return water_sources
 
+    def _zone_names(self, farm_name: str) -> list[str]:
+        return [zone.zone_name for zone in self.get_all_zones(farm_name=farm_name)]
+
     def get_total_water_switchers(self, farm_name: str):
         """
-         Get total water switchers in the farm
-         1- get all farm zones
-         2 - for each zone get all water switcher and add them to the total
+         Number of water switchers in the farm: one count over the farm's zones, not one query per zone.
         @param farm_name:
         @return: int number of water switchers in the farm
         """
-        farm_water_switchers_count = 0
-        zones = self.get_all_zones(farm_name=farm_name)
-        for zone in zones:
-            nb_water_switchers = len(self.zone_use_case.get_zone_water_switchers(zone_name=zone.zone_name))
-            farm_water_switchers_count += nb_water_switchers
-        return farm_water_switchers_count
+        zones = self._zone_names(farm_name)
+        if not zones:
+            return 0
+        return self.water_switcher_repo.count([{"attribute": "zone_name", "value": zones, "condition": "in"}])
 
     def get_total_trees(self, farm_name: str):
         """
-         Get total trees in the farm
+         Number of trees in the farm: one count over the farm's zones.
         @param farm_name:
         @return: int number of trees in the farm
         """
+        zones = self._zone_names(farm_name)
+        if not zones:
+            return 0
+        return self.tree_repo.count([{"attribute": "zone_name", "value": zones, "condition": "in"}])
 
-        farm_trees_count = 0
-        zones = self.get_all_zones(farm_name=farm_name)
-        for zone in zones:
-            nb_trees = len(self.zone_use_case.get_zone_trees(zone_name=zone.zone_name))
-            farm_trees_count += nb_trees
-        return farm_trees_count
+    MONTH_NAMES = (
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    )
 
     def get_total_water_consumption_by_month(self, farm_name: str):
         """
-        Get total water consumption from all water sources for this year by month.
-
-        Logic:
-        1. Get all farm water sources.
-        2. Get consumption for each water source by month and add it to total consumption for that month.
-        3. Add the total consumption for the month to the dict result of all year.
-
+        Total water consumption of the farm's water sources this year, per month, as the chart
+        wants it: {"January": {"Total": 2000}, ...}. One aggregate query over every source
+        sensor of the farm (see SensorRecordDBRepository.monthly_consumption); this used to load
+        every record of every source into Python.
         @param farm_name: Name of the farm.
-        @return: Dictionary with total water consumption per month.
         """
-        # Initialize dictionary for the result
-        total_consumption_by_month = {month: {"Total": 0} for month in range(1, 12 + 1)}
-
-        # Fetch all water sources for the given farm name
-        farm_water_sources = self.get_total_water_sources(farm_name=farm_name)
-
-        for water_source in farm_water_sources:
-            # Get monthly consumption for the current water source
-            monthly_consumption = self.water_source_use_case.get_water_consumption_for_the_year_by_month(
-                sensor_serial_number=water_source.sensor_serial_number
-            )
-
-            # Aggregate consumption into the total for each month
-            for month, consumption in monthly_consumption.items():
-                total_consumption_by_month[month]["Total"] += consumption
-
-        # Convert month numbers to month names
-        month_names = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
+        serials = [
+            source.sensor_serial_number
+            for source in self.get_total_water_sources(farm_name=farm_name)
+            if source.sensor_serial_number
         ]
-        result = {month_names[month - 1]: total_consumption_by_month[month] for month in total_consumption_by_month}
-
-        return result
+        monthly = self.sensor_record_repo.monthly_consumption(serials, utc_now().year)
+        return {name: {"Total": monthly.get(month, 0)} for month, name in enumerate(self.MONTH_NAMES, start=1)}
 
     def get_stats(self, name: str):
         """
@@ -168,12 +149,17 @@ class FarmUseCase(BaseUseCase):
             }
         }
         """
+        zones = self._zone_names(name)
+        in_zones = [{"attribute": "zone_name", "value": zones, "condition": "in"}]
+        sources = self.get_total_water_sources(farm_name=name)
+        serials = [source.sensor_serial_number for source in sources if source.sensor_serial_number]
+        monthly = self.sensor_record_repo.monthly_consumption(serials, utc_now().year)
         farm_stats: dict = {
-            "total_zones": len(self.get_all_zones(farm_name=name)),
-            "total_water_sources": len(self.get_total_water_sources(farm_name=name)),
-            "total_water_switchers": self.get_total_water_switchers(farm_name=name),
-            "total_trees": self.get_total_trees(farm_name=name),
-            "chart_data": self.get_total_water_consumption_by_month(farm_name=name),
+            "total_zones": len(zones),
+            "total_water_sources": len(sources),
+            "total_water_switchers": self.water_switcher_repo.count(in_zones) if zones else 0,
+            "total_trees": self.tree_repo.count(in_zones) if zones else 0,
+            "chart_data": {name_: {"Total": monthly.get(m, 0)} for m, name_ in enumerate(self.MONTH_NAMES, start=1)},
         }
 
         return farm_stats

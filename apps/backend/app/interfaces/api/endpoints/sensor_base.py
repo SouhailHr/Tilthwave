@@ -209,10 +209,12 @@ class SensorCrudHelper(BaseCrud):
     # ---- list -------------------------------------------------------------------------------
 
     @classmethod
-    def _enrich_item(cls, entity) -> dict:
-        """Each listed sensor carries `assigned_to`: the zone name or the switcher/source serial."""
-        sensor_dict = entity.to_public_dict()
-        sensor_dict["assigned_to"] = cls.USE_CASE_INSTANCE.check_if_sensor_is_assigned(
-            sensor_serial_number=entity.serial_number, sensor_type=entity.type
-        )
-        return sensor_dict
+    def _enrich_items(cls, entities) -> list[dict]:
+        """
+        Each listed sensor carries `assigned_to`: the zone name or the switcher/source serial.
+        Looked up for the whole page in three queries, not one per row (a page of 20 was 21
+        queries; the FK picker's page of 100 was 101).
+        """
+        entities = list(entities)
+        assigned = cls.USE_CASE_INSTANCE.assignments_for(entities)
+        return [{**entity.to_public_dict(), "assigned_to": assigned.get(entity.serial_number)} for entity in entities]

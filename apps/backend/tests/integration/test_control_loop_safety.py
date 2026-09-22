@@ -4,7 +4,6 @@ giving up after MAX_CONSECUTIVE_FAILURES ends the process (APScheduler swallows 
 job), and a database outage makes the streamer retry the message instead of skipping it.
 """
 
-import asyncio
 import threading
 import time
 from datetime import UTC, datetime
@@ -101,11 +100,11 @@ def test_database_outage_nacks_the_message_instead_of_skipping_it(monkeypatch):
     monkeypatch.setattr(run_streamer, "DB_RETRY_SECONDS", 0)
 
     with pytest.raises(NackMessage):
-        asyncio.run(run_streamer.sensors_streamer({"event_type": "data_record", "sensor_serial_number": "MSN1"}))
+        run_streamer.sensors_streamer({"event_type": "data_record", "sensor_serial_number": "MSN1"})
 
 
 def test_a_bad_payload_is_rejected_not_retried():
     from interfaces.streamer import run_streamer
 
     with pytest.raises(UseCaseException):
-        asyncio.run(run_streamer.sensors_streamer({"event_type": "bogus"}))
+        run_streamer.sensors_streamer({"event_type": "bogus"})

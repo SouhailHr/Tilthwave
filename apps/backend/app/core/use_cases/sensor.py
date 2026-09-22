@@ -114,6 +114,31 @@ class SensorUseCase(BaseUseCase):
 
         return assigned
 
+    def assignments_for(self, sensors) -> dict:
+        """
+        What each sensor is attached to, for a whole page at once: {serial_number: zone name |
+        switcher serial | source serial | None}. Three `IN` queries (one per link table) instead
+        of one query per sensor.
+        """
+        sensors = list(sensors)
+        by_type: dict = {}
+        for sensor in sensors:
+            by_type.setdefault(sensor.type, []).append(sensor.serial_number)
+        assigned: dict = {}
+
+        def lookup(repo, serials, label):
+            if not serials:
+                return
+            rows = repo.filter([{"attribute": "sensor_serial_number", "value": serials, "condition": "in"}])
+            for row in rows:
+                assigned[row.sensor_serial_number] = getattr(row, label)
+
+        lookup(self.water_source_repo, by_type.get(global_constants.SOURCE_SENSOR, []), "serial_number")
+        lookup(self.water_switcher_repo, by_type.get(global_constants.SWITCHER_SENSOR, []), "serial_number")
+        zone_serials = [sn for type_, sns in by_type.items() if type_ in global_constants.ZONE_SENSORS for sn in sns]
+        lookup(self.zone_sensors_repo, zone_serials, "zone_name")
+        return {sensor.serial_number: assigned.get(sensor.serial_number) for sensor in sensors}
+
     def check_if_sensors_are_assigned(self, sensors: list):
         """
         This method checks if the sensors are assigned or not :

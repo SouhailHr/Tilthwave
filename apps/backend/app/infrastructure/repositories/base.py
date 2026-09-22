@@ -63,7 +63,11 @@ class BaseDBRepo:
         @rtype: sqlalchemy.engine.base.Engine
         """
         try:
-            return create_engine(uri, echo=echo, pool_pre_ping=True)
+            # The API threadpool runs up to 40 sync handlers at once; the default pool (5 + 10)
+            # would make a burst above 15 wait up to pool_timeout. pool_recycle drops connections
+            # before a proxy or Postgres idle timeout can, pool_pre_ping catches the rest.
+            pool = {"pool_size": 10, "max_overflow": 20} if uri.startswith("postgresql") else {}
+            return create_engine(uri, echo=echo, pool_pre_ping=True, pool_recycle=1800, **pool)
         except Exception as e:
             raise DBReposException(f"Error creating engine: {e}") from e
 
@@ -344,6 +348,22 @@ class BaseDBRepo:
         """
         result = self.filter(filters, order_by, order_direction, limit=1)
         return result[0] if result else None
+
+    def count_by(self, attribute: str) -> dict:
+        """
+        Row counts grouped by one column, within the caller's farm: {value: count}. One query
+        where a count per value would be one each.
+        """
+        session = self.Session()
+        try:
+            column = self._column(attribute)
+            query = self._apply_tenant(session.query(column, func.count(self.MODEL.id)), session).group_by(column)
+            return {value: n for value, n in query.all()}
+        except Exception as e:
+            session.rollback()
+            raise self._translate("counting", e) from e
+        finally:
+            session.close()
 
     def count(self, filters):
         """
