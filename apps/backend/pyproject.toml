@@ -11,7 +11,7 @@ dependencies = [
     "pydantic-settings==2.15.0",
     # Security
     "PyJWT==2.14.0",           # replaces python-jose (unfixed CVEs, ecdsa dependency)
-    "bcrypt==4.3.0",           # used directly (core/security/password.py); passlib is gone
+    "bcrypt==5.0.0",           # used directly (core/security/password.py); passlib is gone
     # Database
     "psycopg2-binary==2.9.13",   # wheels for py3.12; no libpq/compiler needed
     "SQLAlchemy==2.0.43",
