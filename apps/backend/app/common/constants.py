@@ -63,7 +63,8 @@ RESOURCES_FOR_ROLES = {
         "account": ["read", "write", "update"],
     },
     "worker": {
-        "users": ["read"],
+        # No "users": the staff list (email, phone, name of every colleague) is for admins and
+        # owners; a worker's own profile comes from /account.
         "farms": ["read"],
         "sensors": ["read"],
         "zones": ["read"],
@@ -78,7 +79,8 @@ RESOURCES_FOR_ROLES = {
         "account": ["read", "write", "update"],
     },
     "engineer": {
-        "users": ["read"],
+        # No "users": the staff list (email, phone, name of every colleague) is for admins and
+        # owners; a worker's own profile comes from /account.
         "farms": ["read"],
         "sensors": ["read"],
         "zones": ["read"],

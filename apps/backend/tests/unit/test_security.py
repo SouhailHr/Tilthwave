@@ -66,7 +66,7 @@ def test_method_to_action(method, action):
         ("owner", "sensor-records", "write", False),  # nobody may write records through the API
         ("worker", "zones", "update", False),  # the former PATCH->read escalation
         ("worker", "trees", "update", True),
-        ("engineer", "users", "read", True),
+        ("engineer", "users", "read", False),
         ("engineer", "users", "write", False),
         ("worker", "unknown-resource", "read", False),
         ("ghost", "users", "read", False),

@@ -96,7 +96,7 @@ def test_change_password_rotates_this_cookie_session_and_signs_the_others_out(cl
     # The other device: its token carries the old password fingerprint.
     response = client.get("/zones/", headers=other_device)
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid or expired token"}
+    assert response.json()["detail"] == "Invalid or expired token"
     # And only the new password logs in now. The jar still holds the re-issued session cookie, so
     # these POSTs are cookie-authenticated and must carry the (rotated) CSRF header, exactly as
     # the browser does; without it the CSRF gate answers 403 before login is even looked at.

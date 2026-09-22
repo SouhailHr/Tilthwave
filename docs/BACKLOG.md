@@ -72,11 +72,9 @@ Correctness and contract
 - **[A] Stats routes: two path shapes and 200-with-zeros for unknown names.** `/sensors/stats/`
   vs `/farms/stats/{farm_name}`; `farm.get_stats` and `zone.get_zone_data` never check the name
   exists, so a typo looks like an empty farm. Check existence first, 404 otherwise.
-- **[A] Error envelope has no machine-readable code.** `helpers/errors.py` emits `{"detail": str}`
-  only; use-case 422s carry a string while validation 422s carry a list, so the web branches on
-  type. The web parses `error_code`, `request_id`, `message`, `errors`, none of which is sent. Fix:
-  `CLIENT_FACING` values `(status, code)`, emit `{"detail", "code"}`; login stays 400 (the
-  simulator retries on it as "admin not seeded yet"), so document that.
+- **[A] Two 422 shapes.** Use-case 422s carry a string `detail`, validation 422s a list, so the
+  web branches on type; login stays 400 (the simulator retries on it as "admin not seeded yet").
+  The envelope itself carries `error_code` and `request_id` since `chore/boundaries-and-health`.
 - **[A] Success bodies reuse `detail`** (`auth.py:114`, `account.py:60,65`) and login has two
   response shapes keyed on `use_cookie`. Use `{"message"}` for success and one `LoginResponse`.
 - **[A] Timestamps are `str(datetime)` of a naive UTC column** ("2026-09-15 16:06:56.266864"),
@@ -115,31 +113,17 @@ Data and migrations
 
 Operations
 
-- **[A] No request / correlation id anywhere.** `errors.py` logs method + path only; api,
-  streamer and flow runner share nothing but the wall clock; the web already reads `request_id`.
-  Fix: a small ASGI middleware setting `X-Request-ID` into a ContextVar + `logging.Filter`, included
-  in the 500 body.
-- **[A] Observability is level 1**: plain-text logs via `basicConfig`, no metrics, and
-  healthchecks cannot trigger restarts (`restart: unless-stopped` fires on exit only; the streamer
-  now has one, `/health`, but a failing check still only shows in `docker ps`). Either monitor
-  health externally or run an autoheal sidecar.
+- **[A] Observability is level 2 at best**: request ids on every response and log line now, but
+  plain-text logs via `basicConfig`, no metrics, and healthchecks cannot trigger restarts
+  (`restart: unless-stopped` fires on exit only; a failing check only shows in `docker ps`).
+  Either monitor health externally or run an autoheal sidecar.
 - **[A] `UVICORN_WORKERS` falls back to `2` in `docker/api/entrypoint.sh:18`** but `1` in compose;
   a non-compose run doubles the login rate limit.
 - **[A] `mail.py:45-47` logs and continues after the 202**; the user never learns the reset mail
   failed. Acceptable, but it is the one true log-and-continue in the backend.
 
-Security (Lows; policy decisions, none exploitable for data today)
+Security (Lows)
 
-- **[A] Rate-limit key trusts the first `X-Forwarded-For` hop** (`rate_limit.py:70-73`) when
-  `API_TRUSTED_PROXIES` names the proxy but `FORWARDED_ALLOW_IPS` does not; an attacker then gets a
-  fresh bucket per request. Take the rightmost hop not in `TRUSTED_PROXIES`, or rely on uvicorn's
-  proxy headers alone.
-- **[A] `worker` and `engineer` have `users:read`**: all staff PII, including through the
-  simulator's worker credential. Drop it (the web's own profile comes from `/account`) or return a
-  reduced projection for non-superusers.
-- **[A] Live reset link written to the log when `SMTP_HOST` is unset.** Fine locally; a
-  production stack that forgets SMTP logs every reset token. Gate on an explicit flag, or refuse
-  startup when `API_COOKIE_SECURE=true` and SMTP is unset.
 - **[A] No server-side revocation**: a captured JWT stays valid up to 120 min after logout; only a
   password change or deactivation kills it. Accepted for the stateless design.
 
@@ -187,13 +171,26 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
   FK-violation → 409 path behaves differently in production. The migrations job already has a
   Postgres service.
 
+Decisions recorded (not work items)
+
+- **`Float`, not `NUMERIC`**, for farm size, tree dimensions, water pressure/volume and the
+  consumption readings: they are measurements, not money. If consumption ever feeds billing, the
+  sum in `SensorRecordDBRepository.monthly_consumption` and the columns move to `NUMERIC`.
+- **No refresh token.** One 120-minute httpOnly session, invalidated by the password
+  fingerprint; re-login after that. Shorter sessions plus rotated refresh tokens would be the
+  next step if the dashboard is ever used all day on shared machines.
+- **Publish-then-persist instead of an outbox.** The flow runner needs the broker's ack before a
+  task row can claim a valve is open; an outbox would record the intent first. The compensating
+  action for a publish that succeeded without its persist is the next tick's
+  `close_all_water_sources`.
+
 ## Deploy / CI (`deploy`, `.github`)
 
 - **[A] No coverage collection anywhere** (no `pytest-cov`, no `@vitest/coverage-v8`).
 - **Production profile.** Production is Coolify (`deploy/README.md`): its Traefik is the TLS
   proxy, its environment is the prod profile, `db-backup` is the backup schedule, HSTS is sent by
-  the apps. Still open: `SMTP_TIMEOUT_SECONDS` exists in settings but compose does not forward
-  it; nothing verifies the Coolify environment holds the production values from the checklist.
+  the apps. Still open: nothing verifies the Coolify environment holds the production values from
+  the checklist.
 - **Base images by tag without digest**
   (`python:3.12-slim`, `node:22-alpine`, `postgres:16-alpine`, Redpanda, console). Dependabot
   covers the docker ecosystem, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev`

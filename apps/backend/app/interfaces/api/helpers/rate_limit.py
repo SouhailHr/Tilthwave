@@ -63,15 +63,20 @@ login_rate_limiter = SlidingWindowRateLimiter(limit=settings.API.LOGIN_RATE_LIMI
 
 def client_ip(request: Request) -> str:
     """
-    The caller's address: the TCP peer, or the first X-Forwarded-For hop when the peer is a
-    trusted proxy.
+    The caller's address for the rate-limit key: the TCP peer, or, when the peer is a trusted
+    proxy, the rightmost X-Forwarded-For hop that is not itself a trusted proxy. The leftmost hop
+    is whatever the client sent; taking it let anyone behind the proxy pick a fresh bucket per
+    request by prepending a random address.
     """
     peer = request.client.host if request.client else "unknown"
-    if peer in settings.API.TRUSTED_PROXIES:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-    return peer
+    trusted = set(settings.API.TRUSTED_PROXIES)
+    if peer not in trusted:
+        return peer
+    hops = [hop.strip() for hop in request.headers.get("x-forwarded-for", "").split(",") if hop.strip()]
+    for hop in reversed(hops):
+        if hop not in trusted:
+            return hop
+    return hops[0] if hops else peer
 
 
 def limit_login_attempts(request: Request) -> None:

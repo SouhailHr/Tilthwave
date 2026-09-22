@@ -44,6 +44,7 @@ class ZoneCreate(BaseModel):
         return self
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "farm_name": "Sunny Farms",
@@ -56,7 +57,7 @@ class ZoneCreate(BaseModel):
                 "saturation_trigger_start": 60,
                 "saturation_trigger_stop": 90,
             }
-        }
+        },
     )
 
 

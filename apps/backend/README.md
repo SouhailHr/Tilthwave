@@ -67,7 +67,9 @@ tests/                        pytest, SQLite
   non-HTTP callers (flow runner, streamer, scripts) run unscoped. `without_tenant()` is the
   explicit escape hatch, used only for the caller's own account (profile, password), where the
   row is the caller's by construction and a farm-less bootstrap admin must still reach it.
-- **Authorization.** `RBACMiddleware` checks role × method × resource before the endpoint runs.
+- **Authorization.** `RBACMiddleware` checks role × method × resource before the endpoint runs
+  (`common/constants.py`). Workers and engineers do not see `/users`: the staff list is for admins
+  and owners; everyone's own profile is `/account`.
 - **Errors.** Domain exceptions (`common/exceptions.py`) become HTTP responses in one place,
   `interfaces/api/helpers/errors.py`; endpoints never build error bodies.
 - **Flow runner safety.** Commands are published before task state is persisted, and two limits
@@ -102,13 +104,21 @@ refused as session tokens.
 Login and forgot/reset password are rate-limited per client IP, in separate windows
 (`API_LOGIN_RATE_LIMIT_PER_MINUTE`, in-process per worker; keep `UVICORN_WORKERS=1` or limit at
 the proxy). The client IP is the TCP peer unless it is in `API_TRUSTED_PROXIES`, in which case
-`X-Forwarded-For` is used. Unknown usernames are verified against a fixed hash so the response
+the rightmost `X-Forwarded-For` hop that is not a trusted proxy is used (a client cannot pick
+its own bucket by prepending addresses). Unknown usernames are verified against a fixed hash so the response
 time does not reveal whether the account exists.
 
 ## Endpoints
 
 Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (the compose stack sets it; the default
 is off).
+
+Errors use one envelope, `{"detail", "error_code", "request_id"}`: the message is for people, the
+code (`not_found`, `conflict`, `invalid_filter`, `unprocessable`, `broker_unavailable`,
+`unauthenticated`, `csrf`, `forbidden`, `database_error`, `internal_error`) is what a client
+branches on, and the id is on the `X-Request-ID` response header and on every log line written
+while handling that request (send your own `X-Request-ID` to have it echoed). Request bodies are
+closed: an unknown field is a 422, on every create, update and auth schema.
 
 URL shape is part of the contract: collections end with a slash (`/zones/`), items do not
 (`/zones/1`), and a mismatch is a 404, never a redirect (`redirect_slashes=False`).
@@ -120,11 +130,13 @@ URL shape is part of the contract: collections end with a slash (`/zones/`), ite
 | `/dashboard` | `GET summary/`: counts for the dashboard cards, computed in SQL |
 | `/farms`, `/zones`, `/trees`, `/sensors`, `/water-sources`, `/water-switchers`, `/irrigation-tasks`, `/users` | CRUD, paginated lists, tenant-scoped |
 | `/zone-sensors`, `/sensor-records` | links and raw readings |
-| `/health` | liveness, unauthenticated |
+| `/health`, `/health/ready` | liveness (process up; the container healthcheck) and readiness (`SELECT 1`, 503 when the database is unreachable); unauthenticated |
 
 `POST /auth/password/forgot` always returns 202. When the identifier matches a user, a reset link
 (`API_WEB_BASE_URL/reset-password?token=...`) is emailed via SMTP; with no `SMTP_HOST` configured
-the message, link included, is written to the API log instead (`make logs s=api`).
+the message, link included, is written to the API log instead (`make logs s=api`), unless
+`API_COOKIE_SECURE=true` (a TLS deployment), where a live reset link has no place in the logs and
+the mail is dropped with an error line instead.
 
 ## Configuration
 

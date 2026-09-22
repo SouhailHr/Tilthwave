@@ -32,6 +32,7 @@ class UserCreate(BaseModel):
     is_superuser: bool | None = Field(default=False, description="Indicates if the user has superuser privileges.")
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "username": "johndoe",
@@ -44,7 +45,7 @@ class UserCreate(BaseModel):
                 "farm_name": "Sunny Farms",
                 "phone_number": "123-456-7890",
             }
-        }
+        },
     )
 
 

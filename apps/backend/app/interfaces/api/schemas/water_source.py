@@ -19,6 +19,7 @@ class WaterSourceCreate(BaseModel):
     serial_number: str = Field(description="Unique serial number of the Water source")
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "farm_name": "Sunny Farms",
@@ -29,7 +30,7 @@ class WaterSourceCreate(BaseModel):
                 "status": global_constants.STATUS_ON,
                 "serial_number": "WSDEEP00123",
             }
-        }
+        },
     )
 
 

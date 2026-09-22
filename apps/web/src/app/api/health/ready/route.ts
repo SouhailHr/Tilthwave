@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 /**
- * Real readiness: is the backend API actually reachable, the way the backend's own /health
- * checks its database. Separate from /api/health (which the container's own HEALTHCHECK uses
+ * Real readiness: is the backend API reachable and ready (its /health/ready checks the
+ * database; its /health is liveness only). Separate from /api/health (which the container's own HEALTHCHECK uses
  * and must stay a pure liveness check - see that file). Meant for external monitoring, not for
  * anything that would restart this container on a downstream failure it can't fix.
  */
@@ -14,7 +14,7 @@ const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8080"
 
 async function checkApi(): Promise<"ok" | "unreachable"> {
   try {
-    const res = await fetch(`${API_INTERNAL_URL}/health`, {
+    const res = await fetch(`${API_INTERNAL_URL}/health/ready`, {
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
     return res.ok ? "ok" : "unreachable";

@@ -111,7 +111,7 @@ def test_deactivated_user_is_rejected_before_the_token_expires(client, auth_head
     repos.users.update(mallory.id, {"is_active": False})
     response = client.get("/zones/", headers=headers)
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid or expired token"}
+    assert response.json()["detail"] == "Invalid or expired token"
 
 
 def test_token_for_an_unknown_user_is_rejected(client, token_for):

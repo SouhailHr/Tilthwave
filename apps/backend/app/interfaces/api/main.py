@@ -24,6 +24,7 @@ from interfaces.api.endpoints import (
 from interfaces.api.helpers.auth import require_credential
 from interfaces.api.helpers.errors import register_exception_handlers
 from interfaces.api.helpers.permission import RBACMiddleware
+from interfaces.api.helpers.request_id import RequestIdMiddleware
 from interfaces.api.helpers.tenant import TenantContextMiddleware
 
 configure_logging(settings.LOG_LEVEL)
@@ -56,6 +57,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 app.add_middleware(TenantContextMiddleware)
+app.add_middleware(RequestIdMiddleware)  # outermost: ids every response, including the auth middlewares' 401/403
 
 
 @app.middleware("http")

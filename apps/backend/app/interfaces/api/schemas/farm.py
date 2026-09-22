@@ -16,6 +16,7 @@ class FarmCreate(BaseModel):
     size: float = Field(..., gt=0, description="The total area of the farm in acres.")
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "farm_name": "Sunny Farms",
@@ -23,7 +24,7 @@ class FarmCreate(BaseModel):
                 "location": {"latitude": 39.7817, "longitude": -89.6501},
                 "size": 120.0,
             }
-        }
+        },
     )
 
 
