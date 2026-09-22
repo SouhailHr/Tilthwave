@@ -5,31 +5,34 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import type { ApiError } from "@/api/errors";
+import { toApiError, type ApiError } from "@/api/errors";
 import type { EntityWithId, ListParams, Paginated } from "@/types/pagination";
+
+// URL shapes mirror the API's routes exactly: collections end with a slash (`/zones/`), items do
+// not (`/zones/1`). The API does not redirect a mismatch (redirect_slashes is off), so a wrong
+// shape is a loud 404 here rather than a silent extra round trip.
+//
+// Every fetcher rejects with an ApiError, so the `ApiError` type parameter on the hooks below is
+// true and error UIs show the API's message, not axios's "Request failed with status code 500".
+const rejectAsApiError = (err: unknown): never => {
+  throw toApiError(err);
+};
 
 export function fetchEntityList<T>(resource: string, params: ListParams = {}) {
   return api
     .get<Paginated<T>>(`/${resource}/`, { params })
-    .then((res) => res.data);
+    .then((res) => res.data, rejectAsApiError);
 }
 
 export function fetchEntity<T>(resource: string, id: number | string) {
-  return api.get<T>(`/${resource}/${id}/`).then((res) => res.data);
+  return api.get<T>(`/${resource}/${id}`).then((res) => res.data, rejectAsApiError);
 }
 
 export function createEntity<T, TInput = Partial<T>>(
   resource: string,
   input: TInput,
 ) {
-  // Generated once per call, not in the axios interceptor: the interceptor fires on every
-  // POST including /auth/login (which must never carry one: a replayed login must not be
-  // deduplicated into a stale session),
-  // and a global per-request key can't survive a retry of the same logical attempt. Scoping
-  // it here means it's tied to exactly one createEntity() invocation.
-  const headers =
-    typeof crypto !== "undefined" ? { "Idempotency-Key": crypto.randomUUID() } : undefined;
-  return api.post<T>(`/${resource}/`, input, { headers }).then((res) => res.data);
+  return api.post<T>(`/${resource}/`, input).then((res) => res.data, rejectAsApiError);
 }
 
 export function updateEntity<T, TInput = Partial<T>>(
@@ -37,11 +40,11 @@ export function updateEntity<T, TInput = Partial<T>>(
   id: number | string,
   input: TInput,
 ) {
-  return api.patch<T>(`/${resource}/${id}/`, input).then((res) => res.data);
+  return api.patch<T>(`/${resource}/${id}`, input).then((res) => res.data, rejectAsApiError);
 }
 
 export function deleteEntity(resource: string, id: number | string) {
-  return api.delete(`/${resource}/${id}/`).then(() => id);
+  return api.delete(`/${resource}/${id}`).then(() => id, rejectAsApiError);
 }
 
 export function entityListKey(resource: string, params: ListParams) {

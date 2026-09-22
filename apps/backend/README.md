@@ -105,6 +105,9 @@ time does not reveal whether the account exists.
 Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (the compose stack sets it; the default
 is off).
 
+URL shape is part of the contract: collections end with a slash (`/zones/`), items do not
+(`/zones/1`), and a mismatch is a 404, never a redirect (`redirect_slashes=False`).
+
 | Prefix | Notes |
 |---|---|
 | `/auth` | `login`, `logout`, `me`, `password/forgot`, `password/reset`, `token/verify/` |

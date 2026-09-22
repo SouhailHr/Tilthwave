@@ -16,42 +16,12 @@ password flow, newest-first lists, full timestamps, sensor assignment, the user-
 
 ## Fix first
 
-One item left. The control-loop items (`fix/control-loop-safety`) and the cross-tenant farm
-creation (`fix/tenancy-bind-self`) that headed this list are fixed.
-
-1. **[A] `Idempotency-Key` is advertised and never honoured.** The web sends one per create
-   (`_entity.ts:31-32`); the backend's only reference is the CORS allow-list (`main.py:51`).
-   `irrigation_task` and `sensor_records` have no unique key, so a retried POST creates two tasks
-   the flow runner acts on; on keyed resources the retry is a 409 shown as an error although the
-   first attempt succeeded. Decide: implement (a dependency on the create routes keyed
-   `(user_id, key)` that replays the stored response for ~24 h) or remove the header, the CORS
-   entry and the comment at `_entity.ts:25`.
+Empty: the control-loop items (`fix/control-loop-safety`), the cross-tenant farm creation
+(`fix/tenancy-bind-self`) and the `Idempotency-Key` decision (removed, `fix/web-contract-bugs`:
+mutations never auto-retry and the form disables submit while pending, so the header only made the
+contract lie) are done.
 
 ## Web (`apps/web`)
-
-Bugs
-
-- **[A] Search never resets pagination.** `entity-table.tsx:76` says "Reset to page 1 when the
-  debounced search value changes"; nothing calls `setPage(1)`. Searching from page 3 shows an empty
-  page. Fix: `useEffect(() => setPage(1), [debouncedSearch])`.
-- **[A] List/detail queries surface raw Axios errors.** `_entity.ts:68,79` type the error as
-  `ApiError` but the fetchers never call `toApiError`, so the dashboard, table and settings error
-  states print "Request failed with status code 500". Fix: `.catch((e) => { throw toApiError(e) })`
-  in the fetchers.
-- **[A] Trailing-slash 307 on every by-id call and on login.** `_entity.ts:18,40,44` call
-  `/{resource}/{id}/` and `auth.ts:39` `/auth/login/`; the backend routes are `/{id}` and `/login`
-  with `redirect_slashes` at its default. The whole middleware chain (including the tenant user
-  lookup) runs twice per call, and behind a proxy whose address is not in `FORWARDED_ALLOW_IPS` the
-  redirect `Location` is `http://`, so the `Secure` cookie is dropped and the second hop is a 401.
-  Fix: drop the slashes, then `FastAPI(redirect_slashes=False)` so any future mismatch is a loud
-  404.
-- **[A] Users edit dialog offers a Farm select the API discards.** `schemas/users.py:61` has
-  `farm_name ... exclude=True`; `users/page.tsx` puts it in `editFields` and sends it: 200, success
-  toast, farm unchanged. `UpdateUserInput` also still permits `is_superuser` and `password`, which
-  `extra="forbid"` rejects with 422. Fix: drop `farm_name` from the edit fields (or add an
-  admin-only `farm_name` to `UserUpdate`); narrow `UpdateUserInput` to what `UserUpdate` accepts.
-- **[A] 422 field errors are parsed and never shown.** `errors.ts:51` builds `fieldErrors`;
-  `EntityForm` never calls `form.setError` with them, so a 422 shows "Field required" with no field.
 
 Debt
 
@@ -69,8 +39,7 @@ Debt
   `min(8).max(72)` ×3 and the confirm-password refine ×2. Fix: `status-ui.ts`, shared
   `passwordSchema`.
 - **[A] Dead exports.** `users.ts` `fetchUsers`/`fetchUser`/`useUsers`/`useUser`/`useDeleteUser`
-  (the other seven `api/*.ts` were trimmed), `errors.ts` `toastDescription`, `useDisclosure`
-  `toggle`/`setOpen`; `_entity.ts` is imported by components despite the private-looking name.
+  (the other seven `api/*.ts` were trimmed), `useDisclosure` `toggle`/`setOpen`; `_entity.ts` is imported by components despite the private-looking name.
 - **Response validation.** Only `/auth/me` is Zod-parsed; the login body is discarded and the
   profile and every entity list are hand-typed and trusted. The decision behind it (OpenAPI codegen
   vs hand-written types) is open.
@@ -86,13 +55,12 @@ Debt
   query plus pure helpers; the RSC split buys little. Low priority.
 - **Headers and env.** No `Strict-Transport-Security` (belongs on the production proxy).
   `NEXT_PUBLIC_API_BASE_URL` is not validated at build time.
-- **[A] Tests: no form or page is tested.** `entity-form.tsx`, `entity-table.tsx`,
-  `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the `useCreateEntity` /
-  `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts` (two simultaneous
-  401s must emit `auth:expired` once). `_entity.test.ts` reaches into
-  `api.interceptors.response.handlers[0]`; drive it through `api.get()` with a mocked adapter.
-  First test to write: `entity-form.test.tsx` (empty submit → field errors, valid submit → parsed
-  values, 422 → errors mapped onto fields).
+- **[A] Tests: pages are untested.** `entity-form.tsx` and `entity-table.tsx` now have their
+  first tests (`fix/web-contract-bugs`); still none for `entity-crud-page.tsx`, the
+  login/forgot/reset/settings pages, the `useCreateEntity` / `useUpdateEntity` invalidation, and
+  the `isRedirecting` guard in `client.ts` (two simultaneous 401s must emit `auth:expired` once).
+  `_entity.test.ts` reaches into `api.interceptors.response.handlers[0]`; drive it through
+  `api.get()` with a mocked adapter.
 
 ## Backend (`apps/backend`)
 

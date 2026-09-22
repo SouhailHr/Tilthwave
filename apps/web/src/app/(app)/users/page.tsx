@@ -41,10 +41,12 @@ const createUserSchema = z.object({
 
 // No password here: a user changes their own in Settings, and a forgotten one goes through the
 // reset link on the sign-in page. An admin no longer types someone else's password into a form.
+// Nor a farm: the API ignores farm_name on PATCH (a user cannot be moved between farms), so
+// offering the select would show a success toast and change nothing.
 const updateUserSchema = z.object({
   ...baseUserShape,
   username: z.string(),
-});
+}).omit({ farm_name: true });
 
 type CreateUserValues = z.infer<typeof createUserSchema>;
 type UpdateUserValues = z.infer<typeof updateUserSchema>;
@@ -62,19 +64,22 @@ const contactFields: EntityFormField<CommonUserValues>[] = [
   { name: "last_name", label: "Last name", autoComplete: "family-name" },
 ];
 
-const accessFields: EntityFormField<CommonUserValues>[] = [
-  { name: "role", label: "Role", type: "select", options: roleOptions },
-  {
-    name: "farm_name",
-    label: "Farm",
-    type: "fk",
-    resource: "farms",
-    valueKey: "farm_name",
-    labelKey: "farm_name",
-    placeholder: "Select a farm",
-  },
-  { name: "is_active", label: "Active", type: "boolean" },
-];
+const roleField: EntityFormField<CommonUserValues> = {
+  name: "role",
+  label: "Role",
+  type: "select",
+  options: roleOptions,
+};
+const activeField: EntityFormField<CommonUserValues> = { name: "is_active", label: "Active", type: "boolean" };
+const farmField: EntityFormField<CreateUserValues> = {
+  name: "farm_name",
+  label: "Farm",
+  type: "fk",
+  resource: "farms",
+  valueKey: "farm_name",
+  labelKey: "farm_name",
+  placeholder: "Select a farm",
+};
 
 const createFields: EntityFormField<CreateUserValues>[] = [
   { name: "username", label: "Username", autoComplete: "username" },
@@ -86,13 +91,16 @@ const createFields: EntityFormField<CreateUserValues>[] = [
     autoComplete: "new-password",
     description: "At least 8 characters. They can change it later from Settings.",
   },
-  ...(accessFields as EntityFormField<CreateUserValues>[]),
+  roleField as EntityFormField<CreateUserValues>,
+  farmField,
+  activeField as EntityFormField<CreateUserValues>,
 ];
 
 const editFields: EntityFormField<UpdateUserValues>[] = [
   { name: "username", label: "Username", autoComplete: "username", disabled: true },
   ...(contactFields as EntityFormField<UpdateUserValues>[]),
-  ...(accessFields as EntityFormField<UpdateUserValues>[]),
+  roleField as EntityFormField<UpdateUserValues>,
+  activeField as EntityFormField<UpdateUserValues>,
 ];
 
 const roleBadgeVariant: Record<UserRole, "default" | "secondary" | "outline"> = {
@@ -158,7 +166,6 @@ function toUpdateInput(values: UpdateUserValues): UpdateUserInput {
     last_name: values.last_name,
     role: values.role,
     is_active: values.is_active,
-    farm_name: values.farm_name || null,
   };
   return input;
 }
@@ -199,7 +206,6 @@ export default function UsersPage() {
         first_name: user.first_name,
         last_name: user.last_name,
         role: user.role,
-        farm_name: user.farm_name ?? "",
         is_active: user.is_active,
       })}
       toCreateInput={toCreateInput}
