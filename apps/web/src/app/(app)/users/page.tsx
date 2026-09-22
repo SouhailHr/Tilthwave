@@ -35,74 +35,65 @@ const baseUserShape = {
 const createUserSchema = z.object({
   ...baseUserShape,
   username: z.string().min(1, "Username is required"),
-  text_password: z.string().min(6, "Password must be at least 6 characters"),
+  // 8 matches the API (it 422s on less); the form used to say 6 and let those through to fail.
+  text_password: z.string().min(8, "Password must be at least 8 characters").max(72),
 });
 
+// No password here: a user changes their own in Settings, and a forgotten one goes through the
+// reset link on the sign-in page. An admin no longer types someone else's password into a form.
 const updateUserSchema = z.object({
   ...baseUserShape,
   username: z.string(),
-  text_password: z.string(),
 });
 
 type CreateUserValues = z.infer<typeof createUserSchema>;
 type UpdateUserValues = z.infer<typeof updateUserSchema>;
 
-// CreateUserValues and UpdateUserValues share every field name below (both spread
-// baseUserShape, plus username/text_password with the same names in both schemas) - only
-// a couple of validators differ. react-hook-form's Path<T> can't be computed for a still-generic
-// T constrained to a union (TypeScript can't distribute a keyof-like check over an
-// uninstantiated type parameter), which is what forced a cast on every single field before.
-// Building the array against the concrete intersection type instead lets the compiler verify
-// each field name normally; each of the two call sites then asserts it once, not once per field.
+// The shared fields are typed against the intersection of both value shapes: react-hook-form's
+// Path<T> can't be computed for a still-generic T constrained to a union, which is what once
+// forced a cast on every single field. Against the concrete intersection the compiler verifies
+// each name normally, and each list asserts once at assembly instead of once per field.
 type CommonUserValues = CreateUserValues & UpdateUserValues;
 
-function makeUserFields(mode: "create" | "edit"): EntityFormField<CommonUserValues>[] {
-  return [
-    {
-      name: "username",
-      label: "Username",
-      autoComplete: "username",
-      disabled: mode === "edit",
-    },
-    {
-      name: "email",
-      label: "Email",
-      type: "email",
-      autoComplete: "email",
-    },
-    { name: "phone_number", label: "Phone number", autoComplete: "tel" },
-    { name: "first_name", label: "First name", autoComplete: "given-name" },
-    { name: "last_name", label: "Last name", autoComplete: "family-name" },
-    {
-      name: "text_password",
-      label:
-        mode === "create"
-          ? "Password"
-          : "New password (leave blank to keep)",
-      type: "password",
-      autoComplete: "new-password",
-    },
-    {
-      name: "role",
-      label: "Role",
-      type: "select",
-      options: roleOptions,
-    },
-    {
-      name: "farm_name",
-      label: "Farm",
-      type: "fk",
-      resource: "farms",
-      valueKey: "farm_name",
-      labelKey: "farm_name",
-      placeholder: "Select a farm",
-    },
-    { name: "is_active", label: "Active", type: "boolean" },
-  ];
-}
+const contactFields: EntityFormField<CommonUserValues>[] = [
+  { name: "email", label: "Email", type: "email", autoComplete: "email" },
+  { name: "phone_number", label: "Phone number", autoComplete: "tel" },
+  { name: "first_name", label: "First name", autoComplete: "given-name" },
+  { name: "last_name", label: "Last name", autoComplete: "family-name" },
+];
 
-const createFields = makeUserFields("create") as EntityFormField<CreateUserValues>[];
-const editFields = makeUserFields("edit") as EntityFormField<UpdateUserValues>[];
+const accessFields: EntityFormField<CommonUserValues>[] = [
+  { name: "role", label: "Role", type: "select", options: roleOptions },
+  {
+    name: "farm_name",
+    label: "Farm",
+    type: "fk",
+    resource: "farms",
+    valueKey: "farm_name",
+    labelKey: "farm_name",
+    placeholder: "Select a farm",
+  },
+  { name: "is_active", label: "Active", type: "boolean" },
+];
+
+const createFields: EntityFormField<CreateUserValues>[] = [
+  { name: "username", label: "Username", autoComplete: "username" },
+  ...(contactFields as EntityFormField<CreateUserValues>[]),
+  {
+    name: "text_password",
+    label: "Password",
+    type: "password",
+    autoComplete: "new-password",
+    description: "At least 8 characters. They can change it later from Settings.",
+  },
+  ...(accessFields as EntityFormField<CreateUserValues>[]),
+];
+
+const editFields: EntityFormField<UpdateUserValues>[] = [
+  { name: "username", label: "Username", autoComplete: "username", disabled: true },
+  ...(contactFields as EntityFormField<UpdateUserValues>[]),
+  ...(accessFields as EntityFormField<UpdateUserValues>[]),
+];
 
 const roleBadgeVariant: Record<UserRole, "default" | "secondary" | "outline"> = {
   admin: "default",
@@ -169,7 +160,6 @@ function toUpdateInput(values: UpdateUserValues): UpdateUserInput {
     is_active: values.is_active,
     farm_name: values.farm_name || null,
   };
-  if (values.text_password) input.text_password = values.text_password;
   return input;
 }
 
@@ -208,7 +198,6 @@ export default function UsersPage() {
         phone_number: user.phone_number,
         first_name: user.first_name,
         last_name: user.last_name,
-        text_password: "",
         role: user.role,
         farm_name: user.farm_name ?? "",
         is_active: user.is_active,

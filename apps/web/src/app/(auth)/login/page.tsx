@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,14 +11,10 @@ import { toast } from "sonner";
 import { useLogin } from "@/api/auth";
 import { toApiError } from "@/api/errors";
 import { safeRedirect } from "@/utils/safeRedirect";
+import { AuthCardHeader, AuthPage } from "@/components/auth-page";
+import { PasswordInput } from "@/components/password-input";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -46,6 +42,9 @@ function LoginForm() {
     if (searchParams.get("expired") === "1") {
       toast.info("Session expired. Please sign in again.");
     }
+    if (searchParams.get("reset") === "1") {
+      toast.success("Password updated. Sign in with your new password.");
+    }
   }, [searchParams]);
 
   const form = useForm<LoginValues>({
@@ -68,25 +67,7 @@ function LoginForm() {
 
   return (
     <Card className="w-full max-w-sm">
-      <CardHeader className="items-center text-center">
-        <div className="mb-2 flex flex-col items-center gap-2">
-          <Image
-            src="/brand/tilthwave-mark.svg"
-            alt="tilthwave"
-            width={40}
-            height={40}
-            priority
-          />
-          <div className="flex items-baseline gap-2">
-            <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
-              tilthwave
-            </span>
-            <span className="text-xs text-muted-foreground">· farm watch</span>
-          </div>
-        </div>
-        <CardTitle>Sign in</CardTitle>
-        <CardDescription>Where farms speak. Fields listen.</CardDescription>
-      </CardHeader>
+      <AuthCardHeader title="Sign in" description="Where farms speak. Fields listen." />
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
@@ -108,13 +89,17 @@ function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password</FormLabel>
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <FormControl>
-                    <Input
-                      type="password"
-                      autoComplete="current-password"
-                      {...field}
-                    />
+                    <PasswordInput autoComplete="current-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -132,20 +117,10 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
-      {/* Animated brand SVG kept as a plain img so the embedded SMIL/CSS
-          animations actually play and so we don't need next.config's
-          dangerouslyAllowSVG escape hatch. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/brand/tilthwave-bg-hero-animated.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 size-full object-cover"
-      />
+    <AuthPage>
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>
-    </div>
+    </AuthPage>
   );
 }

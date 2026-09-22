@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IrrigationTask, IrrigationTaskStatus } from "@/types/irrigation-task";
+import { formatRelative } from "@/utils/dates";
 
 const statusVariant: Record<
   IrrigationTaskStatus,
@@ -23,20 +24,6 @@ const statusVariant: Record<
 interface RecentActivityCardProps {
   tasks: IrrigationTask[];
   isPending: boolean;
-}
-
-function formatRelative(value: string | undefined): string {
-  if (!value) return "—";
-  const then = Date.parse(value);
-  if (Number.isNaN(then)) return value;
-  const diffMs = Date.now() - then;
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
 }
 
 export function RecentActivityCard({

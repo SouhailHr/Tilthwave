@@ -80,6 +80,22 @@ class RBACMiddleware(BaseHTTPMiddleware):
         # Path of the current request
         path = request.url.path.strip("/")
         resource = path.split("/")[0]
+        # A cookie is attached by the browser on its own, so a state-changing request must also
+        # carry the CSRF header only our own page can produce (see helpers/cookies.py). A bearer
+        # header cannot be forged cross-site, so header-authenticated requests skip this. It runs
+        # BEFORE the public-path exemption on purpose: /auth/logout, /auth/password/* are POSTs a
+        # signed-in browser can reach, and they must be just as unforgeable as everything else.
+        # Login from a browser with no session (or an expired one) has no cookie credential, so
+        # it is never blocked by this.
+        if (
+            getattr(request.state, AUTH_VIA_STATE_KEY, None) == "cookie"
+            and request.method.upper() in UNSAFE_METHODS
+            and not csrf_ok(request)
+        ):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN, content={"detail": "CSRF token missing or invalid"}
+            )
+
         # Skip permission checks for the public resources (exact match: /healthz is not /health)
         if resource in global_constants.EXCLUDED_PATHS:
             return await call_next(request)
@@ -89,18 +105,6 @@ class RBACMiddleware(BaseHTTPMiddleware):
         claims = getattr(request.state, CLAIMS_STATE_KEY, None)
         if claims is None:
             return _unauthorized("Not authenticated")
-
-        # A cookie is attached by the browser on its own, so a state-changing request must also
-        # carry the CSRF header only our own page can produce (see helpers/cookies.py). A bearer
-        # header cannot be forged cross-site, so header-authenticated requests skip this.
-        if (
-            getattr(request.state, AUTH_VIA_STATE_KEY, None) == "cookie"
-            and request.method.upper() in UNSAFE_METHODS
-            and not csrf_ok(request)
-        ):
-            return JSONResponse(
-                status_code=status.HTTP_403_FORBIDDEN, content={"detail": "CSRF token missing or invalid"}
-            )
 
         action = translate_method_to_action(request.method)
         if not has_permission(claims.get("role"), resource, action):

@@ -11,6 +11,7 @@ import {
   LogOut,
   type LucideIcon,
   Menu,
+  Settings,
   Sprout,
   TreeDeciduous,
   TreePine,
@@ -19,12 +20,14 @@ import {
 } from "lucide-react";
 
 import { useSensors } from "@/api/sensors";
-import { useLogout } from "@/api/auth";
+import { useLogout, useSession } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -125,6 +128,7 @@ function LiveSensorsBadge() {
 function UserMenu() {
   const router = useRouter();
   const logoutMutation = useLogout();
+  const { data: session } = useSession();
 
   async function handleLogout() {
     try {
@@ -143,7 +147,21 @@ function UserMenu() {
           </Button>
         }
       />
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="min-w-52">
+        {session ? (
+          <DropdownMenuLabel className="grid gap-0.5 font-normal">
+            <span className="font-medium text-foreground">{session.username}</span>
+            <span className="text-xs text-muted-foreground">
+              <span className="capitalize">{session.role}</span>
+              {session.farm_name ? ` · ${session.farm_name}` : ""}
+            </span>
+          </DropdownMenuLabel>
+        ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push("/settings")}>
+          <Settings /> Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut /> Log out
         </DropdownMenuItem>

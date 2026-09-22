@@ -147,8 +147,12 @@ class BaseCrud:
         filters = cls._parse_filters_str(filters_str, search)
         params = resolve_params()
         raw = params.to_raw_params()
+        # Newest first, like a log: the dashboard's recent activity already reads that way and a
+        # table that opens on the oldest row buries what just happened. `id` rather than
+        # created_date because it is monotonic with insertion and never ties (seeded rows share a
+        # created_date), so page boundaries are deterministic.
         entities, total = cls.USE_CASE_INSTANCE.paginate(
-            filters, order_by="created_date", order_direction="asc", limit=raw.limit, offset=raw.offset
+            filters, order_by="id", order_direction="desc", limit=raw.limit, offset=raw.offset
         )
         return create_page([cls._enrich_item(entity) for entity in entities], total=total, params=params)
 
