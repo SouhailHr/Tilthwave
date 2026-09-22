@@ -56,9 +56,10 @@ def database_schema():
 @pytest.fixture(autouse=True)
 def clean_tables():
     """Every test starts from empty tables (schema kept) and an empty login rate-limit window."""
-    from interfaces.api.helpers.rate_limit import login_rate_limiter
+    from interfaces.api.helpers.rate_limit import login_rate_limiter, password_reset_rate_limiter
 
     login_rate_limiter.reset()
+    password_reset_rate_limiter.reset()
     yield
     engine = BaseDBRepo.get_engine(settings.DATABASE.URI)
     with engine.begin() as connection:

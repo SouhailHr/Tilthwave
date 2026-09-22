@@ -79,6 +79,8 @@ class APISettings(BaseSettings):
     # None = host-only cookie, right for localhost. Set e.g. ".example.com" when the web app and
     # the API are on different subdomains of one site, so app.example.com receives it too.
     COOKIE_DOMAIN: str | None = None
+    # The web app's public URL, for the links in password-reset emails.
+    WEB_BASE_URL: str = "http://localhost:3000"
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="API_", case_sensitive=True, extra="ignore")
 
     @field_validator("SECRET_KEY")
@@ -115,12 +117,38 @@ class FlowRunnerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="FLOW_RUNNER_", case_sensitive=True, extra="ignore")
 
 
+class MailSettings(BaseSettings):
+    """
+    Outgoing email (password-reset links). With no HOST, nothing is sent: the message is logged
+    by the API instead, which is what a local stack wants (see infrastructure/mail.py).
+    """
+
+    HOST: str | None = None
+    PORT: int = 587
+    USER: str | None = None
+    PASSWORD: str | None = None
+    FROM_ADDRESS: str = "tilthwave@localhost"
+    USE_TLS: bool = True  # STARTTLS after connecting
+    TIMEOUT_SECONDS: int = 10
+    model_config = SettingsConfigDict(env_file=env_file, env_prefix="SMTP_", case_sensitive=True, extra="ignore")
+
+    @field_validator("HOST", "USER", "PASSWORD", mode="before")
+    def blank_is_none(cls, value):
+        # compose passes "" for an unset variable; blank must mean "not configured".
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+
 class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     DATABASE: DatabaseSettings = DatabaseSettings()
     API: APISettings = APISettings()
     STREAMER: StreamerSettings = StreamerSettings()
     FLOW_RUNNER: FlowRunnerSettings = FlowRunnerSettings()
+    # Named SMTP, not MAIL: every login shell exports MAIL=/var/spool/mail/<user>, and pydantic-settings
+    # would read that as this field and fail to parse it.
+    SMTP: MailSettings = MailSettings()
     model_config = SettingsConfigDict(env_file=env_file, case_sensitive=True, extra="ignore")
 
 

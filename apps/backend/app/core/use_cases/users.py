@@ -1,6 +1,7 @@
 import logging
 
 from common import constants as global_constants
+from common.tenant_context import without_tenant
 from core.entities.users import Users as UserEntity
 from core.security.password import PasswordHasher
 from core.use_cases.base import BaseUseCase
@@ -98,6 +99,41 @@ class UserUseCase(BaseUseCase):
         users = self.filter(filters=filters)
 
         return users
+
+    def find_by_identifier(self, identifier: str):
+        """The user whose username or email is exactly `identifier`, or None."""
+        for attribute in ("username", "email"):
+            user = self.repo.first([{"attribute": attribute, "value": identifier, "condition": "eq"}])
+            if user is not None:
+                return user
+        return None
+
+    # ---- the caller's own account ---------------------------------------------------------
+    # These take the user_id straight from the verified session and run outside the farm
+    # filter (see common.tenant_context.without_tenant): the row is the caller's by
+    # construction, and a farm-less bootstrap admin must still be able to see and edit itself.
+
+    def get_own(self, user_id: int):
+        with without_tenant():
+            return self.repo.get(user_id)
+
+    def update_own_profile(self, user_id: int, data: dict):
+        with without_tenant():
+            return self.repo.update(user_id, data)
+
+    def set_password(self, user_id: int, new_password: str):
+        with without_tenant():
+            return self.repo.update(user_id, {"password": PasswordHasher.hash(new_password)})
+
+    def change_password(self, user_id: int, current_password: str, new_password: str):
+        """
+        Self-service password change: the current password must verify first.
+        @raises UseCaseException: wrong current password (one bcrypt check either way)
+        """
+        user = self.get_own(user_id)
+        if user is None or not self.verify_password(current_password, user.password):
+            raise UseCaseException(class_name=self.__class__.__name__, message="Current password is incorrect")
+        return self.set_password(user_id, new_password)
 
     def get_stats(self):
         """

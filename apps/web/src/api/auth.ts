@@ -75,3 +75,24 @@ export function useLogout() {
     onSettled: () => queryClient.setQueryData(sessionKey, null),
   });
 }
+
+// ---- forgotten password (public, no session) -----------------------------------------------
+
+/** Always resolves for a well-formed request: the API never says whether the account exists. */
+export async function forgotPassword(identifier: string): Promise<void> {
+  await api.post("/auth/password/forgot", { identifier });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await api.post("/auth/password/reset", { token, new_password: newPassword });
+}
+
+export function useForgotPassword() {
+  return useMutation<void, ApiError, string>({ mutationFn: forgotPassword });
+}
+
+export function useResetPassword() {
+  return useMutation<void, ApiError, { token: string; newPassword: string }>({
+    mutationFn: ({ token, newPassword }) => resetPassword(token, newPassword),
+  });
+}

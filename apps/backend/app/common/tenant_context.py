@@ -9,6 +9,7 @@ streamer, scripts), which therefore run unscoped by design.
 """
 
 import contextvars
+from contextlib import contextmanager
 from typing import TypedDict
 
 
@@ -32,3 +33,20 @@ def reset_tenant(token) -> None:
 
 def get_current_tenant() -> TenantContext | None:
     return _current_tenant.get()
+
+
+@contextmanager
+def without_tenant():
+    """
+    Run the block with no tenant bound, so the repositories are unscoped for its duration.
+
+    For a caller acting on its OWN user row, identified by the verified user_id from the
+    session: the farm filter has nothing to add there, and it would wrongly hide a farm-less
+    account (a bootstrap admin) from itself, since an authenticated caller with no farm sees no
+    tenant rows at all. Never use it to read anything the caller did not already own.
+    """
+    token = set_tenant(None)
+    try:
+        yield
+    finally:
+        reset_tenant(token)

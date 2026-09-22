@@ -23,6 +23,7 @@ from starlette.concurrency import run_in_threadpool
 
 from common import constants as global_constants
 from common.tenant_context import reset_tenant, set_tenant
+from core.security.password import PasswordHasher
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import ACCESS_COOKIE
 from wiring import api_use_cases
@@ -81,7 +82,13 @@ class TenantContextMiddleware:
             else:
                 # The repositories are synchronous; keep the event loop free while the row loads.
                 user = await run_in_threadpool(self._active_user, claims.get("user_id"))
-                if user is None:
+                # A token with a `purpose` (password reset) is never a session, however valid its
+                # signature. A `pfp` that no longer matches the row means the password changed
+                # after this token was issued: the session is over. Tokens without a pfp (older
+                # ones, test fixtures) are not held to it.
+                pfp = claims.get("pfp")
+                stale = user is not None and pfp is not None and pfp != PasswordHasher.fingerprint(user.password)
+                if user is None or claims.get("purpose") is not None or stale:
                     state[TOKEN_INVALID_STATE_KEY] = True
                 else:
                     claims = {**claims, "username": user.username, "role": user.role, "farm_name": user.farm_name}

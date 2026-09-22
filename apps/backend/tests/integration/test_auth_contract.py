@@ -47,7 +47,8 @@ def test_pagination_happens_in_the_database(client, auth_headers, make_farm, mak
     response = client.get("/zones/?page=2&size=3", headers=auth_headers())
     body = response.json()
     assert (body["total"], body["pages"], len(body["items"])) == (7, 3, 3)
-    assert [z["zone_name"] for z in body["items"]] == ["Zone 3", "Zone 4", "Zone 5"]
+    # Newest first: page 1 is Zone 6/5/4, so page 2 is 3/2/1.
+    assert [z["zone_name"] for z in body["items"]] == ["Zone 3", "Zone 2", "Zone 1"]
 
 
 def test_unknown_filter_attribute_is_400(client, auth_headers):

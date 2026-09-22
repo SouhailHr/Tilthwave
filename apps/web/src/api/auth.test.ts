@@ -72,3 +72,28 @@ describe("logout", () => {
     expect(post).toHaveBeenCalledWith("/auth/logout");
   });
 });
+
+describe("forgotten password", () => {
+  it("forgotPassword posts the identifier and resolves on 202", async () => {
+    post.mockResolvedValue({ status: 202, data: { detail: "If an account exists…" } });
+    const { forgotPassword } = await import("./auth");
+    await expect(forgotPassword("pat")).resolves.toBeUndefined();
+    expect(post).toHaveBeenCalledWith("/auth/password/forgot", { identifier: "pat" });
+  });
+
+  it("resetPassword posts the token and the new password under the API's field name", async () => {
+    post.mockResolvedValue({ status: 204 });
+    const { resetPassword } = await import("./auth");
+    await resetPassword("tok", "N3w-Passw0rd!");
+    expect(post).toHaveBeenCalledWith("/auth/password/reset", {
+      token: "tok",
+      new_password: "N3w-Passw0rd!",
+    });
+  });
+
+  it("resetPassword surfaces a rejected link so the page can say so", async () => {
+    post.mockRejectedValue({ isAxiosError: true, response: { status: 400 } });
+    const { resetPassword } = await import("./auth");
+    await expect(resetPassword("bad", "N3w-Passw0rd!")).rejects.toBeDefined();
+  });
+});

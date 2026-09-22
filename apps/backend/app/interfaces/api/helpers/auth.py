@@ -78,6 +78,50 @@ class AuthHelper:
         return jwt.decode(token, settings.API.SECRET_KEY, algorithms=[settings.API.ALGORITHM])
 
     @classmethod
+    def session_claims(cls, user) -> dict:
+        """
+        The claims a session token carries for `user`. `pfp` is a fingerprint of the password
+        hash: TenantContextMiddleware rejects a token whose pfp no longer matches the row, so a
+        password change signs every other session out (the changing session is re-issued).
+        """
+        return {
+            "role": user.role,
+            "username": user.username,
+            "user_id": user.id,
+            "user_full_name": f"{user.first_name} {user.last_name}",
+            "farm_name": user.farm_name,  # tenant claim for per-farm object scoping
+            "pfp": PasswordHasher.fingerprint(user.password),
+        }
+
+    # ---- password reset tokens -------------------------------------------------------------
+    # Stateless: signed with the same key, but with a `purpose` claim (so it is never accepted as
+    # a session token - the middleware rejects any token carrying one) and the password
+    # fingerprint (so it is single-use: once the password changes, the fingerprint no longer
+    # matches and the link is dead).
+
+    RESET_PURPOSE = "password_reset"
+    RESET_TOKEN_MINUTES = 30
+
+    @classmethod
+    def create_password_reset_token(cls, user) -> str:
+        expire = datetime.now(UTC) + timedelta(minutes=cls.RESET_TOKEN_MINUTES)
+        claims = {
+            "sub": str(user.id),
+            "purpose": cls.RESET_PURPOSE,
+            "pfp": PasswordHasher.fingerprint(user.password),
+            "exp": expire,
+        }
+        return jwt.encode(claims, settings.API.SECRET_KEY, algorithm=settings.API.ALGORITHM)
+
+    @classmethod
+    def decode_password_reset_token(cls, token: str) -> dict:
+        """@raises InvalidTokenError: expired, tampered, or not a password reset token"""
+        claims = cls.decode_token(token)
+        if claims.get("purpose") != cls.RESET_PURPOSE or "sub" not in claims:
+            raise InvalidTokenError("not a password reset token")
+        return claims
+
+    @classmethod
     def verify_access_token(cls, token: str) -> JSONResponse:
         """
         Function to verify access token and return a message indicating if the token is valid.

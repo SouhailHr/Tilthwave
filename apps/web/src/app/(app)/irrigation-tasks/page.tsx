@@ -14,6 +14,7 @@ import {
   type UpdateIrrigationTaskInput,
 } from "@/types/irrigation-task";
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@/utils/dates";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
@@ -74,7 +75,9 @@ const irrigationTaskColumns: Column<IrrigationTask>[] = [
   {
     key: "created_date",
     header: "Created",
-    cell: (task) => task.created_date?.slice(0, 10) ?? "—",
+    cell: (task) => (
+      <span className="tabular-nums text-muted-foreground">{formatDateTime(task.created_date)}</span>
+    ),
   },
 ];
 

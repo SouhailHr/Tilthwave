@@ -44,6 +44,8 @@ RESOURCES_FOR_ROLES = {
         "sensor-records": ["read"],
         "trees": ["read", "write", "update", "delete"],
         "dashboard": ["read"],
+        # Own profile and password (interfaces/api/endpoints/account.py): every role, self only.
+        "account": ["read", "write", "update"],
     },
     "owner": {
         "users": ["read", "write", "update", "delete"],
@@ -57,6 +59,8 @@ RESOURCES_FOR_ROLES = {
         "sensor-records": ["read"],
         "trees": ["read", "write", "update", "delete"],
         "dashboard": ["read"],
+        # Own profile and password (interfaces/api/endpoints/account.py): every role, self only.
+        "account": ["read", "write", "update"],
     },
     "worker": {
         "users": ["read"],
@@ -70,6 +74,8 @@ RESOURCES_FOR_ROLES = {
         "sensor-records": ["read"],
         "trees": ["read", "update"],
         "dashboard": ["read"],
+        # Own profile and password (interfaces/api/endpoints/account.py): every role, self only.
+        "account": ["read", "write", "update"],
     },
     "engineer": {
         "users": ["read"],
@@ -83,6 +89,8 @@ RESOURCES_FOR_ROLES = {
         "sensor-records": ["read"],
         "trees": ["read", "update"],
         "dashboard": ["read"],
+        # Own profile and password (interfaces/api/endpoints/account.py): every role, self only.
+        "account": ["read", "write", "update"],
     },
 }
 

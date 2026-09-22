@@ -76,3 +76,12 @@ def client_ip(request: Request) -> str:
 
 def limit_login_attempts(request: Request) -> None:
     login_rate_limiter.check(client_ip(request))
+
+
+# Forgot/reset-password share one window, separate from login's: a flood of reset requests must
+# not lock a legitimate login out, and vice versa. Same per-IP limit.
+password_reset_rate_limiter = SlidingWindowRateLimiter(limit=settings.API.LOGIN_RATE_LIMIT_PER_MINUTE)
+
+
+def limit_password_reset_attempts(request: Request) -> None:
+    password_reset_rate_limiter.check(client_ip(request))

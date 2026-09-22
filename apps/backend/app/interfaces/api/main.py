@@ -6,6 +6,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from common.logging import configure_logging
 from config.settings import settings
 from interfaces.api.endpoints import (
+    account,
     auth,
     dashboard,
     farm,
@@ -66,6 +67,7 @@ api_router.include_router(water_switcher.router)
 api_router.include_router(tree.router)
 api_router.include_router(irrigation_task.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(account.router)
 
 # Public routes
 app.include_router(auth.router)

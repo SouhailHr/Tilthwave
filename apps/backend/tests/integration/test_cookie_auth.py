@@ -85,11 +85,21 @@ def test_me_is_401_without_a_session(client):
     assert response.headers["www-authenticate"] == "Bearer"
 
 
+def test_logout_via_cookie_needs_the_csrf_header(client, make_farm, make_user):
+    # /auth is exempt from RBAC but not from CSRF: a cross-site page must not be able to sign
+    # a user out (or, for the reset endpoints, act as them) by posting with their cookie.
+    _cookie_login(client, make_farm, make_user)
+    response = client.post("/auth/logout")
+    assert response.status_code == 403
+    assert response.json() == {"detail": "CSRF token missing or invalid"}
+    assert client.get("/auth/me").status_code == 200  # still signed in
+
+
 def test_logout_clears_the_session(client, make_farm, make_user):
     _cookie_login(client, make_farm, make_user)
     assert client.get("/auth/me").status_code == 200
 
-    response = client.post("/auth/logout")
+    response = client.post("/auth/logout", headers={"X-CSRF-Token": client.cookies.get("tw_csrf")})
     assert response.status_code == 204
     cleared = _set_cookie_headers(response)
     assert any(c.startswith("tw_access=") for c in cleared) and any(c.startswith("tw_csrf=") for c in cleared)
