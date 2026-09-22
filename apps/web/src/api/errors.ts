@@ -13,8 +13,9 @@ interface ApiErrorResponseBody {
   detail?: string | { msg?: string; loc?: (string | number)[] }[];
   error_code?: string;
   request_id?: string;
+  // Request-validation failures carry the messages per field (the API's one 422 shape).
+  fields?: Record<string, string[]>;
   message?: string;
-  errors?: Record<string, string[]>;
 }
 
 export function isApiError(err: unknown): err is ApiError {
@@ -46,6 +47,9 @@ export function toApiError(err: unknown, fallback = "Something went wrong"): Api
   let fieldErrors: Record<string, string[]> | undefined;
 
   if (body) {
+    if (body.fields && Object.keys(body.fields).length > 0) {
+      fieldErrors = body.fields;
+    }
     if (typeof body.detail === "string") {
       message = body.detail;
     } else if (Array.isArray(body.detail)) {

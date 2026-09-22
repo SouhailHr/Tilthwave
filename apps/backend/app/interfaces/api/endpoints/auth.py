@@ -38,11 +38,13 @@ def login(data: AuthLogin):
         # 400 (not 401) on purpose: the web client treats 401 as "session expired".
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect username or password")
     access_token = AuthHelper.create_access_token(AuthHelper.session_claims(user))
+    # One response shape for both channels: token is null when the session travels as a cookie.
+    expires_in = settings.API.ACCESS_TOKEN_EXPIRE * 60
     if data.use_cookie:
-        response = JSONResponse(content={"token_type": "cookie", "expires_in": settings.API.ACCESS_TOKEN_EXPIRE * 60})
+        response = JSONResponse(content={"token": None, "token_type": "cookie", "expires_in": expires_in})
         set_session_cookies(response, access_token, new_csrf_token())
         return response
-    return JSONResponse(content={"token": access_token, "token_type": "bearer"})
+    return JSONResponse(content={"token": access_token, "token_type": "bearer", "expires_in": expires_in})
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -94,7 +96,8 @@ def forgot_password(data: PasswordForgot, background: BackgroundTasks):
     """
     Email a single-use, time-limited reset link to the account behind a username or email.
 
-    Always 202 with the same body: a different answer, or a slower one, would tell a caller
+    Always 202 with the same body ({"message": ...}: "detail" is the error key). A different
+    answer, or a slower one, would tell a caller
     which identifiers exist. The email goes out after the response for the same reason -
     sending takes measurably longer than not sending.
     """
@@ -111,7 +114,7 @@ def forgot_password(data: PasswordForgot, background: BackgroundTasks):
         )
     else:
         logger.info("Password reset requested for an unknown or inactive identifier")
-    return {"detail": FORGOT_DETAIL}
+    return {"message": FORGOT_DETAIL}
 
 
 @router.post(

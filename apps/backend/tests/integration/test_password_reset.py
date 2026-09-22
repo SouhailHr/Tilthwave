@@ -38,7 +38,7 @@ def test_forgot_emails_a_reset_link_for_a_username_or_an_email(client, make_farm
     make_user("pat")  # email pat@example.com
 
     response = _forgot(client, "pat")
-    assert response.status_code == 202 and response.json()["detail"] == FORGOT_DETAIL
+    assert response.status_code == 202 and response.json()["message"] == FORGOT_DETAIL
     assert len(outbox) == 1
     to, subject, body = outbox[0]
     assert to == "pat@example.com" and "Reset" in subject and LINK.search(body)
@@ -52,7 +52,7 @@ def test_forgot_answers_identically_and_sends_nothing_for_unknown_or_inactive(
 ):
     make_farm(FARM_A)
     known = _forgot(client, "nobody-here")
-    assert known.status_code == 202 and known.json()["detail"] == FORGOT_DETAIL
+    assert known.status_code == 202 and known.json()["message"] == FORGOT_DETAIL
 
     make_user("gone")
     row = repos.users.first([{"attribute": "username", "value": "gone", "condition": "eq"}])

@@ -24,7 +24,7 @@ def _cookie_login(client, make_farm, make_user, username="cookie-admin", role="a
 def test_cookie_login_sets_httponly_session_and_readable_csrf_cookies_and_no_body_token(client, make_farm, make_user):
     response = _cookie_login(client, make_farm, make_user)
 
-    assert "token" not in response.json()
+    assert response.json()["token"] is None  # the session is in the cookies, never in a body JS can read
     assert response.json()["token_type"] == "cookie"
     cookies = _set_cookie_headers(response)
     access = next(c for c in cookies if c.startswith("tw_access="))

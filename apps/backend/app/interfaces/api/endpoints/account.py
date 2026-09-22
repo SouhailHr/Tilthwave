@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette import status
 
 from common.exceptions import NotFoundError
+from config.settings import settings
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import new_csrf_token, set_session_cookies
 from interfaces.api.helpers.tenant import AUTH_VIA_STATE_KEY
@@ -56,11 +57,12 @@ def change_password(request: Request, data: PasswordChange):
     """
     user = use_cases.users.change_password(_user_id(request), data.current_password, data.new_password)
     access_token = AuthHelper.create_access_token(AuthHelper.session_claims(user))
+    # Same shape as /auth/login plus the message: token is null when the session travels as a cookie.
+    expires_in = settings.API.ACCESS_TOKEN_EXPIRE * 60
     if getattr(request.state, AUTH_VIA_STATE_KEY, None) == "cookie":
-        response = JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "Password changed"})
+        body = {"message": "Password changed", "token": None, "token_type": "cookie", "expires_in": expires_in}
+        response = JSONResponse(status_code=status.HTTP_200_OK, content=body)
         set_session_cookies(response, access_token, new_csrf_token())
         return response
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={"detail": "Password changed", "token": access_token, "token_type": "bearer"},
-    )
+    body = {"message": "Password changed", "token": access_token, "token_type": "bearer", "expires_in": expires_in}
+    return JSONResponse(status_code=status.HTTP_200_OK, content=body)

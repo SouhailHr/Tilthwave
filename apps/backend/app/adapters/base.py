@@ -1,16 +1,18 @@
 import dataclasses
 
 from adapters.exceptions import AdaptorException
+from common.dates import iso_utc
 
 
 class BaseAdaptor:
     ENTITY = None
     # Per-entity mappers, merged over BASE_CUSTOM_MAPPER (e.g. TreeAdaptor converts planting_date)
     CUSTOM_MAPPER = {}
-    # Mapper for base cases in all entities
+    # Timestamps leave as ISO 8601 with an explicit UTC offset ("2026-09-15T16:06:56.266864+00:00"):
+    # the column is naive UTC, and a naive string read by Date.parse or fromisoformat is local time.
     BASE_CUSTOM_MAPPER = {
-        "created_date": {"field_in_model": "created_date", "convert_to": str},
-        "updated_date": {"field_in_model": "updated_date", "convert_to": str},
+        "created_date": {"field_in_model": "created_date", "convert_to": iso_utc},
+        "updated_date": {"field_in_model": "updated_date", "convert_to": iso_utc},
     }
 
     @classmethod
