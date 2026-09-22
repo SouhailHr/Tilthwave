@@ -2,6 +2,7 @@ from adapters.sensor import SensorAdaptor
 from core.entities.sensor import Sensor as SensorEntity
 from infrastructure.database.tables.sensor import Sensor
 from infrastructure.repositories.base import BaseDBRepo
+from infrastructure.repositories.tenancy import TenantScope
 
 
 class SensorDBRepository(BaseDBRepo):
@@ -12,4 +13,4 @@ class SensorDBRepository(BaseDBRepo):
     MODEL = Sensor
     ENTITY = SensorEntity
     ADAPTOR = SensorAdaptor
-    TENANT_SCOPE = ("column", "farm_name")
+    TENANT_SCOPE = TenantScope.column("farm_name")

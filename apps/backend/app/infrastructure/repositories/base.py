@@ -31,7 +31,7 @@ class BaseDBRepo:
     #   ("via_zone",)               model.zone_name -> zone.farm_name
     #   ("via_sensor",)             model.sensor_serial_number -> sensor.farm_name
     #   None                        not tenant-scoped (no farm linkage)
-    TENANT_SCOPE = None
+    TENANT_SCOPE = None  # a TenantScope (repositories/tenancy.py), or None: no farm linkage
 
     def __init__(self, uri: str, echo: bool = False):
         """
@@ -74,79 +74,33 @@ class BaseDBRepo:
     # ---- tenancy -------------------------------------------------------------------------
 
     def _apply_tenant(self, query, session):
-        """Restrict a query to the caller's farm, per this repo's TENANT_SCOPE.
-
-        Non-HTTP callers (no tenant context) run unscoped by design. An
-        authenticated caller with no farm can own no tenant rows, so we return
-        an empty result rather than leaking. Models with TENANT_SCOPE=None are
-        not scoped (no farm linkage in the schema).
+        """
+        Restrict a query to the caller's farm, per this repo's TENANT_SCOPE (a TenantScope, or
+        None for tables with no farm linkage). Non-HTTP callers (no tenant context: flow runner,
+        streamer, scripts) run unscoped by design. An authenticated caller with no farm can own no
+        tenant rows, so they get an empty result rather than a leak.
         """
         scope = self.TENANT_SCOPE
-        if not scope:
+        if scope is None:
             return query
         ctx = get_current_tenant()
         if ctx is None:
-            return query  # internal/non-HTTP caller (flow runner, streamer, scripts)
+            return query
         farm = ctx.get("farm_name")
         if not farm:
             return query.filter(false())
-        kind = scope[0]
-        if kind in ("column", "self"):
-            return query.filter(getattr(self.MODEL, scope[1]) == farm)
-        if kind == "via_zone":
-            from infrastructure.database.tables.zone import Zone
-
-            owned_zones = session.query(Zone.zone_name).filter(Zone.farm_name == farm)
-            return query.filter(self.MODEL.zone_name.in_(owned_zones))
-        if kind == "via_sensor":
-            from infrastructure.database.tables.sensor import Sensor
-
-            owned_sensors = session.query(Sensor.serial_number).filter(Sensor.farm_name == farm)
-            return query.filter(self.MODEL.sensor_serial_number.in_(owned_sensors))
-        return query
+        return scope.apply(query, self.MODEL, farm, session)
 
     def _bind_tenant(self, data: dict, session) -> dict:
-        """Make a row being written belong to the caller's farm.
-
-        ("column", col) and ("self", col): the farm column is forced to the caller's farm,
-        closing the mass-assignment hole where a body could name another farm. For the farm
-        table itself that means a farm-scoped caller can only ever "create" their own farm,
-        which the unique name turns into a 409; only the farm-less bootstrap admin creates farms.
-        ("via_zone",): a zone_name in the payload must be one of the caller's zones, otherwise
-        NotFoundError (the zone is invisible to them, so "not found", not "forbidden"): without
-        this a tenant could register a tree, switcher or irrigation task in another farm's zone
-        and have the flow runner act on it.
-        ("via_sensor",): likewise for a sensor_serial_number, so a record cannot be written into
-        another farm's sensor history.
-        Every kind _apply_tenant reads must be bound here too; a scope that filters reads but not
-        writes is exactly the hole this closes.
-        Non-HTTP callers (no context) and callers without a farm are not bound.
+        """
+        Make a row being written belong to the caller's farm (TenantScope.bind). Non-HTTP callers
+        and callers without a farm are not bound.
         """
         scope = self.TENANT_SCOPE
         ctx = get_current_tenant()
-        if not scope or ctx is None or not ctx.get("farm_name"):
+        if scope is None or ctx is None or not ctx.get("farm_name"):
             return data
-        farm = ctx["farm_name"]
-        kind = scope[0]
-        if kind in ("column", "self"):
-            data[scope[1]] = farm
-        elif kind == "via_zone" and data.get("zone_name") is not None:
-            from infrastructure.database.tables.zone import Zone
-
-            owned = session.query(Zone.id).filter(Zone.zone_name == data["zone_name"], Zone.farm_name == farm).first()
-            if owned is None:
-                raise NotFoundError("Zone not found")
-        elif kind == "via_sensor" and data.get("sensor_serial_number") is not None:
-            from infrastructure.database.tables.sensor import Sensor
-
-            owned = (
-                session.query(Sensor.id)
-                .filter(Sensor.serial_number == data["sensor_serial_number"], Sensor.farm_name == farm)
-                .first()
-            )
-            if owned is None:
-                raise NotFoundError("Sensor not found")
-        return data
+        return scope.bind(data, self.MODEL, ctx["farm_name"], session)
 
     # ---- errors --------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@ from adapters.zone_sensors import ZoneSensorsAdaptor
 from core.entities.zone_sensors import ZoneSensors as ZoneSensorsEntity
 from infrastructure.database.tables.zone_sensors import ZoneSensors
 from infrastructure.repositories.base import BaseDBRepo
+from infrastructure.repositories.tenancy import TenantScope
 
 
 class ZoneSensorsDBRepository(BaseDBRepo):
@@ -12,4 +13,4 @@ class ZoneSensorsDBRepository(BaseDBRepo):
     MODEL = ZoneSensors
     ENTITY = ZoneSensorsEntity
     ADAPTOR = ZoneSensorsAdaptor
-    TENANT_SCOPE = ("via_zone",)
+    TENANT_SCOPE = TenantScope.via_zone()

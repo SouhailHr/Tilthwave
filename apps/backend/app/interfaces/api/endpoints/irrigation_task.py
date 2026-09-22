@@ -39,22 +39,6 @@ def get_all(
     return IrrigationTaskCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/stats/")
-def get_stats():
-    """
-    This Router gets the Irrigation tasks stats
-    """
-    return IrrigationTaskCrudHelper.get_stats()
-
-
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the Irrigation tasks as select options
-    """
-    return IrrigationTaskCrudHelper.get_select_list(filters_str=filters)
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """

@@ -138,7 +138,7 @@ def test_flow_runner_hard_limits(repos, farm_with_zone):
 
     use_cases = _use_cases_with(repos, RecordingBroker())
     helper.configure(use_cases)
-    zone = repos.zone.first([]).to_dict()
+    zone = repos.zone.first([])
 
     # fresh, low readings -> start
     _record(repos, "MSN1", "moisture", 20)

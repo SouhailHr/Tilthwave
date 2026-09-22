@@ -26,23 +26,6 @@ class AuthLogin(BaseModel):
     )
 
 
-class AuthVerifyToken(BaseModel):
-    """
-    Schema for Verify Token , includes validation and serialization logic.
-    """
-
-    token: str
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "token": "put your token here please ",
-            }
-        },
-    )
-
-
 class PasswordForgot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

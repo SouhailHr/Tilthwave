@@ -106,6 +106,28 @@ def build_kafka_broker_repositories() -> BrokerRepositories:
 
 
 def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases:
+    """The whole graph, built once, leaves first: a use case that needs another receives it."""
+    sensors = SensorUseCase(
+        repo=repos.sensor,
+        zone_sensors_repo=repos.zone_sensors,
+        water_source_repo=repos.water_source,
+        water_switcher_repo=repos.water_switcher,
+    )
+    sensor_records = SensorRecordUseCase(repo=repos.sensor_record)
+    irrigation_tasks = IrrigationTaskUseCase(repo=repos.irrigation_task)
+    water_sources = WaterSourceUseCase(repo=repos.water_source, sensors=sensors, broker_repo=broker.water_source)
+    water_switchers = WaterSwitcherUseCase(
+        repo=repos.water_switcher, sensors=sensors, broker_repo=broker.water_switcher
+    )
+    zone_sensors = ZoneSensorsUseCase(repo=repos.zone_sensors, sensors=sensors)
+    zones = ZoneUseCase(
+        repo=repos.zone,
+        irrigation_tasks=irrigation_tasks,
+        water_switchers=water_switchers,
+        water_sources=water_sources,
+        sensor_records=sensor_records,
+        zone_sensors=zone_sensors,
+    )
     farm = FarmUseCase(
         repo=repos.farm,
         zone_repo=repos.zone,
@@ -116,38 +138,14 @@ def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases
     )
     return UseCases(
         farm=farm,
-        zone=ZoneUseCase(
-            repo=repos.zone,
-            irrigation_task_repo=repos.irrigation_task,
-            zone_sensors_repo=repos.zone_sensors,
-            sensor_repo=repos.sensor,
-            sensor_record_repo=repos.sensor_record,
-            water_switcher_repo=repos.water_switcher,
-            water_source_repo=repos.water_source,
-            tree_repo=repos.tree,
-            switcher_broker_repo=broker.water_switcher,
-            source_broker_repo=broker.water_source,
-        ),
-        zone_sensors=ZoneSensorsUseCase(repo=repos.zone_sensors, sensor_repo=repos.sensor),
-        sensor=SensorUseCase(
-            repo=repos.sensor,
-            zone_repo=repos.zone,
-            zone_sensors_repo=repos.zone_sensors,
-            water_source_repo=repos.water_source,
-            water_switcher_repo=repos.water_switcher,
-        ),
-        sensor_record=SensorRecordUseCase(repo=repos.sensor_record),
-        water_source=WaterSourceUseCase(
-            repo=repos.water_source,
-            sensor_repo=repos.sensor,
-            sensor_record_repo=repos.sensor_record,
-            broker_repo=broker.water_source,
-        ),
-        water_switcher=WaterSwitcherUseCase(
-            repo=repos.water_switcher, sensor_repo=repos.sensor, broker_repo=broker.water_switcher
-        ),
+        zone=zones,
+        zone_sensors=zone_sensors,
+        sensor=sensors,
+        sensor_record=sensor_records,
+        water_source=water_sources,
+        water_switcher=water_switchers,
         tree=TreeUseCase(repo=repos.tree),
-        irrigation_task=IrrigationTaskUseCase(repo=repos.irrigation_task),
+        irrigation_task=irrigation_tasks,
         users=UserUseCase(repo=repos.users),
         dashboard=DashboardUseCase(
             sensor_repo=repos.sensor,

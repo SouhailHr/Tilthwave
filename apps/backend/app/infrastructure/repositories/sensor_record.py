@@ -6,6 +6,7 @@ from adapters.sensor_record import SensorRecordAdaptor
 from core.entities.sensor_record import SensorRecord as SensorRecordEntity
 from infrastructure.database.tables.sensor_record import SensorRecord
 from infrastructure.repositories.base import BaseDBRepo
+from infrastructure.repositories.tenancy import TenantScope
 
 
 class SensorRecordDBRepository(BaseDBRepo):
@@ -17,7 +18,7 @@ class SensorRecordDBRepository(BaseDBRepo):
     MODEL = SensorRecord
     ENTITY = SensorRecordEntity
     ADAPTOR = SensorRecordAdaptor
-    TENANT_SCOPE = ("via_sensor",)  # record -> sensor.farm_name
+    TENANT_SCOPE = TenantScope.via_sensor()
 
     def latest_per_sensor(self, serial_numbers) -> list[SensorRecordEntity]:
         """

@@ -10,13 +10,8 @@ other read.
 
 from common import constants as global_constants
 
-ACTUATOR_STATUSES = (global_constants.STATUS_ON, global_constants.STATUS_OFF, "Error")
-IRRIGATION_TASK_STATUSES = (
-    "pending",
-    global_constants.IRRIGATION_TASK_IN_PROGRESS,
-    global_constants.IRRIGATION_TASK_COMPLETED,
-    "canceled",
-)
+ACTUATOR_STATUSES = global_constants.ACTUATOR_STATUSES
+IRRIGATION_TASK_STATUSES = global_constants.IRRIGATION_TASK_STATUSES
 
 
 class DashboardUseCase:

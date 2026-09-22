@@ -5,7 +5,6 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 from starlette import status
-from starlette.responses import JSONResponse
 
 from config.settings import settings
 from core.security.password import PasswordHasher
@@ -122,20 +121,6 @@ class AuthHelper:
         return claims
 
     @classmethod
-    def verify_access_token(cls, token: str) -> JSONResponse:
-        """
-        Function to verify access token and return a message indicating if the token is valid.
-
-        @param token: JWT Token
-        @return: A message stating if the token is valid or not.
-        """
-        try:
-            cls.decode_token(token)
-        except InvalidTokenError as e:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token") from e
-        return JSONResponse(status_code=status.HTTP_200_OK, content={"valid": True})
-
-    @classmethod
     def _claims(cls, request: Request, token: str) -> dict:
         """Claims for the request: the middleware's copy when present, else a fresh decode."""
         claims = getattr(request.state, CLAIMS_STATE_KEY, None)
@@ -147,15 +132,6 @@ class AuthHelper:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
             ) from e
-
-    @classmethod
-    def get_current_user(cls, request: Request, token: str = Depends(require_credential)):
-        """
-        Dependency: the raw credential of an authenticated caller.
-        """
-        if cls._claims(request, token).get("user_id") is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
-        return token
 
     @classmethod
     def get_current_user_username(cls, request: Request, token: str = Depends(require_credential)):

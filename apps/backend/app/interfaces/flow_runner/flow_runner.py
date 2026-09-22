@@ -85,10 +85,10 @@ class ZoneAutomaticIrrigationHelper:
     def start_irrigation(cls, zone):
         """
         Start an irrigation task for the Zone
-        @param zone: Zone data
+        @param zone: the Zone entity
         @return: the irrigation task
         """
-        zone_name = zone.get("zone_name")
+        zone_name = zone.zone_name
         logger.info("Starting Irrigation for %s", zone_name)
         irrigation_task = cls.zone_use_case.start_irrigation(zone_name=zone_name)
         logger.info("Irrigation started id: %s", irrigation_task.id)
@@ -96,7 +96,7 @@ class ZoneAutomaticIrrigationHelper:
 
     @classmethod
     def stop_irrigation(cls, zone, task_to_stop, reason="stop trigger reached"):
-        zone_name = zone.get("zone_name")
+        zone_name = zone.zone_name
         logger.info("Stopping Irrigation for %s (task %s, %s)", zone_name, task_to_stop.id, reason)
         cls.zone_use_case.stop_irrigation(task_in_progress=task_to_stop)
 
@@ -107,13 +107,13 @@ class ZoneAutomaticIrrigationHelper:
         Logic:
             1- hard limits: max runtime, stale readings
             2- zone triggers against the latest moisture and saturation
-        @param zone: A dict that contains a Zone data
+        @param zone: the Zone entity
         @param task_in_progress: the zone's irrigation task in progress, or None
         @param zone_sensors_records: the zone's latest readings, as the tick fetched them for
                every zone at once; None fetches this zone's own
         @return: (str START | STOP | None, reason)
         """
-        zone_name = zone.get("zone_name")
+        zone_name = zone.zone_name
         logger.info("Checking %s ........", zone_name)
 
         if task_in_progress is not None:
@@ -169,7 +169,7 @@ class ZoneAutomaticIrrigationHelper:
         @return: how many steps of this tick failed
         """
         failures = 0
-        zones = [zone.to_dict() for zone in cls.zone_use_case.filter()]
+        zones = cls.zone_use_case.filter()
         # Everything a zone's evaluation reads is fetched once for all zones: the open tasks
         # (one query) and the latest reading of every zone sensor (two). A tick is then a fixed
         # handful of queries plus the commands it actually sends, not O(zones x sensors).
@@ -177,16 +177,16 @@ class ZoneAutomaticIrrigationHelper:
             task_status=global_constants.IRRIGATION_TASK_IN_PROGRESS
         )
         task_by_zone: dict = {}
-        for task in open_tasks or []:
+        for task in open_tasks:
             task_by_zone.setdefault(task.zone_name, task)  # oldest first, as the per-zone query returned
-        readings = cls.zone_use_case.latest_zone_readings([zone.get("zone_name") for zone in zones])
+        readings = cls.zone_use_case.latest_zone_readings([zone.zone_name for zone in zones])
         for zone in zones:
-            name = zone.get("zone_name")
+            name = zone.zone_name
             try:
                 cls._handle_zone(zone, task_by_zone.get(name), readings.get(name, []))
             except Exception:
                 failures += 1
-                logger.exception("Could not evaluate zone %s", zone.get("zone_name"))
+                logger.exception("Could not evaluate zone %s", zone.zone_name)
 
         if not cls.zone_use_case.get_all_irrigation_tasks(task_status=global_constants.IRRIGATION_TASK_IN_PROGRESS):
             try:

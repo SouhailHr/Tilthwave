@@ -30,22 +30,6 @@ def get_all(
     return SensorCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the sensors as select options
-    """
-    return SensorCrudHelper.get_select_list(filters_str=filters)
-
-
-@router.get("/stats/")
-def get_stats():
-    """
-    This Router gets the sensors stats
-    """
-    return SensorCrudHelper.get_stats()
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """

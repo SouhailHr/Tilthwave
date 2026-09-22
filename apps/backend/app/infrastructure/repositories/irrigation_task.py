@@ -2,6 +2,7 @@ from adapters.irrigation_task import IrrigationTaskAdaptor
 from core.entities.irrigation_task import IrrigationTask as IrrigationTaskEntity
 from infrastructure.database.tables.irrigation_task import IrrigationTask
 from infrastructure.repositories.base import BaseDBRepo
+from infrastructure.repositories.tenancy import TenantScope
 
 
 class IrrigationTaskDBRepository(BaseDBRepo):
@@ -12,4 +13,4 @@ class IrrigationTaskDBRepository(BaseDBRepo):
     MODEL = IrrigationTask
     ENTITY = IrrigationTaskEntity
     ADAPTOR = IrrigationTaskAdaptor
-    TENANT_SCOPE = ("via_zone",)
+    TENANT_SCOPE = TenantScope.via_zone()

@@ -52,7 +52,6 @@ def test_sensors_of_another_farm_are_invisible(client, auth_headers, make_farm, 
     assert client.get(f"/sensors/{foreign.id}", headers=headers).status_code == 404
     assert client.patch(f"/sensors/{foreign.id}", json={"is_active": False}, headers=headers).status_code == 404
     assert client.delete(f"/sensors/{foreign.id}", headers=headers).status_code == 404
-    assert client.get("/sensors/select-list/", headers=headers).json() == [{"value": "A-001", "label": "A-001"}]
 
 
 def test_sensor_records_of_another_farm_are_invisible(client, auth_headers, make_farm, make_sensor, make_record):

@@ -54,22 +54,6 @@ def get_all(
     return UserCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/stats/")
-def get_users_stats():
-    """
-    This Router gets the Users stats
-    """
-    return UserCrudHelper.get_stats()
-
-
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the Users as select options
-    """
-    return UserCrudHelper.get_select_list(filters_str=filters)
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """
