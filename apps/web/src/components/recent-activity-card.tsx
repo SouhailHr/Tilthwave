@@ -1,25 +1,18 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { IrrigationTask, IrrigationTaskStatus } from "@/types/irrigation-task";
+import { irrigationTaskStatusVariant } from "@/lib/status-ui";
+import type { IrrigationTask, } from "@/types/irrigation-task";
 import { formatRelative } from "@/utils/dates";
 
-const statusVariant: Record<
-  IrrigationTaskStatus,
-  "default" | "secondary" | "outline" | "destructive"
-> = {
-  pending: "secondary",
-  "in progress": "default",
-  completed: "outline",
-  canceled: "destructive",
-};
 
 interface RecentActivityCardProps {
   tasks: IrrigationTask[];
@@ -65,7 +58,7 @@ export function RecentActivityCard({
                   </span>
                 </div>
                 <Badge
-                  variant={statusVariant[task.status]}
+                  variant={irrigationTaskStatusVariant[task.status]}
                   className="capitalize"
                 >
                   {task.status}

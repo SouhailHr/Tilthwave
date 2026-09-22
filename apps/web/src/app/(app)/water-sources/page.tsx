@@ -2,42 +2,34 @@
 
 import { z } from "zod";
 
+
 import { useCreateWaterSource, useUpdateWaterSource } from "@/api/water-sources";
-import {
-  DEVICE_STATUSES,
-  type CreateWaterSourceInput,
-  type DeviceStatus,
-  type UpdateWaterSourceInput,
-  type WaterSource,
-} from "@/types/water-source";
-import { Badge } from "@/components/ui/badge";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
+import { Badge } from "@/components/ui/badge";
+import { DEVICE_STATUS_OPTIONS, deviceStatusVariant } from "@/lib/status-ui";
+import {
+  DEVICE_STATUSES,
+  type CreateWaterSourceInput,
+  
+  type UpdateWaterSourceInput,
+  type WaterSource,
+} from "@/types/water-source";
 
-const positiveNumber = (label: string) =>
-  z
-    .string()
-    .refine((v) => v !== "" && !Number.isNaN(Number(v)), `${label} is required`)
-    .refine((v) => Number(v) > 0, `${label} must be greater than 0`);
 
 const waterSourceSchema = z.object({
   serial_number: z.string().min(1, "Serial number is required"),
   farm_name: z.string().min(1, "Farm is required"),
   type: z.string().min(1, "Type is required").max(50),
-  water_pressure: positiveNumber("Water pressure"),
-  water_volume: positiveNumber("Water volume"),
+  water_pressure: z.number({ error: "Water pressure is required" }).positive("Water pressure must be greater than 0"),
+  water_volume: z.number({ error: "Water volume is required" }).positive("Water volume must be greater than 0"),
   status: z.enum(DEVICE_STATUSES),
   sensor_serial_number: z.string(),
 });
 
 type WaterSourceValues = z.infer<typeof waterSourceSchema>;
 
-const statusOptions: { value: DeviceStatus; label: string }[] = [
-  { value: "On", label: "On" },
-  { value: "Off", label: "Off" },
-  { value: "Error", label: "Error" },
-];
 
 const waterSourceFields: EntityFormField<WaterSourceValues>[] = [
   { name: "serial_number", label: "Serial number", placeholder: "e.g. WSDEEP00123" },
@@ -51,9 +43,9 @@ const waterSourceFields: EntityFormField<WaterSourceValues>[] = [
     placeholder: "Select a farm",
   },
   { name: "type", label: "Type", placeholder: "e.g. deep groundwater" },
-  { name: "water_pressure", label: "Water pressure", placeholder: "e.g. 15.5" },
-  { name: "water_volume", label: "Water volume (L)", placeholder: "e.g. 1000" },
-  { name: "status", label: "Status", type: "select", options: statusOptions },
+  { name: "water_pressure", type: "number", label: "Water pressure", placeholder: "e.g. 15.5" },
+  { name: "water_volume", type: "number", label: "Water volume (L)", placeholder: "e.g. 1000" },
+  { name: "status", label: "Status", type: "select", options: DEVICE_STATUS_OPTIONS },
   {
     name: "sensor_serial_number",
     label: "Sensor (optional)",
@@ -65,11 +57,6 @@ const waterSourceFields: EntityFormField<WaterSourceValues>[] = [
   },
 ];
 
-const statusVariant: Record<DeviceStatus, "default" | "secondary" | "destructive"> = {
-  On: "default",
-  Off: "secondary",
-  Error: "destructive",
-};
 
 const waterSourceColumns: Column<WaterSource>[] = [
   {
@@ -87,7 +74,7 @@ const waterSourceColumns: Column<WaterSource>[] = [
   {
     key: "status",
     header: "Status",
-    cell: (ws) => <Badge variant={statusVariant[ws.status]}>{ws.status}</Badge>,
+    cell: (ws) => <Badge variant={deviceStatusVariant[ws.status]}>{ws.status}</Badge>,
   },
 ];
 
@@ -96,8 +83,8 @@ function buildInput(values: WaterSourceValues): CreateWaterSourceInput {
     serial_number: values.serial_number,
     farm_name: values.farm_name,
     type: values.type,
-    water_pressure: Number(values.water_pressure),
-    water_volume: Number(values.water_volume),
+    water_pressure: values.water_pressure,
+    water_volume: values.water_volume,
     status: values.status,
     sensor_serial_number: values.sensor_serial_number || null,
   };
@@ -123,8 +110,6 @@ export default function WaterSourcesPage() {
         serial_number: "",
         farm_name: "",
         type: "",
-        water_pressure: "",
-        water_volume: "",
         status: "On",
         sensor_serial_number: "",
       }}
@@ -132,8 +117,8 @@ export default function WaterSourcesPage() {
         serial_number: ws.serial_number,
         farm_name: ws.farm_name,
         type: ws.type,
-        water_pressure: String(ws.water_pressure),
-        water_volume: String(ws.water_volume),
+        water_pressure: ws.water_pressure,
+        water_volume: ws.water_volume,
         status: ws.status,
         sensor_serial_number: ws.sensor_serial_number ?? "",
       })}

@@ -9,15 +9,12 @@ import {
 } from "lucide-react";
 
 import { useDashboardSummary } from "@/api/dashboard";
-import type { DashboardSummary } from "@/types/dashboard";
-
 import { DashboardStatCard } from "@/components/dashboard-stat-card";
+import { RecentActivityCard } from "@/components/recent-activity-card";
 import {
   StatusBreakdownCard,
   type BreakdownEntry,
 } from "@/components/status-breakdown-card";
-import { RecentActivityCard } from "@/components/recent-activity-card";
-import { WaterConsumptionChart } from "@/components/water-consumption-chart";
 import {
   Card,
   CardContent,
@@ -26,6 +23,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WaterConsumptionChart } from "@/components/water-consumption-chart";
+import type { DashboardSummary } from "@/types/dashboard";
 
 // This page used to fan out seven polling queries - six paginated lists sampled at 100 rows
 // each plus the farm stats - and count every status breakdown client-side inside that sample,

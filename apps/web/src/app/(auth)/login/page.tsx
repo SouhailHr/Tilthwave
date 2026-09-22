@@ -1,16 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { useLogin } from "@/api/auth";
 import { toApiError } from "@/api/errors";
-import { safeRedirect } from "@/utils/safeRedirect";
 import { AuthCardHeader, AuthPage } from "@/components/auth-page";
 import { PasswordInput } from "@/components/password-input";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { safeRedirect } from "@/utils/safeRedirect";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required").max(256),

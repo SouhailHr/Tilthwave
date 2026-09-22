@@ -52,8 +52,15 @@ extend-exclude = ["alembic/migrations/versions"]
 
 [tool.ruff.lint]
 # Deliberate selection (pyflakes, pycodestyle, isort, bugbear, pyupgrade); CI runs it blocking.
-select = ["E", "F", "I", "B", "UP"]
+# PLC0415: every import at module top; a function-level import is either a hidden cycle or a
+# hidden optional dependency, and both belong in wiring, not inside a call.
+select = ["E", "F", "I", "B", "UP", "PLC0415"]
 ignore = ["B008"]  # FastAPI Depends()/Query() in defaults is the framework idiom
+
+[tool.ruff.lint.per-file-ignores]
+# The test bootstrap sets the environment before importing the app (settings read os.environ at
+# import time), so its imports sit below that block by design.
+"tests/conftest.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["adapters", "common", "config", "core", "infrastructure", "interfaces", "wiring", "tests"]

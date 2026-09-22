@@ -41,9 +41,28 @@ os.environ.update(
     }
 )
 
-from config.settings import settings  # noqa: E402  (environment must be set first)
-from infrastructure.database.base import Base  # noqa: E402
-from infrastructure.repositories.base import BaseDBRepo  # noqa: E402
+# Everything below sits under the environment block on purpose (E402 is ignored for this file in
+# pyproject.toml): the settings module reads os.environ when it is imported.
+from datetime import timedelta
+
+from fastapi.testclient import TestClient
+
+from adapters.farm import FarmAdaptor
+from adapters.users import UserAdaptor
+from adapters.zone import ZoneAdaptor
+from common.dates import utc_now
+from config.settings import settings
+from core.security.password import PasswordHasher
+from infrastructure.database.base import Base
+from infrastructure.repositories.base import BaseDBRepo
+from interfaces.api.helpers.auth import AuthHelper
+from interfaces.api.helpers.rate_limit import login_rate_limiter, password_reset_rate_limiter
+from interfaces.api.main import app
+from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
+from wiring import (
+    api_use_cases,
+    repositories,
+)
 
 FARM_A = "Sunny Farms"
 FARM_B = "Shady Acres"
@@ -61,7 +80,6 @@ def database_schema():
 @pytest.fixture(autouse=True)
 def clean_tables():
     """Every test starts from empty tables (schema kept) and an empty login rate-limit window."""
-    from interfaces.api.helpers.rate_limit import login_rate_limiter, password_reset_rate_limiter
 
     login_rate_limiter.reset()
     password_reset_rate_limiter.reset()
@@ -74,30 +92,24 @@ def clean_tables():
 
 @pytest.fixture
 def repos():
-    from wiring import repositories
 
     return repositories()
 
 
 @pytest.fixture
 def use_cases():
-    from wiring import api_use_cases
 
     return api_use_cases()
 
 
 @pytest.fixture
 def client():
-    from fastapi.testclient import TestClient
-
-    from interfaces.api.main import app
 
     return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
 def make_farm(repos):
-    from adapters.farm import FarmAdaptor
 
     def _make(farm_name=FARM_A):
         return repos.farm.create(
@@ -117,8 +129,6 @@ def make_farm(repos):
 
 @pytest.fixture
 def make_user(repos, make_farm):
-    from adapters.users import UserAdaptor
-    from core.security.password import PasswordHasher
 
     def _make(username, role="admin", farm_name=FARM_A, password="Passw0rd-Test!"):
         # users.farm_name is a foreign key: create the farm on demand so a test that only needs a
@@ -155,7 +165,6 @@ def token_for(repos, make_user):
     runs on the token shape production uses. Pass user_id to mint a token for a row that does
     not exist.
     """
-    from interfaces.api.helpers.auth import AuthHelper
 
     def _token(username="admin", role="admin", farm_name=FARM_A, user_id=None):
         if user_id is not None:
@@ -184,7 +193,6 @@ def _reset_flow_runner_state():
     configure()); a test that changes them must not leak into the next one.
     """
     yield
-    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 
     helper.zone_use_case = helper.irrigation_task_use_case = helper.water_source_use_case = None
     helper.consecutive_failures = 0
@@ -200,7 +208,6 @@ def auth_headers(token_for):
 
 @pytest.fixture
 def make_zone(repos):
-    from adapters.zone import ZoneAdaptor
 
     def _make(zone_name="Zone A", farm_name=FARM_A, **triggers):
         data = {
@@ -239,9 +246,6 @@ def zone_payload(zone_name="Zone New", farm_name=FARM_A, **overrides):
 
 def backdate(repo, model, row_id: int, minutes: int) -> None:
     """Move a row's created_date into the past (UTC, like the column default)."""
-    from datetime import timedelta
-
-    from common.dates import utc_now
 
     with repo.Session() as session:
         session.get(model, row_id).created_date = utc_now() - timedelta(minutes=minutes)

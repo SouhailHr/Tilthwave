@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
+import { z } from "zod";
+
 
 import { useResetPassword } from "@/api/auth";
 import { toApiError } from "@/api/errors";
@@ -23,19 +24,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { PASSWORDS_MUST_MATCH, passwordSchema, passwordsMatch } from "@/lib/password-schema";
 
 export const newPasswordSchema = z
   .object({
-    new_password: z
-      .string()
-      .min(8, "Use at least 8 characters")
-      .max(72, "Use at most 72 characters"),
+    new_password: passwordSchema,
     confirm_password: z.string(),
   })
-  .refine((v) => v.new_password === v.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  });
+  .refine(passwordsMatch, PASSWORDS_MUST_MATCH);
 type Values = z.infer<typeof newPasswordSchema>;
 
 function ResetPasswordForm() {

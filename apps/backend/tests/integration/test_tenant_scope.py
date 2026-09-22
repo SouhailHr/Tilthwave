@@ -1,4 +1,9 @@
-from common.tenant_context import get_current_tenant
+import pytest
+
+from adapters.sensor import SensorAdaptor
+from adapters.sensor_record import SensorRecordAdaptor
+from common.exceptions import InvalidFilterError, NotFoundError
+from common.tenant_context import get_current_tenant, reset_tenant, set_tenant
 from tests.conftest import FARM_A, FARM_B
 
 
@@ -90,10 +95,6 @@ def test_farm_less_bootstrap_admin_still_creates_farms(client, auth_headers, rep
 
 def test_sensor_record_cannot_be_written_into_another_farms_sensor(repos, make_farm):
     """The ("via_sensor",) scope binds writes too, not only reads."""
-    from adapters.sensor import SensorAdaptor
-    from adapters.sensor_record import SensorRecordAdaptor
-    from common.exceptions import NotFoundError
-    from common.tenant_context import reset_tenant, set_tenant
 
     make_farm(FARM_A)
     make_farm(FARM_B)
@@ -112,7 +113,6 @@ def test_sensor_record_cannot_be_written_into_another_farms_sensor(repos, make_f
     token = set_tenant({"username": "alice", "farm_name": FARM_A, "role": "owner", "is_superuser": False})
     try:
         assert repos.sensor_record.create(record_for("MSN-A")).sensor_serial_number == "MSN-A"
-        import pytest
 
         with pytest.raises(NotFoundError):
             repos.sensor_record.create(record_for("MSN-B"))
@@ -122,9 +122,6 @@ def test_sensor_record_cannot_be_written_into_another_farms_sensor(repos, make_f
 
 def test_private_fields_are_not_filterable(repos, make_farm, make_user):
     """users.password is stripped from every response; it must not be an equality oracle either."""
-    import pytest
-
-    from common.exceptions import InvalidFilterError
 
     make_farm(FARM_A)
     make_user("alice")

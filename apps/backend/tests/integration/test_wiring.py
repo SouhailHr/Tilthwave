@@ -12,6 +12,8 @@ import core.use_cases as use_cases_pkg
 from common import constants as global_constants
 from infrastructure.repositories.tenancy import TenantScope
 from tests.conftest import FARM_A
+from tests.integration.test_irrigation import RecordingBroker
+from wiring import BrokerRepositories, build_use_cases
 
 
 def test_no_use_case_constructs_another_use_case():
@@ -45,8 +47,6 @@ def test_the_unconsumed_surface_is_gone(client, auth_headers, make_farm):
 
 
 def test_irrigation_task_lookups_return_lists(repos, make_farm, make_zone):
-    from tests.integration.test_irrigation import RecordingBroker
-    from wiring import BrokerRepositories, build_use_cases
 
     make_farm(FARM_A)
     make_zone("Zone A")

@@ -1,8 +1,9 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useEffect } from "react";
+
 import { sessionKey, useSession } from "@/api/auth";
 import { subscribe } from "@/lib/eventBus";
 import { safeRedirect } from "@/utils/safeRedirect";

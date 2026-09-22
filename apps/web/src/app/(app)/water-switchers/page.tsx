@@ -2,20 +2,22 @@
 
 import { z } from "zod";
 
+
 import {
   useCreateWaterSwitcher,
   useUpdateWaterSwitcher,
 } from "@/api/water-switchers";
-import { DEVICE_STATUSES, type DeviceStatus } from "@/types/water-source";
+import { EntityCrudPage } from "@/components/entity-crud-page";
+import type { EntityFormField } from "@/components/entity-form";
+import type { Column } from "@/components/entity-table";
+import { Badge } from "@/components/ui/badge";
+import { DEVICE_STATUS_OPTIONS, deviceStatusVariant } from "@/lib/status-ui";
+import { DEVICE_STATUSES } from "@/types/water-source";
 import type {
   CreateWaterSwitcherInput,
   UpdateWaterSwitcherInput,
   WaterSwitcher,
 } from "@/types/water-switcher";
-import { Badge } from "@/components/ui/badge";
-import { EntityCrudPage } from "@/components/entity-crud-page";
-import type { EntityFormField } from "@/components/entity-form";
-import type { Column } from "@/components/entity-table";
 
 const waterSwitcherSchema = z.object({
   serial_number: z.string().min(1, "Serial number is required"),
@@ -27,11 +29,6 @@ const waterSwitcherSchema = z.object({
 
 type WaterSwitcherValues = z.infer<typeof waterSwitcherSchema>;
 
-const statusOptions: { value: DeviceStatus; label: string }[] = [
-  { value: "On", label: "On" },
-  { value: "Off", label: "Off" },
-  { value: "Error", label: "Error" },
-];
 
 const waterSwitcherFields: EntityFormField<WaterSwitcherValues>[] = [
   { name: "serial_number", label: "Serial number", placeholder: "e.g. WS00123" },
@@ -53,7 +50,7 @@ const waterSwitcherFields: EntityFormField<WaterSwitcherValues>[] = [
     labelKey: "zone_name",
     placeholder: "Select a zone",
   },
-  { name: "status", label: "Status", type: "select", options: statusOptions },
+  { name: "status", label: "Status", type: "select", options: DEVICE_STATUS_OPTIONS },
   {
     name: "sensor_serial_number",
     label: "Sensor (optional)",
@@ -65,11 +62,6 @@ const waterSwitcherFields: EntityFormField<WaterSwitcherValues>[] = [
   },
 ];
 
-const statusVariant: Record<DeviceStatus, "default" | "secondary" | "destructive"> = {
-  On: "default",
-  Off: "secondary",
-  Error: "destructive",
-};
 
 const waterSwitcherColumns: Column<WaterSwitcher>[] = [
   {
@@ -86,7 +78,7 @@ const waterSwitcherColumns: Column<WaterSwitcher>[] = [
   {
     key: "status",
     header: "Status",
-    cell: (sw) => <Badge variant={statusVariant[sw.status]}>{sw.status}</Badge>,
+    cell: (sw) => <Badge variant={deviceStatusVariant[sw.status]}>{sw.status}</Badge>,
   },
 ];
 

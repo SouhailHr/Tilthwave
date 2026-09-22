@@ -5,7 +5,7 @@ import {
   entityDetailKey,
   entityListKey,
   entityRootKey,
-} from "./_entity";
+} from "./entity-queries";
 
 describe("Generic Repository key helpers", () => {
   it("entityListKey is parameterised by params", () => {
@@ -111,7 +111,7 @@ describe("entity fetchers", () => {
     const del = vi.fn().mockResolvedValue({});
     vi.doMock("@/api/client", () => ({ api: { get, post, patch, delete: del } }));
 
-    const { fetchEntityList, fetchEntity, createEntity, updateEntity, deleteEntity } = await import("./_entity");
+    const { fetchEntityList, fetchEntity, createEntity, updateEntity, deleteEntity } = await import("./entity-queries");
     await fetchEntityList("zones", { page: 1 });
     await fetchEntity("zones", 7);
     await createEntity("zones", { zone_name: "Zone A" });
@@ -138,7 +138,7 @@ describe("entity fetchers", () => {
     const get = vi.fn().mockRejectedValue(failure);
     vi.doMock("@/api/client", () => ({ api: { get } }));
 
-    const { fetchEntity } = await import("./_entity");
+    const { fetchEntity } = await import("./entity-queries");
     await expect(fetchEntity("zones", 1)).rejects.toMatchObject({ status: 500, message: "Database error" });
   });
 });

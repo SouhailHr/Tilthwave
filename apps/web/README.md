@@ -14,7 +14,7 @@ Everything below is for working on it directly.
 ```bash
 npm install
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 npm run dev   # against the docker API
-npm run lint          # eslint
+npm run lint          # eslint, incl. import/order: imports at the top, grouped npm / @/ / relative, alphabetised
 npm test              # vitest run  (npm run test:watch)
 npm run build         # next build (standalone output, what the Dockerfile ships)
 ```
@@ -34,12 +34,13 @@ src/
                           water-switchers, irrigation-tasks, users, settings
     api/health            liveness for compose
     error.tsx, global-error.tsx
-  api/                    axios client + one module per resource (useX hooks); _entity.ts is the
-                          generic list / get / create / update / delete layer
+  api/                    axios client + one module per resource (useX hooks); entity-queries.ts is
+                          the generic list / get / create / update / delete layer
   components/             app-shell, require-auth, entity-crud-page / entity-form / entity-table,
                           dashboard cards, ui/ (shadcn)
   providers/              QueryProvider, ObservabilitySink
-  hooks/, lib/, utils/    useDebounced, useDisclosure, eventBus, dates (naive UTC -> local)
+  hooks/, lib/, utils/    useDebounced, useDisclosure, eventBus, status-ui (one status vocabulary per
+                          resource), password-schema (the API's rule, once), dates
   types/                  hand-written API types, one file per resource
 ```
 

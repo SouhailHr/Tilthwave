@@ -12,6 +12,8 @@ The repository calls apply()/bind() only for an HTTP caller with a farm (see Bas
 """
 
 from common.exceptions import NotFoundError
+from infrastructure.database.tables.sensor import Sensor
+from infrastructure.database.tables.zone import Zone
 
 
 class TenantScope:
@@ -47,13 +49,9 @@ class TenantScope:
         if self.kind in (self.COLUMN, self.OWN):
             return query.filter(getattr(model, self.column) == farm)
         if self.kind == self.VIA_ZONE:
-            from infrastructure.database.tables.zone import Zone
-
             owned = session.query(Zone.zone_name).filter(Zone.farm_name == farm)
             return query.filter(model.zone_name.in_(owned))
         if self.kind == self.VIA_SENSOR:
-            from infrastructure.database.tables.sensor import Sensor
-
             owned = session.query(Sensor.serial_number).filter(Sensor.farm_name == farm)
             return query.filter(model.sensor_serial_number.in_(owned))
         raise ValueError(f"unknown tenant scope kind {self.kind!r}")
@@ -72,14 +70,10 @@ class TenantScope:
         if self.kind in (self.COLUMN, self.OWN):
             data[self.column] = farm
         elif self.kind == self.VIA_ZONE and data.get("zone_name") is not None:
-            from infrastructure.database.tables.zone import Zone
-
             owned = session.query(Zone.id).filter(Zone.zone_name == data["zone_name"], Zone.farm_name == farm).first()
             if owned is None:
                 raise NotFoundError("Zone not found")
         elif self.kind == self.VIA_SENSOR and data.get("sensor_serial_number") is not None:
-            from infrastructure.database.tables.sensor import Sensor
-
             owned = (
                 session.query(Sensor.id)
                 .filter(Sensor.serial_number == data["sensor_serial_number"], Sensor.farm_name == farm)

@@ -3,23 +3,20 @@
 import { z } from "zod";
 
 import { useCreateZone, useUpdateZone } from "@/api/zones";
-import type { CreateZoneInput, UpdateZoneInput, Zone } from "@/types/zone";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
+import type { CreateZoneInput, UpdateZoneInput, Zone } from "@/types/zone";
 
 const zoneSchema = z.object({
   farm_name: z.string().min(1, "Farm name is required"),
   zone_name: z.string().min(1, "Zone name is required"),
-  size: z
-    .string()
-    .refine((v) => v !== "" && Number.isInteger(Number(v)), "Size must be a whole number")
-    .refine((v) => Number(v) > 0, "Size must be greater than 0"),
+  size: z.number({ error: "Size is required" }).int("Size must be a whole number").positive("Size must be greater than 0"),
   soil_type: z.string().min(1, "Soil type is required"),
-  moisture_trigger_start: z.string().refine((v) => v !== "", "Required"),
-  moisture_trigger_stop: z.string().refine((v) => v !== "", "Required"),
-  saturation_trigger_start: z.string().refine((v) => v !== "", "Required"),
-  saturation_trigger_stop: z.string().refine((v) => v !== "", "Required"),
+  moisture_trigger_start: z.number({ error: "Required" }),
+  moisture_trigger_stop: z.number({ error: "Required" }),
+  saturation_trigger_start: z.number({ error: "Required" }),
+  saturation_trigger_stop: z.number({ error: "Required" }),
   lat: z.string(),
   lon: z.string(),
 });
@@ -37,12 +34,12 @@ const zoneFields: EntityFormField<ZoneValues>[] = [
     placeholder: "Select a farm",
   },
   { name: "zone_name", label: "Zone name", placeholder: "e.g. Zone 1" },
-  { name: "size", label: "Size (m²)", placeholder: "e.g. 1500" },
+  { name: "size", type: "number", label: "Size (m²)", placeholder: "e.g. 1500" },
   { name: "soil_type", label: "Soil type", placeholder: "e.g. Loamy" },
-  { name: "moisture_trigger_start", label: "Moisture trigger start" },
-  { name: "moisture_trigger_stop", label: "Moisture trigger stop" },
-  { name: "saturation_trigger_start", label: "Saturation trigger start" },
-  { name: "saturation_trigger_stop", label: "Saturation trigger stop" },
+  { name: "moisture_trigger_start", type: "number", label: "Moisture trigger start" },
+  { name: "moisture_trigger_stop", type: "number", label: "Moisture trigger stop" },
+  { name: "saturation_trigger_start", type: "number", label: "Saturation trigger start" },
+  { name: "saturation_trigger_stop", type: "number", label: "Saturation trigger stop" },
   {
     name: "lat",
     label: "Latitude",
@@ -74,12 +71,12 @@ function buildInput(values: ZoneValues): CreateZoneInput {
   return {
     farm_name: values.farm_name,
     zone_name: values.zone_name,
-    size: Number(values.size),
+    size: values.size,
     soil_type: values.soil_type,
-    moisture_trigger_start: Number(values.moisture_trigger_start),
-    moisture_trigger_stop: Number(values.moisture_trigger_stop),
-    saturation_trigger_start: Number(values.saturation_trigger_start),
-    saturation_trigger_stop: Number(values.saturation_trigger_stop),
+    moisture_trigger_start: values.moisture_trigger_start,
+    moisture_trigger_stop: values.moisture_trigger_stop,
+    saturation_trigger_start: values.saturation_trigger_start,
+    saturation_trigger_stop: values.saturation_trigger_stop,
     location:
       hasLat && hasLon
         ? { lat: Number(values.lat), lon: Number(values.lon) }
@@ -100,24 +97,23 @@ export default function ZonesPage() {
       createDefaults={{
         farm_name: "",
         zone_name: "",
-        size: "",
         soil_type: "",
-        moisture_trigger_start: "50",
-        moisture_trigger_stop: "80",
-        saturation_trigger_start: "60",
-        saturation_trigger_stop: "90",
+        moisture_trigger_start: 50,
+        moisture_trigger_stop: 80,
+        saturation_trigger_start: 60,
+        saturation_trigger_stop: 90,
         lat: "",
         lon: "",
       }}
       toEditDefaults={(zone) => ({
         farm_name: zone.farm_name,
         zone_name: zone.zone_name,
-        size: String(zone.size),
+        size: zone.size,
         soil_type: zone.soil_type,
-        moisture_trigger_start: String(zone.moisture_trigger_start),
-        moisture_trigger_stop: String(zone.moisture_trigger_stop),
-        saturation_trigger_start: String(zone.saturation_trigger_start),
-        saturation_trigger_stop: String(zone.saturation_trigger_stop),
+        moisture_trigger_start: zone.moisture_trigger_start,
+        moisture_trigger_stop: zone.moisture_trigger_stop,
+        saturation_trigger_start: zone.saturation_trigger_start,
+        saturation_trigger_stop: zone.saturation_trigger_stop,
         lat: zone.location ? String(zone.location.lat) : "",
         lon: zone.location ? String(zone.location.lon) : "",
       })}

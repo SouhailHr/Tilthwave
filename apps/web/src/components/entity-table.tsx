@@ -1,13 +1,11 @@
 "use client";
 
-import { ReactNode, useCallback, useMemo, useState } from "react";
 import { MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { useDeleteEntity, useEntityList } from "@/api/_entity";
+import { useDeleteEntity, useEntityList } from "@/api/entity-queries";
 import { toApiError } from "@/api/errors";
-import { useDebounced } from "@/hooks/useDebounced";
-import type { EntityWithId } from "@/types/pagination";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,6 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDebounced } from "@/hooks/useDebounced";
+import type { EntityWithId } from "@/types/pagination";
 
 export type Column<T> = {
   key: string;

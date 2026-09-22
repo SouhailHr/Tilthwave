@@ -1,8 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
-import { ObservabilitySink } from "./ObservabilitySink";
-import { emit } from "@/lib/eventBus";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
 import type { ApiError } from "@/api/errors";
+import { emit } from "@/lib/eventBus";
+
+import { ObservabilitySink } from "./ObservabilitySink";
+
 
 const toastError = vi.fn();
 vi.mock("sonner", () => ({

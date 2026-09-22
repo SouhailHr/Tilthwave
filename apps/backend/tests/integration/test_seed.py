@@ -1,8 +1,9 @@
 import pytest
 
+from infrastructure.scripts import seed_data
+
 
 def test_seed_is_idempotent_including_initial_records(repos):
-    from infrastructure.scripts import seed_data
 
     seed_data.main()
     seed_data.main()
@@ -14,7 +15,6 @@ def test_seed_is_idempotent_including_initial_records(repos):
 
 
 def test_seed_refuses_to_run_without_admin_password(monkeypatch):
-    from infrastructure.scripts import seed_data
 
     monkeypatch.delenv("ADMIN_PASSWORD")
     seed_data.seed_farm()

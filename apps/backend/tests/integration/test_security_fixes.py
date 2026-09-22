@@ -6,12 +6,17 @@ least-privilege simulator account (finding 4).
 
 import pytest
 
+from adapters.sensor import SensorAdaptor
+from adapters.sensor_record import SensorRecordAdaptor
+from config.settings import settings
+from core.use_cases import users as users_module
+from infrastructure.scripts import seed_data
+from interfaces.api.helpers.auth import AuthHelper
 from tests.conftest import FARM_A, FARM_B
 
 
 @pytest.fixture
 def make_sensor(repos):
-    from adapters.sensor import SensorAdaptor
 
     def _make(serial, farm_name=FARM_A, type_="moisture_sensor"):
         return repos.sensor.create(
@@ -25,7 +30,6 @@ def make_sensor(repos):
 
 @pytest.fixture
 def make_record(repos):
-    from adapters.sensor_record import SensorRecordAdaptor
 
     def _make(serial, value=42):
         return repos.sensor_record.create(
@@ -145,7 +149,6 @@ def test_farm_comes_from_the_database_not_the_token(client, auth_headers, make_f
 
 
 def test_unknown_username_still_runs_a_password_check(use_cases, monkeypatch):
-    from core.use_cases import users as users_module
 
     calls = []
     monkeypatch.setattr(
@@ -159,7 +162,6 @@ def test_unknown_username_still_runs_a_password_check(use_cases, monkeypatch):
 
 
 def test_seed_creates_a_worker_for_the_simulator_when_configured(repos, monkeypatch):
-    from infrastructure.scripts import seed_data
 
     monkeypatch.setenv("SIM_PASSWORD", "Sim-Test-Passw0rd!")
     seed_data.main()
@@ -171,7 +173,6 @@ def test_seed_creates_a_worker_for_the_simulator_when_configured(repos, monkeypa
 
 
 def test_hsts_header_follows_the_cookie_secure_setting(client, monkeypatch):
-    from config.settings import settings
 
     monkeypatch.setattr(settings.API, "COOKIE_SECURE", False)
     assert "strict-transport-security" not in client.get("/health").headers
@@ -186,8 +187,6 @@ def test_a_token_without_the_password_fingerprint_is_not_a_session(client, make_
     tokens existed for test fixtures that minted claims by hand; the fixtures now mint the real
     shape, so a token without it is rejected like any other stale one.
     """
-    from interfaces.api.helpers.auth import AuthHelper
-    from tests.conftest import FARM_A
 
     make_farm(FARM_A)
     user = make_user("alice")

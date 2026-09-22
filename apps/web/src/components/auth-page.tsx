@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
 import Image from "next/image";
+import { ReactNode } from "react";
 
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 

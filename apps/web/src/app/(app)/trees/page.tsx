@@ -3,24 +3,19 @@
 import { z } from "zod";
 
 import { useCreateTree, useUpdateTree } from "@/api/trees";
-import type { CreateTreeInput, Tree, UpdateTreeInput } from "@/types/tree";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
+import type { CreateTreeInput, Tree, UpdateTreeInput } from "@/types/tree";
 
-const positiveNumber = (label: string) =>
-  z
-    .string()
-    .refine((v) => v !== "" && !Number.isNaN(Number(v)), `${label} is required`)
-    .refine((v) => Number(v) > 0, `${label} must be greater than 0`);
 
 const treeSchema = z.object({
   zone_name: z.string().min(1, "Zone is required"),
   variety: z.string().min(1, "Variety is required"),
   planting_date: z.string().min(1, "Planting date is required"),
-  height: positiveNumber("Height"),
-  width_diameter: positiveNumber("Width diameter"),
-  trunk_diameter: positiveNumber("Trunk diameter"),
+  height: z.number({ error: "Height is required" }).positive("Height must be greater than 0"),
+  width_diameter: z.number({ error: "Width diameter is required" }).positive("Width diameter must be greater than 0"),
+  trunk_diameter: z.number({ error: "Trunk diameter is required" }).positive("Trunk diameter must be greater than 0"),
   serial_number: z.string().min(1, "Serial number is required"),
 });
 
@@ -39,9 +34,9 @@ const treeFields: EntityFormField<TreeValues>[] = [
   },
   { name: "variety", label: "Variety", placeholder: "e.g. Olive" },
   { name: "planting_date", label: "Planting date", type: "date" },
-  { name: "height", label: "Height (m)", placeholder: "e.g. 5.5" },
-  { name: "width_diameter", label: "Width diameter (m)", placeholder: "e.g. 2" },
-  { name: "trunk_diameter", label: "Trunk diameter (m)", placeholder: "e.g. 0.3" },
+  { name: "height", type: "number", label: "Height (m)", placeholder: "e.g. 5.5" },
+  { name: "width_diameter", type: "number", label: "Width diameter (m)", placeholder: "e.g. 2" },
+  { name: "trunk_diameter", type: "number", label: "Trunk diameter (m)", placeholder: "e.g. 0.3" },
 ];
 
 const treeColumns: Column<Tree>[] = [
@@ -66,9 +61,9 @@ function buildInput(values: TreeValues): CreateTreeInput {
     zone_name: values.zone_name,
     variety: values.variety,
     planting_date: values.planting_date,
-    height: Number(values.height),
-    width_diameter: Number(values.width_diameter),
-    trunk_diameter: Number(values.trunk_diameter),
+    height: values.height,
+    width_diameter: values.width_diameter,
+    trunk_diameter: values.trunk_diameter,
     serial_number: values.serial_number,
   };
 }
@@ -88,18 +83,15 @@ export default function TreesPage() {
         zone_name: "",
         variety: "",
         planting_date: "",
-        height: "",
-        width_diameter: "",
-        trunk_diameter: "",
       }}
       toEditDefaults={(tree) => ({
         serial_number: tree.serial_number,
         zone_name: tree.zone_name,
         variety: tree.variety,
         planting_date: tree.planting_date,
-        height: String(tree.height),
-        width_diameter: String(tree.width_diameter),
-        trunk_diameter: String(tree.trunk_diameter),
+        height: tree.height,
+        width_diameter: tree.width_diameter,
+        trunk_diameter: tree.trunk_diameter,
       })}
       toCreateInput={buildInput}
       toUpdateInput={buildInput}

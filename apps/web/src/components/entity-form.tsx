@@ -1,15 +1,12 @@
 "use client";
 
-import { ReactNode } from "react";
-import { DefaultValues, FieldValues, Path, useForm, type ControllerRenderProps, type Resolver } from "react-hook-form";
-import { toApiError } from "@/api/errors";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ReactNode, useState } from "react";
+import { DefaultValues, FieldValues, Path, useForm, type ControllerRenderProps, type Resolver } from "react-hook-form";
 import type { ZodType } from "zod";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyZod = ZodType<any, any>;
 
-import { useEntityList } from "@/api/_entity";
-import type { EntityWithId } from "@/types/pagination";
+import { useEntityList } from "@/api/entity-queries";
+import { toApiError } from "@/api/errors";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -28,7 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDebounced } from "@/hooks/useDebounced";
 import { cn } from "@/lib/utils";
+import type { EntityWithId } from "@/types/pagination";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyZod = ZodType<any, any>;
 
 type SelectOption = { value: string; label: string };
 
@@ -72,6 +73,8 @@ export type EntityFormField<TValues extends FieldValues> =
   | BooleanField<TValues>
   | TextareaField<TValues>
   | FKField<TValues>;
+
+const FK_PAGE_SIZE = 100;
 
 interface EntityFormProps<TValues extends FieldValues> {
   schema: ZodType<TValues>;
@@ -290,39 +293,58 @@ function FkSelect({
   placeholder?: string;
   disabled?: boolean;
 }) {
-  const { data, isPending, isError } = useEntityList<
-    EntityWithId & Record<string, unknown>
-  >(resource, { size: 100 });
+  // One page of options. When the resource has more rows than a page, a filter box appears and
+  // narrows the list server-side (the API's `search` matches the resource's identifier), so a
+  // farm with 500 sensors is not silently cut to the first 100.
+  const [filterInput, setFilterInput] = useState("");
+  const filter = useDebounced(filterInput);
+  const { data, isPending, isError } = useEntityList<EntityWithId & Record<string, unknown>>(resource, {
+    size: FK_PAGE_SIZE,
+    ...(filter ? { search: filter } : {}),
+  });
 
   const options: SelectOption[] = (data?.items ?? []).map((item) => ({
     value: String(item[valueKey] ?? ""),
     label: String(item[labelKey] ?? item[valueKey] ?? ""),
   }));
+  const total = data?.total ?? 0;
+  const overflow = total > options.length;
 
   return (
-    <Select
-      value={value}
-      onValueChange={(next) => onValueChange(next ?? "")}
-      disabled={disabled || isPending}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue
-          placeholder={
-            isPending
-              ? "Loading…"
-              : isError
-                ? "Failed to load options"
-                : placeholder
-          }
+    <div className="grid gap-1.5">
+      {overflow || filter !== "" ? (
+        <Input
+          type="search"
+          value={filterInput}
+          disabled={disabled}
+          placeholder={`Type to narrow ${total} ${resource.replace("-", " ")}`}
+          aria-label={`Filter ${resource}`}
+          onChange={(e) => setFilterInput(e.target.value)}
         />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      ) : null}
+      <Select
+        value={value}
+        onValueChange={(next) => onValueChange(next ?? "")}
+        disabled={disabled || isPending}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue
+            placeholder={isPending ? "Loading…" : isError ? "Failed to load" : (placeholder ?? "Select…")}
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {overflow ? (
+        <p className="text-xs text-muted-foreground">
+          Showing the first {options.length} of {total}; type above to find the rest.
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -2,22 +2,24 @@
 
 import { z } from "zod";
 
+
 import {
   useCreateIrrigationTask,
   useUpdateIrrigationTask,
 } from "@/api/irrigation-tasks";
+import { EntityCrudPage } from "@/components/entity-crud-page";
+import type { EntityFormField } from "@/components/entity-form";
+import type { Column } from "@/components/entity-table";
+import { Badge } from "@/components/ui/badge";
+import { IRRIGATION_TASK_STATUS_OPTIONS, irrigationTaskStatusVariant } from "@/lib/status-ui";
 import {
   IRRIGATION_TASK_STATUSES,
   type CreateIrrigationTaskInput,
   type IrrigationTask,
-  type IrrigationTaskStatus,
+  
   type UpdateIrrigationTaskInput,
 } from "@/types/irrigation-task";
-import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/utils/dates";
-import { EntityCrudPage } from "@/components/entity-crud-page";
-import type { EntityFormField } from "@/components/entity-form";
-import type { Column } from "@/components/entity-table";
 
 const irrigationTaskSchema = z.object({
   zone_name: z.string().min(1, "Zone is required"),
@@ -26,12 +28,6 @@ const irrigationTaskSchema = z.object({
 
 type IrrigationTaskValues = z.infer<typeof irrigationTaskSchema>;
 
-const statusOptions: { value: IrrigationTaskStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "in progress", label: "In progress" },
-  { value: "completed", label: "Completed" },
-  { value: "canceled", label: "Canceled" },
-];
 
 const irrigationTaskFields: EntityFormField<IrrigationTaskValues>[] = [
   {
@@ -43,18 +39,9 @@ const irrigationTaskFields: EntityFormField<IrrigationTaskValues>[] = [
     labelKey: "zone_name",
     placeholder: "Select a zone",
   },
-  { name: "status", label: "Status", type: "select", options: statusOptions },
+  { name: "status", label: "Status", type: "select", options: IRRIGATION_TASK_STATUS_OPTIONS },
 ];
 
-const statusVariant: Record<
-  IrrigationTaskStatus,
-  "default" | "secondary" | "outline" | "destructive"
-> = {
-  pending: "secondary",
-  "in progress": "default",
-  completed: "outline",
-  canceled: "destructive",
-};
 
 const irrigationTaskColumns: Column<IrrigationTask>[] = [
   {
@@ -67,7 +54,7 @@ const irrigationTaskColumns: Column<IrrigationTask>[] = [
     key: "status",
     header: "Status",
     cell: (task) => (
-      <Badge variant={statusVariant[task.status]} className="capitalize">
+      <Badge variant={irrigationTaskStatusVariant[task.status]} className="capitalize">
         {task.status}
       </Badge>
     ),
