@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RequireAuth } from "./require-auth";
-import { setStoredToken, clearStoredToken } from "@/utils/tokenStorage";
+import { emit } from "@/lib/eventBus";
 
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -9,58 +10,68 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace }),
 }));
 
-/** A well-formed but unsigned-in-practice JWT: enough for jwt-decode, which never verifies. */
-function fakeToken(payload: Record<string, unknown>) {
-  const b64u = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  return `${b64u({ alg: "HS256", typ: "JWT" })}.${b64u(payload)}.sig`;
+const useSession = vi.fn();
+vi.mock("@/api/auth", () => ({
+  sessionKey: ["auth", "me"],
+  useSession: () => useSession(),
+}));
+
+const session = { user_id: 1, username: "admin", role: "admin", farm_name: "Sunny Farms", exp: 1 };
+
+function renderGuarded() {
+  const client = new QueryClient();
+  return render(
+    <QueryClientProvider client={client}>
+      <RequireAuth>
+        <div>secret dashboard</div>
+      </RequireAuth>
+    </QueryClientProvider>,
+  );
 }
 
 beforeEach(() => {
   replace.mockClear();
-  clearStoredToken();
+  useSession.mockReset();
 });
 
 describe("RequireAuth", () => {
-  it("renders children without redirecting when a valid token already exists (page refresh)", async () => {
-    // Regression for: refreshing an authenticated page bounced to /login?redirect=%2F.
-    // The token is set here, BEFORE the component mounts, exactly like a hard refresh where
-    // the token was already in localStorage from a previous page load and no token-change
-    // event fires during this component's lifecycle. useSyncExternalStore's server snapshot
-    // is always "false", so without the `mounted` re-check this stayed stuck at "false" and
-    // redirected every single time, even for an already-authenticated user.
-    setStoredToken(fakeToken({ user_id: 1, exp: Math.floor(Date.now() / 1000) + 3600 }));
-
-    render(
-      <RequireAuth>
-        <div>secret dashboard</div>
-      </RequireAuth>,
-    );
-
+  it("renders children once the server confirms a session, without redirecting", async () => {
+    useSession.mockReturnValue({ isPending: false, isSuccess: true, data: session });
+    renderGuarded();
     await screen.findByText("secret dashboard");
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("redirects to /login when no token exists", async () => {
-    render(
-      <RequireAuth>
-        <div>secret dashboard</div>
-      </RequireAuth>,
-    );
+  it("renders nothing and does not redirect while the probe is still pending", () => {
+    // The old regression: a synchronous check redirected off an SSR placeholder before the real
+    // value landed. Pending is now an explicit state, and pending never redirects.
+    useSession.mockReturnValue({ isPending: true, isSuccess: false, data: undefined });
+    renderGuarded();
+    expect(screen.queryByText("secret dashboard")).toBeNull();
+    expect(replace).not.toHaveBeenCalled();
+  });
 
+  it("redirects to /login when the server says nobody is signed in", async () => {
+    useSession.mockReturnValue({ isPending: false, isSuccess: true, data: null });
+    renderGuarded();
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?redirect=%2F"));
     expect(screen.queryByText("secret dashboard")).toBeNull();
   });
 
-  it("redirects to /login when the stored token is expired", async () => {
-    setStoredToken(fakeToken({ user_id: 1, exp: Math.floor(Date.now() / 1000) - 60 }));
-
-    render(
-      <RequireAuth>
-        <div>secret dashboard</div>
-      </RequireAuth>,
-    );
-
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?redirect=%2F"));
+  it("does not treat a failed probe (API unreachable) as signed out", () => {
+    useSession.mockReturnValue({ isPending: false, isSuccess: false, isError: true, data: undefined });
+    renderGuarded();
     expect(screen.queryByText("secret dashboard")).toBeNull();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("drops the session and redirects with expired=1 on auth:expired", async () => {
+    useSession.mockReturnValue({ isPending: false, isSuccess: true, data: session });
+    renderGuarded();
+    await screen.findByText("secret dashboard");
+    emit({ type: "auth:expired", redirect: "/zones" });
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith("/login?redirect=%2Fzones&expired=1"),
+    );
   });
 });

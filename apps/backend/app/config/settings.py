@@ -73,11 +73,25 @@ class APISettings(BaseSettings):
     TRUSTED_PROXIES: list[str] = []
     # Interactive docs (/docs, /openapi.json) map the whole attack surface; off unless explicitly enabled.
     DOCS_ENABLED: bool = False
+    # Browser session cookies (POST /auth/login with use_cookie=true). Secure needs TLS, so it is
+    # off for the plain-http local stack and must be true behind the production proxy.
+    COOKIE_SECURE: bool = False
+    # None = host-only cookie, right for localhost. Set e.g. ".example.com" when the web app and
+    # the API are on different subdomains of one site, so app.example.com receives it too.
+    COOKIE_DOMAIN: str | None = None
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="API_", case_sensitive=True, extra="ignore")
 
     @field_validator("SECRET_KEY")
     def secret_key_is_real(cls, value: str) -> str:
         return reject_placeholder("API_SECRET_KEY", value, MIN_SECRET_KEY_LENGTH)
+
+    @field_validator("COOKIE_DOMAIN", mode="before")
+    def blank_domain_is_none(cls, value):
+        # compose passes "" when the variable is unset; an empty Domain attribute makes browsers
+        # reject the cookie outright, so treat blank as "not set".
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
 
 class StreamerSettings(BaseSettings):
