@@ -25,8 +25,8 @@ jobs:
         run: uv sync --frozen
       - name: Lint (ruff)
         run: uv run ruff check app tests && uv run ruff format --check app tests
-      - name: Tests (SQLite, no services needed)
-        run: uv run pytest -q
+      - name: Tests (SQLite, no services needed) with coverage
+        run: uv run pytest -q --cov=app --cov-report=term-missing:skip-covered
       # --python pins the interpreter uvx runs pip-audit with: left to itself it takes the newest on
       # the runner, which may have no psycopg2-binary wheel yet and fail building one. The export
       # is fully pinned, so --disable-pip skips the dry-run install.
@@ -87,6 +87,12 @@ jobs:
           uv run alembic upgrade head
           # the downgrade snapshot restored nothing (tables were recreated empty) and is gone again
           psql "$PSQL" -v ON_ERROR_STOP=1 -tAc "select to_regclass('sensor_farm_name_snapshot') is null" | grep -qx t
+      # The suite once more on the production engine: SQLite does not enforce foreign keys, so an
+      # IntegrityError -> 409 path can pass on SQLite and fail here.
+      - name: Tests on Postgres
+        env:
+          TILTHWAVE_TEST_DATABASE_URI: postgresql://postgres:ci-only-postgres-pw@localhost:5432/tilthwave
+        run: uv run pytest -q
 
   simulator:
     runs-on: ubuntu-latest
@@ -123,7 +129,7 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npm test
+      - run: npm run test:coverage
       - run: npm run build
       - run: npm audit --audit-level=high --omit=dev   # dev-only tooling is tracked by Dependabot
 
