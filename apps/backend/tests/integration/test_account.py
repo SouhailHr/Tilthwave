@@ -87,7 +87,7 @@ def test_change_password_rotates_this_cookie_session_and_signs_the_others_out(cl
         "/account/password", json={"current_password": PASSWORD, "new_password": NEW_PASSWORD}, headers=csrf
     )
     assert response.status_code == 200
-    assert "token" not in response.json()
+    assert response.json()["token"] is None  # re-issued as cookies, never in a body JS can read
     assert any(c.startswith("tw_access=") for c in response.headers.get_list("set-cookie"))
 
     # This browser: still signed in, on the re-issued cookie.

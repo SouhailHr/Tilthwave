@@ -1,9 +1,9 @@
 """
 Date helpers.
 
-The database stores naive UTC datetimes (see TilthwaveBaseModel); entities carry
-them as `str(datetime)`. Every comparison with "now" must therefore use UTC,
-never the container's local time (TZ is set to the farm's timezone for logs).
+The database stores naive UTC datetimes (see TilthwaveBaseModel); entities carry them as
+ISO 8601 with an explicit UTC offset (iso_utc). Every comparison with "now" must use UTC, never
+the container's local time (TZ is set to the farm's timezone for logs).
 """
 
 from datetime import UTC, datetime
@@ -16,16 +16,21 @@ def utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+def iso_utc(value: datetime) -> str:
+    """A naive-UTC column value as ISO 8601 with its offset: '2026-09-15T16:06:56.266864+00:00'."""
+    return (value if value.tzinfo else value.replace(tzinfo=UTC)).isoformat()
+
+
 def parse_db_datetime(value) -> datetime:
     """
-    Parse a datetime as serialized by the adaptors (`str(datetime)`).
-
-    Handles both 'YYYY-MM-DD HH:MM:SS.ffffff' and 'YYYY-MM-DD HH:MM:SS' (Python
-    drops the fraction when microsecond == 0, which broke a fixed-format strptime).
+    A datetime as the adaptors serialize it (iso_utc), or as older callers wrote it
+    ('YYYY-MM-DD HH:MM:SS[.ffffff]', naive UTC), back to a naive UTC datetime comparable with
+    utc_now(). An offset, when present, is honoured and then dropped.
     """
-    if isinstance(value, datetime):
-        return value
-    return datetime.fromisoformat(value)
+    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(value)
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(UTC).replace(tzinfo=None)
+    return parsed
 
 
 def minutes_since(value) -> float:

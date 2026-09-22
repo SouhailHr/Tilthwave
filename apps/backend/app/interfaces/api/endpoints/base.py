@@ -56,7 +56,8 @@ class BaseCrud:
         result = cls.USE_CASE_INSTANCE.get(id)
         if not result:
             raise cls._not_found()
-        return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
+        # The same enrichment as the list, so an item reads the same alone and in a page.
+        return JSONResponse(status_code=status.HTTP_200_OK, content=cls._enrich_items([result])[0])
 
     @classmethod
     def delete_by_id(cls, id: int):

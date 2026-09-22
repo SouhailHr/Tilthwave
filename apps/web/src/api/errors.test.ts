@@ -71,3 +71,29 @@ describe("getErrorMessage", () => {
     expect(getErrorMessage(null, "fallback")).toBe("fallback");
   });
 });
+
+describe("toApiError with the API's validation envelope", () => {
+  it("takes the fields map and the summary detail", () => {
+    const err = new AxiosError("Request failed with status code 422", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 422,
+      statusText: "",
+      headers: {},
+      config: {} as never,
+      data: {
+        detail: "size: Input should be a valid number",
+        error_code: "validation_error",
+        request_id: "abc123",
+        fields: { size: ["Input should be a valid number"], soil_type: ["Input should be a valid string"] },
+      },
+    });
+    const apiError = toApiError(err);
+    expect(apiError.status).toBe(422);
+    expect(apiError.message).toBe("size: Input should be a valid number");
+    expect(apiError.errorCode).toBe("validation_error");
+    expect(apiError.requestId).toBe("abc123");
+    expect(apiError.fieldErrors).toEqual({
+      size: ["Input should be a valid number"],
+      soil_type: ["Input should be a valid string"],
+    });
+  });
+});
