@@ -7,64 +7,25 @@ from config.settings import settings
 from core.entities.zone import Zone as ZoneEntity
 from core.use_cases.base import BaseUseCase
 from core.use_cases.exceptions import UseCaseException
-from core.use_cases.irrigation_task import IrrigationTaskUseCase
-from core.use_cases.sensor import SensorUseCase
-from core.use_cases.sensor_record import SensorRecordUseCase
-from core.use_cases.tree import TreeUseCase
-from core.use_cases.water_source import WaterSourceUseCase
-from core.use_cases.water_switcher import WaterSwitcherUseCase
-from core.use_cases.zone_sensors import ZoneSensorsUseCase
 
 logger = logging.getLogger(__name__)
 
 
 class ZoneUseCase(BaseUseCase):
+    """
+    Zones and their irrigation. Collaborators are injected from the composition root (wiring.py):
+    this class never builds another use case.
+    """
+
     ENTITY = ZoneEntity
 
-    def __init__(
-        self,
-        repo,
-        irrigation_task_repo=None,
-        zone_sensors_repo=None,
-        sensor_repo=None,
-        sensor_record_repo=None,
-        water_switcher_repo=None,
-        water_source_repo=None,
-        tree_repo=None,
-        switcher_broker_repo=None,
-        source_broker_repo=None,
-    ):
-        """
-        Initialize the use case with a repository.
-        we are passing sensor_repo to handle validation
-        of the sensor_type
-
-        @param repo: Repository instance handling data operations.
-        @param sensor_repo: Repository instance handling data operations for sensor entity
-
-        """
+    def __init__(self, repo, irrigation_tasks, water_switchers, water_sources, sensor_records, zone_sensors):
         super().__init__(repo)
-        self.source_broker_repo = source_broker_repo
-        self.switcher_broker_repo = switcher_broker_repo
-        self.irrigation_task_repo = irrigation_task_repo
-        self.zone_sensors_repo = zone_sensors_repo
-        self.sensor_repo = sensor_repo
-        self.sensor_record_repo = sensor_record_repo
-        self.water_switcher_repo = water_switcher_repo
-        self.water_source_repo = water_source_repo
-        self.tree_repo = tree_repo
-        self.irrigation_task_use_case = IrrigationTaskUseCase(repo=self.irrigation_task_repo)
-        self.water_switcher_use_case = WaterSwitcherUseCase(
-            repo=self.water_switcher_repo, sensor_repo=self.sensor_repo, broker_repo=self.switcher_broker_repo
-        )
-        self.water_source_use_case = WaterSourceUseCase(
-            repo=self.water_source_repo,
-            sensor_repo=self.sensor_repo,
-            sensor_record_repo=sensor_record_repo,
-            broker_repo=self.source_broker_repo,
-        )
-        self.sensor_record_use_case = SensorRecordUseCase(repo=self.sensor_record_repo)
-        self.sensor_use_case = SensorUseCase(repo=self.sensor_repo)
+        self.irrigation_task_use_case = irrigation_tasks
+        self.water_switcher_use_case = water_switchers
+        self.water_source_use_case = water_sources
+        self.sensor_record_use_case = sensor_records
+        self.zone_sensors_use_case = zone_sensors
 
     @staticmethod
     def check_start_irrigation(moisture: int, saturation: int, zone):
@@ -83,12 +44,12 @@ class ZoneUseCase(BaseUseCase):
          'moisture_trigger_start' and 'saturation_trigger_start'.
         @return: bool - True if irrigation needs to be started, False otherwise.
         """
-        moisture_trigger_start = zone.get("moisture_trigger_start")
-        saturation_trigger_start = zone.get("saturation_trigger_start")
+        moisture_trigger_start = zone.moisture_trigger_start
+        saturation_trigger_start = zone.saturation_trigger_start
 
         # Ensure moisture_trigger_start and saturation_trigger_start are not None
         if moisture_trigger_start is None or saturation_trigger_start is None:
-            logger.error(f"Zone {zone.get('zone_name')} has missing triggers data.")
+            logger.error(f"Zone {zone.zone_name} has missing triggers data.")
             return False
 
         return saturation <= saturation_trigger_start and moisture <= moisture_trigger_start
@@ -110,60 +71,36 @@ class ZoneUseCase(BaseUseCase):
          'moisture_trigger_stop' and 'saturation_trigger_stop'.
         @return: bool - True if irrigation needs to be stopped, False otherwise.
         """
-        moisture_trigger_stop = zone.get("moisture_trigger_stop")
-        saturation_trigger_stop = zone.get("saturation_trigger_stop")
+        moisture_trigger_stop = zone.moisture_trigger_stop
+        saturation_trigger_stop = zone.saturation_trigger_stop
         # Ensure moisture_trigger_stop and saturation_trigger_stop are not None
         if moisture_trigger_stop is None or saturation_trigger_stop is None:
-            logger.error(f"Zone {zone.get('zone_name')} has missing triggers data.")
+            logger.error(f"Zone {zone.zone_name} has missing triggers data.")
             return False
 
         return saturation >= saturation_trigger_stop and moisture >= moisture_trigger_stop
 
-    def get_irrigation_tasks(self, zone_name: str, task_status: str):
-        """
-        Retrieve the irrigation tasks by zone name and tasks status.
-        Logic:
-            1- Use filter to get irrigation tasks by zone_name and status = task_status
-            2- Return the irrigation tasks.
-            3- Return None if there is no irrigation tasks for the zone with that status
-        @param zone_name: str  - The name of the zone for which to retrieve the irrigation tasks.
-        @param task_status: str  - the irrigation tasks status .
-        @return: The irrigation tasks with task_status for the specified zone,
-        or `None` if no such tasks exists
-        """
-        filter_by = [
-            {"attribute": "zone_name", "value": zone_name, "condition": "eq"},
-            {"attribute": "status", "value": task_status, "condition": "eq"},
-        ]
-        tasks = self.irrigation_task_use_case.filter(filters=filter_by)
-        if tasks:
-            return tasks
+    def get_irrigation_tasks(self, zone_name: str, task_status: str) -> list:
+        """The zone's irrigation tasks with `task_status` (oldest first); [] when there are none."""
+        return self.irrigation_task_use_case.filter(
+            filters=[
+                {"attribute": "zone_name", "value": zone_name, "condition": "eq"},
+                {"attribute": "status", "value": task_status, "condition": "eq"},
+            ]
+        )
 
-    def get_all_irrigation_tasks(self, task_status: str):
-        """
-        Retrieve all the irrigation tasks by tasks status.
-        Logic:
-            1- Use filter to all the irrigation tasks by tasks status. and status = task_status
-            2- Return all the irrigation tasks.
-            3- Return None if there is no irrigation tasks for the zone with that status
-        @param task_status: str  - the irrigation tasks status .
-        @return: all the irrigation tasks with task_status,
-        or `None` if no such tasks exists
-        """
-        filter_by = [{"attribute": "status", "value": task_status, "condition": "eq"}]
-        tasks = self.irrigation_task_use_case.filter(filters=filter_by)
-        if tasks:
-            return tasks
+    def get_all_irrigation_tasks(self, task_status: str) -> list:
+        """Every irrigation task with `task_status`, oldest first; [] when there are none."""
+        return self.irrigation_task_use_case.filter(
+            filters=[{"attribute": "status", "value": task_status, "condition": "eq"}]
+        )
 
     def start_irrigation(self, zone_name: str):
         """
-            A method that start an irrigation Task for a given Zone
-        Logic:
-            1- Open the water source(s) and switchers of the zone (commands to the field)
-            2- Only then record an Irrigation Task "in progress"
-        The order matters: a task is only recorded once the commands were acknowledged by the
-        broker, so the database never claims an irrigation the field never received.
-        @param zone_name:
+        Start an irrigation task for the zone: open the water source(s) and switchers (commands
+        to the field), and only then record a task "in progress". The order matters: a task is
+        recorded once the commands were acknowledged by the broker, so the database never claims
+        an irrigation the field never received.
         @return: the created irrigation task
         @raises BrokerError: when a command could not be delivered; no task is created
         """
@@ -191,29 +128,6 @@ class ZoneUseCase(BaseUseCase):
         data = {"status": global_constants.IRRIGATION_TASK_COMPLETED, "duration": duration}
         return self.irrigation_task_use_case.update(id=task_in_progress.id, data=data)
 
-    def get_zone_sensors(self, zone_name: str):
-        """
-         This method gets all sensors of a specific zone by the zone name
-         logic :
-            1- get all the entities of zone_sensors and save them in result
-            2- Add the sensor type to the actual result using the sensor repo
-            3- make a dict that has { key: sensor.type : value : sensor.serial_number }
-            3- if results in none raise an exception
-        @param zone_name: str representing a zone by its name
-        @return:  dict { key: sensor.type : value : sensor.serial_number }
-        """
-
-        filter_by = [{"attribute": "zone_name", "value": zone_name, "condition": "eq"}]
-        zone_sensors_use_case = ZoneSensorsUseCase(repo=self.zone_sensors_repo, sensor_repo=self.sensor_repo)
-        sensors_data = zone_sensors_use_case.filter(filters=filter_by)
-        sensors = {
-            self.sensor_use_case.get_sensor_type_by_serial_number(
-                sensor_data.sensor_serial_number
-            ): sensor_data.sensor_serial_number
-            for sensor_data in sensors_data
-        }
-        return sensors
-
     def latest_zone_readings(self, zone_names) -> dict:
         """
         The latest reading of every sensor of every given zone, in two queries for all zones
@@ -226,7 +140,9 @@ class ZoneUseCase(BaseUseCase):
         zone_names = list(zone_names)
         if not zone_names:
             return {}
-        links = self.zone_sensors_repo.filter([{"attribute": "zone_name", "value": zone_names, "condition": "in"}])
+        links = self.zone_sensors_use_case.filter(
+            filters=[{"attribute": "zone_name", "value": zone_names, "condition": "in"}]
+        )
         serials = sorted({link.sensor_serial_number for link in links})
         latest = {
             record.sensor_serial_number: record for record in self.sensor_record_use_case.latest_per_sensor(serials)
@@ -325,91 +241,3 @@ class ZoneUseCase(BaseUseCase):
                 key="water_control_data",
                 payload=self._switcher_command(water_switcher, global_constants.STATUS_OFF),
             )
-
-    def get_zone_trees(self, zone_name: str):
-        """
-         This method gets all trees of a specific zone by the zone name
-         logic :
-            1- get all the entities of trees
-        @param zone_name: str representing a zone by its name
-        @return: list of trees
-        """
-        filter_by = [{"attribute": "zone_name", "value": zone_name, "condition": "eq"}]
-        tree_use_case = TreeUseCase(repo=self.tree_repo)
-        trees = tree_use_case.filter(filters=filter_by)
-        return trees if trees else []
-
-    def get_zone_data(self, zone_name: str):
-        """
-         This method gets the zone latest 15 sensor records for moisture and saturation
-        @param zone_name: str representing a zone by its name
-        @return: dict of data ,
-        eg :
-        """
-        data_chart = {}
-        sensors = self.get_zone_sensors(zone_name)
-        # use the method that gets the sensor last record by serial number from sensor_records
-        for sensor_serial_number in sensors.values():
-            records = self.sensor_record_use_case.get_get_sensor_records(sensor_serial_number, limit=15)
-            for record in records:
-                data = record.data
-                timestamp = data["timestamp"]
-                time = timestamp[:16]
-
-                # Check if the record contains moisture or saturation
-                if "moisture" in data["type"] or "saturation" in data["type"]:
-                    # Create a dictionary containing moisture and saturation values
-                    value = {}
-                    if "moisture" in data["type"]:
-                        value["Moist"] = data["value"]
-                    if "saturation" in data["type"]:
-                        value["Saturation"] = data["value"]
-
-                    # Check if the time already exists in the data_chart dictionary
-                    if time in data_chart:
-                        # If it does, update the existing entry
-                        data_chart[time].update(value)
-                    else:
-                        # If not, add a new entry with the time as key and the value dictionary as value
-                        data_chart[time] = value
-
-        return data_chart
-
-    def get_stats(self, name: str):
-        """
-         This method gets the stats per zone
-        @param name: str represents the zone
-        @return: stats_dict
-        eg:
-            stats ={
-            "total_water_switchers": 8,
-             "total_sensors": 123,
-             "total_trees": 123,
-             "total_irrigation_tasks": 3,
-            }
-        """
-        zone_data = self.get_zone_data(zone_name=name)
-        sorted_zone_data = dict(sorted(zone_data.items()))
-        zone_filter = {"attribute": "zone_name", "value": name, "condition": "eq"}
-        task_count = self.irrigation_task_use_case.repo.count
-        irrigation_tasks_in_progress = task_count(
-            [
-                zone_filter,
-                {"attribute": "status", "value": global_constants.IRRIGATION_TASK_IN_PROGRESS, "condition": "eq"},
-            ]
-        )
-        irrigation_tasks_completed = task_count(
-            [
-                zone_filter,
-                {"attribute": "status", "value": global_constants.IRRIGATION_TASK_COMPLETED, "condition": "eq"},
-            ]
-        )
-
-        stats_dict = {
-            "total_trees": len(self.get_zone_trees(zone_name=name)),
-            "total_irrigation_tasks_completed": irrigation_tasks_completed,
-            "total_irrigation_tasks_in_progress": irrigation_tasks_in_progress,
-            "chartData": sorted_zone_data,
-        }
-
-        return stats_dict

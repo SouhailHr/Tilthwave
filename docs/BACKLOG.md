@@ -69,9 +69,6 @@ Correctness and contract
 - **[A] Sensor list and detail have different shapes.** `sensor_base.py:212-218` adds
   `assigned_to` in `_enrich_item` (list path only); `GET /sensors/{id}` returns the bare row. Fix:
   enrich in `get_by_id` too.
-- **[A] Stats routes: two path shapes and 200-with-zeros for unknown names.** `/sensors/stats/`
-  vs `/farms/stats/{farm_name}`; `farm.get_stats` and `zone.get_zone_data` never check the name
-  exists, so a typo looks like an empty farm. Check existence first, 404 otherwise.
 - **[A] Two 422 shapes.** Use-case 422s carry a string `detail`, validation 422s a list, so the
   web branches on type; login stays 400 (the simulator retries on it as "admin not seeded yet").
   The envelope itself carries `error_code` and `request_id` since `chore/boundaries-and-health`.
@@ -127,32 +124,8 @@ Security (Lows)
 - **[A] No server-side revocation**: a captured JWT stays valid up to 120 min after logout; only a
   password change or deactivation kills it. Accepted for the stateless design.
 
-Structure (from the design-patterns inventory; sized by the tech-debt audit)
+Structure (from the design-patterns inventory; `refactor/use-case-wiring` closed the rest)
 
-- **[A] ~450 LOC of API surface nothing first-party consumes**: `/stats/`, `/select-list/`,
-  `/identifier/`, `/auth/token/verify/`, all of `TreeUseCase`, the `get_stats` /
-  `check_if_*_assigned` / `get_all_*` trios, half of `ZoneUseCase`; kept alive by two integration
-  tests. Every one does an unbounded `filter()` in memory. Decide whether they are a contract for
-  anyone; deleting them removes the unbounded reads and the `get_get_sensor_records` typo.
-- **[A] Twenty inline use-case constructions outside `wiring.py`** (`zone.py:56-67,207,320`,
-  `sensor.py`, `water_source.py`, `water_switcher.py`, `zone_sensors.py`, `farm.py:30-40`, where
-  `FarmUseCase` builds a `ZoneUseCase` with six `None` repos). Causes the five
-  `# to resolve the circular import` lazy imports and blocks substituting collaborators in tests.
-  Inject the three real cross-aggregate collaborators from `wiring.py`; most other sites only need
-  `self.<repo>.first(...)`.
-- **[A] Duplicated sensor-type guard ×6** (`water_source.py`, `water_switcher.py`,
-  `zone_sensors.py` create + update) and `update_by_serial_number` cloned between water source and
-  switcher. One `require_sensor_of_type(serial, allowed)`.
-- **[A] Tenancy is two parallel `if` chains**: `_apply_tenant` and `_bind_tenant` each know the
-  four scope kinds (they agree again since `fix/tenancy-bind-self`, which is enforced only by
-  tests). Make `TENANT_SCOPE` an object with both `apply(query)` and `bind(data)` so a kind cannot
-  be added to one side only; extracting it from `BaseDBRepo` also makes it unit-testable.
-- **[A] `get_irrigation_tasks` returns `None` instead of `[]`**, forcing `or []` in the flow runner
-  and a double query in `zone.get_stats`.
-- **[A] Entities are passed as dicts into the control loop** (`flow_runner.py:173`, then eleven
-  `zone.get(...)`); the typed `Zone` dataclass is discarded at the boundary.
-- **[A] `RESOURCES_FOR_ROLES` is written out four times** (admin = owner, worker = engineer
-  verbatim); status enums are encoded twice (regex and list) and again in `dashboard.py`.
 - **Flow runner Monostate** (`configure()` classmethods, process-global `consecutive_failures`).
   Tests must call `configure()` between them; add an autouse fixture that resets the class state,
   or make it an instance built in `run()`.
@@ -220,5 +193,4 @@ Decisions recorded (not work items)
 4. ~~`chore/ci-hardening`~~ done.
 5. ~~`perf/set-queries`~~ done.
 6. ~~`chore/migration-safety`~~ done.
-7. `refactor/use-case-wiring`: delete the unconsumed surface, inject collaborators, the sensor-type
-   guard, `TENANT_SCOPE` as an object. Largest; last.
+7. ~~`refactor/use-case-wiring`~~ done.

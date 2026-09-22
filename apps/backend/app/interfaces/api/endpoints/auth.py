@@ -12,7 +12,7 @@ from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import clear_session_cookies, new_csrf_token, set_session_cookies
 from interfaces.api.helpers.rate_limit import limit_login_attempts, limit_password_reset_attempts
 from interfaces.api.helpers.tenant import TOKEN_INVALID_STATE_KEY
-from interfaces.api.schemas.auth import AuthLogin, AuthVerifyToken, PasswordForgot, PasswordReset
+from interfaces.api.schemas.auth import AuthLogin, PasswordForgot, PasswordReset
 from wiring import api_use_cases
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -133,11 +133,3 @@ def reset_password(data: PasswordReset):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=RESET_INVALID_DETAIL)
     use_cases.users.set_password(user.id, data.new_password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.post("/token/verify/")
-def verify_access_token(data: AuthVerifyToken):
-    """
-    Router for Verifying access token
-    """
-    return AuthHelper.verify_access_token(data.token)

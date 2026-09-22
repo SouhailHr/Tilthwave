@@ -39,30 +39,6 @@ def get_all(
     return ZoneCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/stats/{zone_name}")
-def get_stats(zone_name: str):
-    """
-    This Router gets the stats of one Zone
-    """
-    return ZoneCrudHelper.get_stats(entity_name=zone_name)
-
-
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the Zones as select options
-    """
-    return ZoneCrudHelper.get_select_list(filters_str=filters)
-
-
-@router.get("/identifier/{identifier}")
-def get_by_identifier(identifier: str):
-    """
-    This Router gets a Zone by its zone_name
-    """
-    return ZoneCrudHelper.get_by_identifier(identifier=identifier)
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """

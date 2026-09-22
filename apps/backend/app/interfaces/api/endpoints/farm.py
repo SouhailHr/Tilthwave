@@ -39,30 +39,6 @@ def get_all(
     return FarmCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/stats/{farm_name}")
-def get_stats(farm_name: str):
-    """
-    This Router gets the stats of one Farm
-    """
-    return FarmCrudHelper.get_stats(entity_name=farm_name)
-
-
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the Farms as select options
-    """
-    return FarmCrudHelper.get_select_list(filters_str=filters)
-
-
-@router.get("/identifier/{identifier}")
-def get_by_identifier(identifier: str):
-    """
-    This Router gets a Farm by its farm_name
-    """
-    return FarmCrudHelper.get_by_identifier(identifier=identifier)
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """

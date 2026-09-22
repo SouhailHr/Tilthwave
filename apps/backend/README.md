@@ -57,11 +57,13 @@ tests/                        pytest, SQLite
 
 ## Architecture
 
-- `wiring.py` builds repositories and use cases once per process. Only the flow runner gets a real
+- `wiring.py` builds repositories and use cases once per process, leaves first: a use case that
+  needs another receives it there and never builds one itself. Only the flow runner gets a real
   Kafka gateway (`worker_use_cases`); the API and tests get a no-op one.
 - **Tenancy.** `TenantContextMiddleware` resolves the caller's farm into a ContextVar; every
-  repository declares a `TENANT_SCOPE` (`("column", "farm_name")`, `("self", ...)`, `("via_zone",)`,
-  `("via_sensor",)`) and `BaseRepository` applies it to every query and binds it on every write
+  repository declares a `TENANT_SCOPE` (`TenantScope.column("farm_name")`, `.own("farm_name")`
+  for the farm table, `.via_zone()`, `.via_sensor()`; `repositories/tenancy.py`), one object that
+  both filters every read and binds every write, so a scope kind cannot exist on one side only
   (a farm-scoped caller cannot create a row, including a farm, under another farm). There is no role-based
   bypass: an authenticated caller with no farm gets empty results on scoped repositories, and
   non-HTTP callers (flow runner, streamer, scripts) run unscoped. `without_tenant()` is the
@@ -125,7 +127,7 @@ URL shape is part of the contract: collections end with a slash (`/zones/`), ite
 
 | Prefix | Notes |
 |---|---|
-| `/auth` | `login`, `logout`, `me`, `password/forgot`, `password/reset`, `token/verify/` |
+| `/auth` | `login`, `logout`, `me`, `password/forgot`, `password/reset` |
 | `/account` | `GET/PATCH profile`, `POST password` (own account, current password required) |
 | `/dashboard` | `GET summary/`: counts for the dashboard cards, computed in SQL |
 | `/farms`, `/zones`, `/trees`, `/sensors`, `/water-sources`, `/water-switchers`, `/irrigation-tasks`, `/users` | CRUD, paginated lists, tenant-scoped |

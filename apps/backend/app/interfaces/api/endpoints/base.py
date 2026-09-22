@@ -45,19 +45,6 @@ class BaseCrud:
         return JSONResponse(status_code=status.HTTP_201_CREATED, content=result.to_public_dict())
 
     @classmethod
-    def get_by_identifier(cls, identifier):
-        """
-        Retrieve the object with the identifier
-        @param identifier: String
-        @return:
-        """
-        filters = [{"attribute": cls.IDENTIFIER, "value": identifier, "condition": "eq"}]
-        result = cls.USE_CASE_INSTANCE.first(filters, order_by="id", order_direction="asc")
-        if not result:
-            raise cls._not_found()
-        return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
-
-    @classmethod
     def get_by_id(cls, id: int):
         """
         logic:
@@ -162,35 +149,6 @@ class BaseCrud:
             filters, order_by="id", order_direction="desc", limit=raw.limit, offset=raw.offset
         )
         return create_page(cls._enrich_items(entities), total=total, params=params)
-
-    @classmethod
-    def get_stats(cls, entity_name=None):
-        """
-            this method gets the entity stats
-        @return dict stats
-
-        """
-        if entity_name:
-            result = cls.USE_CASE_INSTANCE.get_stats(name=entity_name)
-        else:
-            result = cls.USE_CASE_INSTANCE.get_stats()
-        if not result:
-            raise cls._not_found()
-        return JSONResponse(status_code=status.HTTP_200_OK, content=result)
-
-    @classmethod
-    def get_select_list(cls, filters_str=None):
-        """
-        Options for a select input: [{"value": <IDENTIFIER>, "label": <IDENTIFIER>}, ...]
-        @param filters_str: same JSON object as get_all
-        @return:
-        """
-        filters = cls._parse_filters_str(filters_str)
-        entities = cls.USE_CASE_INSTANCE.filter(filters)
-        data = [
-            {"value": getattr(entity, cls.IDENTIFIER), "label": getattr(entity, cls.IDENTIFIER)} for entity in entities
-        ]
-        return JSONResponse(status_code=status.HTTP_200_OK, content=data)
 
     @classmethod
     def parse_filters(cls, filters_dict: dict) -> list[dict]:

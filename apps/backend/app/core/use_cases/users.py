@@ -89,17 +89,6 @@ class UserUseCase(BaseUseCase):
         # Proceed with the update, whether 'role' was included or not
         return self.repo.update(id, data)
 
-    def get_users_by_role(self, role: str):
-        """
-         This method gets all users with a specific role
-        @param role:
-        @return: list of users
-        """
-        filters = [{"attribute": "role", "value": role, "condition": "eq"}]
-        users = self.filter(filters=filters)
-
-        return users
-
     def find_by_identifier(self, identifier: str):
         """The user whose username or email is exactly `identifier`, or None."""
         for attribute in ("username", "email"):
@@ -134,40 +123,3 @@ class UserUseCase(BaseUseCase):
         if user is None or not self.verify_password(current_password, user.password):
             raise UseCaseException(class_name=self.__class__.__name__, message="Current password is incorrect")
         return self.set_password(user_id, new_password)
-
-    def get_stats(self):
-        """
-        this method gets the users stats
-        @return:
-         stats_dict = {
-           "total_users": 5,
-           "total_superusers": { Owners : 2 , Admins : 1}
-           "total_workers": 5,
-           "total_engineers": 5,
-         }
-
-        """
-
-        total_users = self.filter()
-        total_owners = self.get_users_by_role(role="owner")
-        total_admins = self.get_users_by_role(role="admin")
-        total_workers = self.get_users_by_role(role="worker")
-        total_engineers = self.get_users_by_role(role="engineer")
-
-        if total_owners is None:
-            total_owners = 0
-        if total_admins is None:
-            total_admins = 0
-        if total_workers is None:
-            total_workers = 0
-        if total_engineers is None:
-            total_engineers = 0
-
-        stats_dict = {
-            "total_users": len(total_users),
-            "total_owners": len(total_owners),
-            "total_admins": len(total_admins),
-            "total_workers": len(total_workers),
-            "total_engineers": len(total_engineers),
-        }
-        return stats_dict

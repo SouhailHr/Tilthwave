@@ -2,6 +2,7 @@ from adapters.farm import FarmAdaptor
 from core.entities.farm import Farm as FarmEntity
 from infrastructure.database.tables.farm import Farm
 from infrastructure.repositories.base import BaseDBRepo
+from infrastructure.repositories.tenancy import TenantScope
 
 
 class FarmDBRepository(BaseDBRepo):
@@ -12,4 +13,4 @@ class FarmDBRepository(BaseDBRepo):
     MODEL = Farm
     ENTITY = FarmEntity
     ADAPTOR = FarmAdaptor
-    TENANT_SCOPE = ("self", "farm_name")
+    TENANT_SCOPE = TenantScope.own("farm_name")

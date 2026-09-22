@@ -39,22 +39,6 @@ def get_all(
     return TreeCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/stats/")
-def get_stats():
-    """
-    This Router gets the Trees stats
-    """
-    return TreeCrudHelper.get_stats()
-
-
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the Trees as select options
-    """
-    return TreeCrudHelper.get_select_list(filters_str=filters)
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """

@@ -39,22 +39,6 @@ def get_all(
     return WaterSwitcherCrudHelper.get_all(filters_str=filters, search=search)
 
 
-@router.get("/stats/")
-def get_stats():
-    """
-    This Router gets the Water switchers stats
-    """
-    return WaterSwitcherCrudHelper.get_stats()
-
-
-@router.get("/select-list/")
-def select_list(filters: str | None = Query(None)):
-    """
-    This Router gets the Water switchers as select options
-    """
-    return WaterSwitcherCrudHelper.get_select_list(filters_str=filters)
-
-
 @router.get("/{id}")
 def get_by_id(id: int):
     """

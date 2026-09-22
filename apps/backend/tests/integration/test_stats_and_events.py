@@ -5,13 +5,6 @@ from core.use_cases.exceptions import UseCaseException
 from tests.conftest import FARM_A
 
 
-def test_tree_stats_on_an_empty_table_is_200(client, auth_headers):
-    response = client.get("/trees/stats/", headers=auth_headers())
-    assert response.status_code == 200
-    assert response.json()["total_trees"] == 0
-    assert isinstance(response.json()["tree_average_age"], str)
-
-
 def test_readiness_reports_503_when_the_database_is_unreachable_but_liveness_stays_200(client, monkeypatch):
     """A database outage is not a reason to restart the API: /health (the container healthcheck)
     keeps answering; /health/ready is the probe that looks at the database."""
