@@ -119,21 +119,6 @@ Data and migrations
   partition key either, and partitioning later means recreating the table. **[A]** Three wire
   timestamp formats reach `data.timestamp` (`%H:%M:%S` from the sensor simulator, `%H:%M` from the
   actuator simulator and the backend); settle that before any JSONB migration.
-- **[A] Migration lock safety.** `alembic/env.py` runs all pending revisions in one transaction
-  with no `lock_timeout`; `a1c2e3f4b5d6` built the `sensor_records` index without `CONCURRENTLY`.
-  Safe on a fresh stack (`migrate` runs before every consumer), not for `make migrate` on a running
-  one. Fix: `transaction_per_migration=True`, `SET lock_timeout`, an advisory lock, and
-  `postgresql_concurrently=True` inside `autocommit_block()` for any future index on the growth
-  table.
-- **[A] `created_date` is nullable with an ORM-only default** (`tables/base.py:16`). Every
-  "latest reading" is `ORDER BY created_date DESC LIMIT 1` and Postgres sorts NULL first under
-  `DESC`, so any row inserted outside the ORM becomes the flow runner's current reading. Fix:
-  `server_default=now()`, backfill, `SET NOT NULL`, mirrored in the model so `alembic check` stays
-  green.
-- **[A] `b2d3e4f5a6c7` downgrade destroys tenancy it cannot re-derive**: it drops
-  `sensor.farm_name`, and a re-upgrade only backfills sensors that have a link row. Snapshot before
-  dropping. Related: CI inserts its fixtures after `upgrade head`, so the backfill always runs on
-  an empty table and a wrong JOIN would pass.
 - **[A] At-least-once with no dedupe.** A redelivered reading inserts a second `sensor_records`
   row; harmless for latest-reading logic, double-counts the consumption sum. A unique index on
   `(sensor_serial_number, data->>'timestamp')` once `data` is JSONB, and translate the
@@ -257,7 +242,6 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 4. ~~`chore/ci-hardening`~~ done.
 5. `perf/set-queries`: the `irrigation_task` index and the three N+1 shapes behind new
    set-oriented repository methods; sync streamer handler.
-6. `chore/migration-safety`: per-migration transactions and lock timeout, `created_date`
-   NOT NULL, the `b2d3` snapshot, CI backfill fixture.
+6. ~~`chore/migration-safety`~~ done.
 7. `refactor/use-case-wiring`: delete the unconsumed surface, inject collaborators, the sensor-type
    guard, `TENANT_SCOPE` as an object. Largest; last.

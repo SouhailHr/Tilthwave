@@ -1,5 +1,6 @@
 from logging.config import fileConfig
 
+import sqlalchemy as sa
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
@@ -70,8 +71,26 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            # One runner at a time: a second `migrate` (two deploys racing, a manual run next to
+            # the compose job) waits here instead of interleaving DDL. Session-level, so it spans
+            # every revision and is released when this connection closes (NullPool).
+            connection.execute(sa.text("SELECT pg_advisory_lock(7331)"))
+            # DDL that cannot get its lock in 5s fails instead of queueing: while it queues,
+            # every new write to that table queues behind it (the streamer, the API), so a
+            # migration blocked by one long read would stall the whole stack. Failing is the
+            # safer outcome; the run is repeated when the table is quiet.
+            connection.execute(sa.text("SET lock_timeout = '5s'"))
+            connection.commit()
+
+        # One transaction per revision, not one for the whole batch: a lock a revision takes is
+        # released when it commits instead of being held until the last revision finishes, and a
+        # failure leaves the earlier revisions applied and recorded.
         context.configure(
-            connection=connection, target_metadata=target_metadata, compare_type=True
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            transaction_per_migration=True,
         )
 
         with context.begin_transaction():
