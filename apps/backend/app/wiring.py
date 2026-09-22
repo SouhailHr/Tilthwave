@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from config.settings import settings
+from core.use_cases.dashboard import DashboardUseCase
 from core.use_cases.farm import FarmUseCase
 from core.use_cases.irrigation_task import IrrigationTaskUseCase
 from core.use_cases.sensor import SensorUseCase
@@ -69,6 +70,7 @@ class UseCases:
     tree: TreeUseCase
     irrigation_task: IrrigationTaskUseCase
     users: UserUseCase
+    dashboard: DashboardUseCase
 
 
 def build_repositories(uri: str) -> Repositories:
@@ -104,15 +106,16 @@ def build_kafka_broker_repositories() -> BrokerRepositories:
 
 
 def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases:
+    farm = FarmUseCase(
+        repo=repos.farm,
+        zone_repo=repos.zone,
+        water_switcher_repo=repos.water_switcher,
+        water_source_repo=repos.water_source,
+        tree_repo=repos.tree,
+        sensor_record_repo=repos.sensor_record,
+    )
     return UseCases(
-        farm=FarmUseCase(
-            repo=repos.farm,
-            zone_repo=repos.zone,
-            water_switcher_repo=repos.water_switcher,
-            water_source_repo=repos.water_source,
-            tree_repo=repos.tree,
-            sensor_record_repo=repos.sensor_record,
-        ),
+        farm=farm,
         zone=ZoneUseCase(
             repo=repos.zone,
             irrigation_task_repo=repos.irrigation_task,
@@ -146,6 +149,15 @@ def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases
         tree=TreeUseCase(repo=repos.tree),
         irrigation_task=IrrigationTaskUseCase(repo=repos.irrigation_task),
         users=UserUseCase(repo=repos.users),
+        dashboard=DashboardUseCase(
+            sensor_repo=repos.sensor,
+            water_source_repo=repos.water_source,
+            water_switcher_repo=repos.water_switcher,
+            irrigation_task_repo=repos.irrigation_task,
+            farm_repo=repos.farm,
+            zone_repo=repos.zone,
+            farm_use_case=farm,
+        ),
     )
 
 
