@@ -11,19 +11,23 @@ dependencies = [
     "pydantic-settings==2.15.0",
     # Security
     "PyJWT==2.14.0",           # replaces python-jose (unfixed CVEs, ecdsa dependency)
-    "bcrypt==4.3.0",           # used directly (core/security/password.py); passlib is gone
+    "bcrypt==5.0.0",           # used directly (core/security/password.py); passlib is gone
     # Database
-    "psycopg2-binary==2.9.10",   # wheels for py3.12; no libpq/compiler needed
+    "psycopg2-binary==2.9.13",   # wheels for py3.12; no libpq/compiler needed
     "SQLAlchemy==2.0.43",
-    "alembic==1.16.5",
+    "alembic==1.20.0",
     # API
     "fastapi==0.141.1",
-    "uvicorn==0.35.0",
+    "uvicorn==0.53.0",
     "email_validator==2.3.0",
-    "fastapi-pagination==0.15.16",
+    "fastapi-pagination==0.16.0",
     # Streamer
     "confluent-kafka==2.15.1",
     "faststream[confluent,cli]==0.5.48",   # cli extra: the `faststream run` entrypoint
+    # NOTE: pinned back from 0.7.5 (see Dependabot PR #8) - 0.7.x drops the `auto_commit` kwarg
+    # from KafkaRegistrator.subscriber(), which interfaces/streamer/run_streamer.py relies on.
+    # Upgrading needs a code change (deferred to the faststream migration follow-up), not a
+    # version bump alone.
     # Flow runner
     "APScheduler==3.11.0",
 ]

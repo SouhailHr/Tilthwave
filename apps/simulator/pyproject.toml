@@ -10,6 +10,9 @@ dependencies = [
     "pydantic-settings==2.15.0",
     "confluent-kafka==2.15.1",
     "faststream[confluent,cli]==0.5.48",   # cli extra: the `faststream run` entrypoint
+    # NOTE: pinned back from 0.7.5 (see Dependabot PR #7) - 0.7.x drops the `auto_commit` kwarg
+    # from KafkaRegistrator.subscriber(), which actuators/streamer.py relies on. Upgrading needs
+    # a code change (deferred to the faststream migration follow-up), not a version bump alone.
     "requests==2.34.2",
 ]
 
