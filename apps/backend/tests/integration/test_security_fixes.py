@@ -171,6 +171,16 @@ def test_seed_creates_a_worker_for_the_simulator_when_configured(repos, monkeypa
     assert all(s.farm_name == "Sunny Farms" for s in repos.sensor.filter([]))
 
 
+def test_hsts_header_follows_the_cookie_secure_setting(client, monkeypatch):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings.API, "COOKIE_SECURE", False)
+    assert "strict-transport-security" not in client.get("/health").headers
+
+    monkeypatch.setattr(settings.API, "COOKIE_SECURE", True)
+    assert client.get("/health").headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+
+
 def test_a_token_without_the_password_fingerprint_is_not_a_session(client, make_farm, make_user):
     """
     Every token login issues carries pfp (AuthHelper.session_claims). The leniency for pfp-less

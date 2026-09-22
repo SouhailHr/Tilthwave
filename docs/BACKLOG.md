@@ -53,8 +53,8 @@ Debt
   `(app)/layout.tsx`; consider `zod/mini` in the form schemas. Recharts is correctly code-split.
 - **Dashboard shell.** `(app)/page.tsx` is a ~230-line client component. **[A]** Already one
   query plus pure helpers; the RSC split buys little. Low priority.
-- **Headers and env.** No `Strict-Transport-Security` (belongs on the production proxy).
-  `NEXT_PUBLIC_API_BASE_URL` is not validated at build time.
+- **Env.** `NEXT_PUBLIC_API_BASE_URL` is not validated at build time (the release workflow
+  refuses to build without it; `next build` itself does not).
 - **[A] Tests: pages are untested.** `entity-form.tsx` and `entity-table.tsx` now have their
   first tests (`fix/web-contract-bugs`); still none for `entity-crud-page.tsx`, the
   login/forgot/reset/settings pages, the `useCreateEntity` / `useUpdateEntity` invalidation, and
@@ -190,12 +190,10 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 ## Deploy / CI (`deploy`, `.github`)
 
 - **[A] No coverage collection anywhere** (no `pytest-cov`, no `@vitest/coverage-v8`).
-- **Production profile.** `deploy/README.md` describes a TLS reverse proxy, but the repo holds no
-  proxy config and no "prod" env profile that flips `API_COOKIE_SECURE=true`,
-  `API_DOCS_ENABLED=false`, a real `SMTP_HOST`, `API_WEB_BASE_URL`, `API_COOKIE_DOMAIN` and
-  `BIND_ADDR` together. **[A]** No backup schedule either (`make db-dump` is manual);
-  `.env.example` `DOMAIN=` is unused; `SMTP_TIMEOUT_SECONDS` exists in settings but compose does
-  not forward it.
+- **Production profile.** Production is Coolify (`deploy/README.md`): its Traefik is the TLS
+  proxy, its environment is the prod profile, `db-backup` is the backup schedule, HSTS is sent by
+  the apps. Still open: `SMTP_TIMEOUT_SECONDS` exists in settings but compose does not forward
+  it; nothing verifies the Coolify environment holds the production values from the checklist.
 - **Base images by tag without digest**
   (`python:3.12-slim`, `node:22-alpine`, `postgres:16-alpine`, Redpanda, console). Dependabot
   covers the docker ecosystem, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev`
