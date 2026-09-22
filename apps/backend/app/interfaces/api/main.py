@@ -7,6 +7,7 @@ from common.logging import configure_logging
 from config.settings import settings
 from interfaces.api.endpoints import (
     auth,
+    dashboard,
     farm,
     health,
     irrigation_task,
@@ -63,6 +64,7 @@ api_router.include_router(water_source.router)
 api_router.include_router(water_switcher.router)
 api_router.include_router(tree.router)
 api_router.include_router(irrigation_task.router)
+api_router.include_router(dashboard.router)
 
 # Public routes
 app.include_router(auth.router)

@@ -43,6 +43,7 @@ RESOURCES_FOR_ROLES = {
         "irrigation-tasks": ["read", "write", "update", "delete"],
         "sensor-records": ["read"],
         "trees": ["read", "write", "update", "delete"],
+        "dashboard": ["read"],
     },
     "owner": {
         "users": ["read", "write", "update", "delete"],
@@ -55,6 +56,7 @@ RESOURCES_FOR_ROLES = {
         "irrigation-tasks": ["read", "write", "update", "delete"],
         "sensor-records": ["read"],
         "trees": ["read", "write", "update", "delete"],
+        "dashboard": ["read"],
     },
     "worker": {
         "users": ["read"],
@@ -67,6 +69,7 @@ RESOURCES_FOR_ROLES = {
         "irrigation-tasks": ["read"],
         "sensor-records": ["read"],
         "trees": ["read", "update"],
+        "dashboard": ["read"],
     },
     "engineer": {
         "users": ["read"],
@@ -79,6 +82,7 @@ RESOURCES_FOR_ROLES = {
         "irrigation-tasks": ["read"],
         "sensor-records": ["read"],
         "trees": ["read", "update"],
+        "dashboard": ["read"],
     },
 }
 
