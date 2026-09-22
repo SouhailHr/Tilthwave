@@ -36,11 +36,14 @@ x-broker-env: &broker-env
   TZ: ${TZ:-Europe/Paris}
 
 # Backend services get exactly the variables they need; the admin credentials are NOT among them.
+# Images: `make up` builds them from this checkout under the :local tag. A release tag
+# (TILTHWAVE_TAG=v1.2.3 in .env) names the images .github/workflows/release.yml published
+# instead, and `make deploy` pulls them without building.
 x-backend: &backend
   build:
     context: ../apps/backend
     dockerfile: docker/Dockerfile
-  image: tilthwave-backend:local
+  image: ghcr.io/souhailhr/tilthwave-backend:${TILTHWAVE_TAG:-local}
   environment: &backend-env
     <<: *broker-env
     POSTGRES_HOST: db
@@ -72,7 +75,7 @@ x-simulator: &simulator
   build:
     context: ../apps/simulator
     dockerfile: docker/Dockerfile
-  image: tilthwave-simulator:local
+  image: ghcr.io/souhailhr/tilthwave-simulator:${TILTHWAVE_TAG:-local}
   environment: &simulator-env
     <<: *broker-env
   logging: *default-logging
@@ -308,7 +311,7 @@ services:
       args:
         # Inlined into the browser bundle: must be reachable from the HOST browser.
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
-    image: tilthwave-web:local
+    image: ghcr.io/souhailhr/tilthwave-web:${TILTHWAVE_TAG:-local}
     container_name: tilthwave-web
     environment:
       # Server-side only (no NEXT_PUBLIC_ prefix, never reaches the browser bundle): lets

@@ -281,7 +281,7 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
   `BIND_ADDR` together. **[A]** No backup schedule either (`make db-dump` is manual);
   `.env.example` `DOMAIN=` is unused; `SMTP_TIMEOUT_SECONDS` exists in settings but compose does
   not forward it.
-- **GitHub Actions pinned by tag, not SHA** (5 sites); base images by tag without digest
+- **GitHub Actions pinned by tag, not SHA** in `ci.yml` (5 sites; `release.yml` is SHA-pinned); base images by tag without digest
   (`python:3.12-slim`, `node:22-alpine`, `postgres:16-alpine`, Redpanda, console). Dependabot
   covers both ecosystems, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev` runs
   Node 25 while prod, CI and `engines` are Node 22, and runs `npm install` (not `ci`) at start.
