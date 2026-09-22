@@ -1,10 +1,16 @@
-# Tilthwave — full local stack in one compose file.
+# Tilthwave — the whole stack in one compose file, shaped for production.
+#
+# This file names published images and publishes no host ports: it is what a production host
+# (Coolify, or plain docker with `make deploy`) runs. Local development layers
+# docker-compose.local.yml on top, which adds `build:` for the three app images and the
+# 127.0.0.1 host ports; `make up` does that for you:
 #
 #   make env                              # once: creates deploy/.env with generated secrets
-#   make up                               # or: docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+#   make up                               # build from this checkout and start everything
 #
 # Services (start order is enforced with depends_on conditions):
 #   db            Postgres
+#   db-backup     pg_dump to the pgbackups volume every BACKUP_INTERVAL_HOURS, kept BACKUP_KEEP_DAYS
 #   redpanda      Kafka-compatible broker (+ console)
 #   broker-init   one-shot: creates the two topics
 #   migrate       one-shot: alembic upgrade head — everything below waits for it
@@ -16,9 +22,10 @@
 #   sim-sensors   simulator: publishes fake sensor readings (logs in to the API as the seeded worker)
 #   web           Next.js dashboard                              -> http://localhost:3000
 #
-# Host ports bind to BIND_ADDR (default 127.0.0.1) so the database, broker and console are never
-# reachable from other machines by accident. Production adds a TLS reverse proxy in front of web/api
-# and publishes nothing else; it is intentionally not part of this file.
+# Images: ghcr.io/souhailhr/tilthwave-*:${TILTHWAVE_TAG}. `local` is what docker-compose.local.yml
+# builds; a release tag (v1.2.3) names the images .github/workflows/release.yml published.
+# Production reaches web and api through the platform's TLS proxy (Coolify's Traefik) on the
+# container ports 3000 and 8080; nothing else is exposed. See README.md in this directory.
 name: tilthwave
 
 x-logging: &default-logging
@@ -40,9 +47,6 @@ x-broker-env: &broker-env
 # (TILTHWAVE_TAG=v1.2.3 in .env) names the images .github/workflows/release.yml published
 # instead, and `make deploy` pulls them without building.
 x-backend: &backend
-  build:
-    context: ../apps/backend
-    dockerfile: docker/Dockerfile
   image: ghcr.io/souhailhr/tilthwave-backend:${TILTHWAVE_TAG:-local}
   environment: &backend-env
     <<: *broker-env
@@ -72,9 +76,6 @@ x-backend: &backend
   logging: *default-logging
 
 x-simulator: &simulator
-  build:
-    context: ../apps/simulator
-    dockerfile: docker/Dockerfile
   image: ghcr.io/souhailhr/tilthwave-simulator:${TILTHWAVE_TAG:-local}
   environment: &simulator-env
     <<: *broker-env
@@ -92,13 +93,45 @@ services:
       TZ: ${TZ:-Europe/Paris}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "${BIND_ADDR:-127.0.0.1}:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tilthwave}"]
       interval: 5s
       timeout: 5s
       retries: 12
+    restart: unless-stopped
+    logging: *default-logging
+
+  # A pg_dump every BACKUP_INTERVAL_HOURS into the pgbackups volume, pruned after BACKUP_KEEP_DAYS.
+  # Restore: gunzip -c <file> | docker compose exec -T db psql -U postgres tilthwave
+  db-backup:
+    image: postgres:16-alpine
+    container_name: tilthwave-db-backup
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
+      PGDATABASE: ${POSTGRES_DB:-tilthwave}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - pgbackups:/backups
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        while true; do
+          f="/backups/tilthwave-$$(date +%Y%m%d-%H%M%S).sql.gz"
+          if pg_dump --no-owner | gzip > "$$f.tmp" && mv "$$f.tmp" "$$f"; then
+            echo "backup written: $$f ($$(du -h "$$f" | cut -f1))"
+          else
+            echo "backup FAILED"; rm -f "$$f.tmp"
+          fi
+          find /backups -name 'tilthwave-*.sql.gz' -mtime +"$$BACKUP_KEEP_DAYS" -delete
+          sleep "$$((BACKUP_INTERVAL_HOURS * 3600))"
+        done
     restart: unless-stopped
     logging: *default-logging
 
@@ -120,8 +153,6 @@ services:
       TZ: ${TZ:-Europe/Paris}
     volumes:
       - redpanda:/var/lib/redpanda/data
-    ports:
-      - "${BIND_ADDR:-127.0.0.1}:${KAFKA_PORT:-9092}:9092"   # for host-side kafka clients only
     healthcheck:
       test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
       interval: 5s
@@ -168,8 +199,6 @@ services:
           adminApi:
             enabled: true
             urls: ["http://redpanda:9644"]
-    ports:
-      - "${BIND_ADDR:-127.0.0.1}:${CONSOLE_PORT:-8082}:8080"
     restart: unless-stopped
     logging: *default-logging
 
@@ -191,8 +220,6 @@ services:
       <<: *backend-env
       UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
-    ports:
-      - "${BIND_ADDR:-127.0.0.1}:${API_PORT:-8080}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -305,20 +332,12 @@ services:
 
   # ----------------------------------------------------------------- web ----
   web:
-    build:
-      context: ../apps/web
-      dockerfile: Dockerfile
-      args:
-        # Inlined into the browser bundle: must be reachable from the HOST browser.
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
     image: ghcr.io/souhailhr/tilthwave-web:${TILTHWAVE_TAG:-local}
     container_name: tilthwave-web
     environment:
       # Server-side only (no NEXT_PUBLIC_ prefix, never reaches the browser bundle): lets
       # /api/health check the real backend over the docker network, not the host-facing URL.
       API_INTERNAL_URL: http://api:8080
-    ports:
-      - "${BIND_ADDR:-127.0.0.1}:${WEB_PORT:-3000}:3000"
     depends_on:
       api:
         condition: service_healthy
@@ -328,4 +347,5 @@ services:
 
 volumes:
   pgdata:
+  pgbackups:
   redpanda:

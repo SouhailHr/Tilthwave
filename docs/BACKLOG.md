@@ -92,8 +92,8 @@ Debt
   `(app)/layout.tsx`; consider `zod/mini` in the form schemas. Recharts is correctly code-split.
 - **Dashboard shell.** `(app)/page.tsx` is a ~230-line client component. **[A]** Already one
   query plus pure helpers; the RSC split buys little. Low priority.
-- **Headers and env.** No `Strict-Transport-Security` (belongs on the production proxy).
-  `NEXT_PUBLIC_API_BASE_URL` is not validated at build time.
+- **Env.** `NEXT_PUBLIC_API_BASE_URL` is not validated at build time (the release workflow
+  refuses to build without it; `next build` itself does not).
 - **[A] Tests: no form or page is tested.** `entity-form.tsx`, `entity-table.tsx`,
   `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the `useCreateEntity` /
   `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts` (two simultaneous
@@ -275,12 +275,10 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
   `--ignore-vuln PYSEC-2025-183` (affects PyJWT ≤ 2.10.1; 2.14 is installed).
 - **[A] The simulator job never runs `uv run pytest`** (lint + audit only); its 9 tests are dead in
   CI. No coverage collection anywhere.
-- **Production profile.** `deploy/README.md` describes a TLS reverse proxy, but the repo holds no
-  proxy config and no "prod" env profile that flips `API_COOKIE_SECURE=true`,
-  `API_DOCS_ENABLED=false`, a real `SMTP_HOST`, `API_WEB_BASE_URL`, `API_COOKIE_DOMAIN` and
-  `BIND_ADDR` together. **[A]** No backup schedule either (`make db-dump` is manual);
-  `.env.example` `DOMAIN=` is unused; `SMTP_TIMEOUT_SECONDS` exists in settings but compose does
-  not forward it.
+- **Production profile.** Production is Coolify (`deploy/README.md`): its Traefik is the TLS
+  proxy, its environment is the prod profile, `db-backup` is the backup schedule, HSTS is sent by
+  the apps. Still open: `SMTP_TIMEOUT_SECONDS` exists in settings but compose does not forward
+  it; nothing verifies the Coolify environment holds the production values from the checklist.
 - **GitHub Actions pinned by tag, not SHA** in `ci.yml` (5 sites; `release.yml` is SHA-pinned); base images by tag without digest
   (`python:3.12-slim`, `node:22-alpine`, `postgres:16-alpine`, Redpanda, console). Dependabot
   covers both ecosystems, so digests would stay maintained. **[A]** `apps/web/Dockerfile.dev` runs

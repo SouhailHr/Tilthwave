@@ -75,3 +75,28 @@ jobs:
           build-args: ${{ matrix.name == 'web' && format('NEXT_PUBLIC_API_BASE_URL={0}', vars.NEXT_PUBLIC_API_BASE_URL) || '' }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # Point the Coolify application at this release and redeploy. Skipped until the repository
+  # variables COOLIFY_URL and COOLIFY_APP_UUID and the secret COOLIFY_TOKEN exist
+  # (deploy/README.md, "Coolify"). The compose file Coolify runs reads TILTHWAVE_TAG.
+  deploy:
+    needs: images
+    if: vars.COOLIFY_URL != '' && vars.COOLIFY_APP_UUID != ''
+    runs-on: ubuntu-latest
+    env:
+      COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+      COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Set TILTHWAVE_TAG on the Coolify application
+        run: |
+          auth=(-H "Authorization: Bearer ${COOLIFY_TOKEN}" -H "Content-Type: application/json" -H "Accept: application/json")
+          body="{\"key\":\"TILTHWAVE_TAG\",\"value\":\"${TAG}\"}"
+          # PATCH updates an existing variable; the first release has to create it.
+          curl -fsS -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" "${auth[@]}" -d "$body" \
+            || curl -fsS -X POST "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" "${auth[@]}" -d "$body"
+      - name: Deploy
+        run: |
+          curl -fsS -X POST "${COOLIFY_URL}/api/v1/deploy?uuid=${COOLIFY_APP_UUID}" \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" -H "Accept: application/json"

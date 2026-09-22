@@ -169,3 +169,13 @@ def test_seed_creates_a_worker_for_the_simulator_when_configured(repos, monkeypa
     assert sim.role == "worker" and not sim.is_superuser and sim.is_active and sim.farm_name == "Sunny Farms"
     assert len(repos.users.filter([])) == 2
     assert all(s.farm_name == "Sunny Farms" for s in repos.sensor.filter([]))
+
+
+def test_hsts_header_follows_the_cookie_secure_setting(client, monkeypatch):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings.API, "COOKIE_SECURE", False)
+    assert "strict-transport-security" not in client.get("/health").headers
+
+    monkeypatch.setattr(settings.API, "COOKIE_SECURE", True)
+    assert client.get("/health").headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
