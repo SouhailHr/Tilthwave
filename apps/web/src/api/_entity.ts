@@ -22,7 +22,13 @@ export function createEntity<T, TInput = Partial<T>>(
   resource: string,
   input: TInput,
 ) {
-  return api.post<T>(`/${resource}/`, input).then((res) => res.data);
+  // Generated once per call, not in the axios interceptor: the interceptor fires on every
+  // POST including /auth/login (which must never carry one - see AUDIT_REAUDIT.md P1 #6),
+  // and a global per-request key can't survive a retry of the same logical attempt. Scoping
+  // it here means it's tied to exactly one createEntity() invocation.
+  const headers =
+    typeof crypto !== "undefined" ? { "Idempotency-Key": crypto.randomUUID() } : undefined;
+  return api.post<T>(`/${resource}/`, input, { headers }).then((res) => res.data);
 }
 
 export function updateEntity<T, TInput = Partial<T>>(

@@ -14,9 +14,6 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  if ((config.method ?? "").toLowerCase() === "post" && typeof crypto !== "undefined") {
-    config.headers["Idempotency-Key"] = crypto.randomUUID();
-  }
   return config;
 });
 

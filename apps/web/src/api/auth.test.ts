@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { getCurrentUserId, isAuthenticated } from "./auth";
 import { setStoredToken, clearStoredToken } from "@/utils/tokenStorage";
 
@@ -39,5 +39,28 @@ describe("auth Flyweight + Zod claims", () => {
   it("rejects malformed token payloads", () => {
     setStoredToken("not-a-jwt");
     expect(getCurrentUserId()).toBeNull();
+  });
+});
+
+describe("login never carries an Idempotency-Key", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("posts without one (a caching layer must never dedupe/replay a login)", async () => {
+    const post = vi.fn().mockResolvedValue({ data: { token: "t" } });
+    vi.doMock("@/api/client", () => ({ api: { post } }));
+    vi.doMock("@/utils/tokenStorage", () => ({
+      getStoredToken: () => null,
+      setStoredToken: () => {},
+      clearStoredToken: () => {},
+    }));
+
+    const { login } = await import("./auth");
+    await login({ username: "admin", password: "pw" });
+
+    expect(post).toHaveBeenCalledTimes(1);
+    const [, , config] = post.mock.calls[0];
+    expect(config?.headers?.["Idempotency-Key"]).toBeUndefined();
   });
 });

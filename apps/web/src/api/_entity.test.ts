@@ -88,3 +88,29 @@ describe("client interceptor 401 redirect contract", () => {
     expect(events.some((e) => e.type === "auth:expired")).toBe(true);
   });
 });
+
+describe("createEntity Idempotency-Key", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("attaches a fresh key per call, scoped to this request only", async () => {
+    // Regression for: the key used to be generated in the axios request interceptor, so it
+    // fired for every POST including /auth/login (which must never carry one), and a key
+    // generated there can't survive being the same across a retry of one logical attempt.
+    const post = vi.fn().mockResolvedValue({ data: { id: 1 } });
+    vi.doMock("@/api/client", () => ({ api: { post } }));
+
+    const { createEntity } = await import("./_entity");
+    await createEntity("zones", { zone_name: "Zone A" });
+    await createEntity("zones", { zone_name: "Zone B" });
+
+    expect(post).toHaveBeenCalledTimes(2);
+    const [, , firstConfig] = post.mock.calls[0];
+    const [, , secondConfig] = post.mock.calls[1];
+    const firstKey = firstConfig.headers["Idempotency-Key"];
+    const secondKey = secondConfig.headers["Idempotency-Key"];
+    expect(firstKey).toEqual(expect.any(String));
+    expect(firstKey).not.toBe(secondKey);
+  });
+});
