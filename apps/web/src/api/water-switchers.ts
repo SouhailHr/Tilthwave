@@ -1,11 +1,5 @@
 import { api } from "@/api/client";
-import {
-  useCreateEntity,
-  useDeleteEntity,
-  useEntity,
-  useEntityList,
-  useUpdateEntity,
-} from "@/api/_entity";
+import { useCreateEntity, useUpdateEntity } from "@/api/_entity";
 import type {
   CreateWaterSwitcherInput,
   UpdateWaterSwitcherInput,
@@ -16,37 +10,19 @@ import type { ListParams, Paginated } from "@/types/pagination";
 const RESOURCE = "water-switchers";
 const PATH = `/${RESOURCE}`;
 
+// The dashboard polls this directly (bypasses the generic EntityTable/EntityCrudPage path, so
+// it isn't covered by _entity.ts's fetchEntityList call site). Everything else this module used
+// to duplicate - fetchWaterSwitcher, createWaterSwitcher, updateWaterSwitcher,
+// deleteWaterSwitcher, useWaterSwitchers, useWaterSwitcher, useDeleteWaterSwitcher - had zero
+// callers: EntityTable/EntityCrudPage already get list and delete generically from _entity.ts
+// given just the resource string.
 export function fetchWaterSwitchers(params: ListParams = {}) {
   return api
     .get<Paginated<WaterSwitcher>>(`${PATH}/`, { params })
     .then((r) => r.data);
 }
 
-export function fetchWaterSwitcher(id: number | string) {
-  return api.get<WaterSwitcher>(`${PATH}/${id}/`).then((r) => r.data);
-}
-
-export function createWaterSwitcher(input: CreateWaterSwitcherInput) {
-  return api.post<WaterSwitcher>(`${PATH}/`, input).then((r) => r.data);
-}
-
-export function updateWaterSwitcher(
-  id: number | string,
-  input: UpdateWaterSwitcherInput,
-) {
-  return api.patch<WaterSwitcher>(`${PATH}/${id}/`, input).then((r) => r.data);
-}
-
-export function deleteWaterSwitcher(id: number | string) {
-  return api.delete(`${PATH}/${id}/`).then(() => id);
-}
-
-export const useWaterSwitchers = (params: ListParams = {}) =>
-  useEntityList<WaterSwitcher>(RESOURCE, params);
-export const useWaterSwitcher = (id: number | string | null | undefined) =>
-  useEntity<WaterSwitcher>(RESOURCE, id);
 export const useCreateWaterSwitcher = () =>
   useCreateEntity<WaterSwitcher, CreateWaterSwitcherInput>(RESOURCE);
 export const useUpdateWaterSwitcher = () =>
   useUpdateEntity<WaterSwitcher, UpdateWaterSwitcherInput>(RESOURCE);
-export const useDeleteWaterSwitcher = () => useDeleteEntity(RESOURCE);

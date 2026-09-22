@@ -47,27 +47,34 @@ const updateUserSchema = z.object({
 type CreateUserValues = z.infer<typeof createUserSchema>;
 type UpdateUserValues = z.infer<typeof updateUserSchema>;
 
-function makeUserFields<TValues extends CreateUserValues | UpdateUserValues>(
-  mode: "create" | "edit",
-): EntityFormField<TValues>[] {
+// CreateUserValues and UpdateUserValues share every field name below (both spread
+// baseUserShape, plus username/text_password with the same names in both schemas) - only
+// a couple of validators differ. react-hook-form's Path<T> can't be computed for a still-generic
+// T constrained to a union (TypeScript can't distribute a keyof-like check over an
+// uninstantiated type parameter), which is what forced a cast on every single field before.
+// Building the array against the concrete intersection type instead lets the compiler verify
+// each field name normally; each of the two call sites then asserts it once, not once per field.
+type CommonUserValues = CreateUserValues & UpdateUserValues;
+
+function makeUserFields(mode: "create" | "edit"): EntityFormField<CommonUserValues>[] {
   return [
     {
-      name: "username" as never,
+      name: "username",
       label: "Username",
       autoComplete: "username",
       disabled: mode === "edit",
     },
     {
-      name: "email" as never,
+      name: "email",
       label: "Email",
       type: "email",
       autoComplete: "email",
     },
-    { name: "phone_number" as never, label: "Phone number", autoComplete: "tel" },
-    { name: "first_name" as never, label: "First name", autoComplete: "given-name" },
-    { name: "last_name" as never, label: "Last name", autoComplete: "family-name" },
+    { name: "phone_number", label: "Phone number", autoComplete: "tel" },
+    { name: "first_name", label: "First name", autoComplete: "given-name" },
+    { name: "last_name", label: "Last name", autoComplete: "family-name" },
     {
-      name: "text_password" as never,
+      name: "text_password",
       label:
         mode === "create"
           ? "Password"
@@ -76,13 +83,13 @@ function makeUserFields<TValues extends CreateUserValues | UpdateUserValues>(
       autoComplete: "new-password",
     },
     {
-      name: "role" as never,
+      name: "role",
       label: "Role",
       type: "select",
       options: roleOptions,
     },
     {
-      name: "farm_name" as never,
+      name: "farm_name",
       label: "Farm",
       type: "fk",
       resource: "farms",
@@ -90,12 +97,12 @@ function makeUserFields<TValues extends CreateUserValues | UpdateUserValues>(
       labelKey: "farm_name",
       placeholder: "Select a farm",
     },
-    { name: "is_active" as never, label: "Active", type: "boolean" },
+    { name: "is_active", label: "Active", type: "boolean" },
   ];
 }
 
-const createFields = makeUserFields<CreateUserValues>("create");
-const editFields = makeUserFields<UpdateUserValues>("edit");
+const createFields = makeUserFields("create") as EntityFormField<CreateUserValues>[];
+const editFields = makeUserFields("edit") as EntityFormField<UpdateUserValues>[];
 
 const roleBadgeVariant: Record<UserRole, "default" | "secondary" | "outline"> = {
   admin: "default",
