@@ -104,12 +104,18 @@ class BaseDBRepo:
     def _bind_tenant(self, data: dict, session) -> dict:
         """Make a row being written belong to the caller's farm.
 
-        ("column", col): the farm column is forced to the caller's farm, closing the
-        mass-assignment hole where a body could name another farm.
+        ("column", col) and ("self", col): the farm column is forced to the caller's farm,
+        closing the mass-assignment hole where a body could name another farm. For the farm
+        table itself that means a farm-scoped caller can only ever "create" their own farm,
+        which the unique name turns into a 409; only the farm-less bootstrap admin creates farms.
         ("via_zone",): a zone_name in the payload must be one of the caller's zones, otherwise
         NotFoundError (the zone is invisible to them, so "not found", not "forbidden"): without
         this a tenant could register a tree, switcher or irrigation task in another farm's zone
         and have the flow runner act on it.
+        ("via_sensor",): likewise for a sensor_serial_number, so a record cannot be written into
+        another farm's sensor history.
+        Every kind _apply_tenant reads must be bound here too; a scope that filters reads but not
+        writes is exactly the hole this closes.
         Non-HTTP callers (no context) and callers without a farm are not bound.
         """
         scope = self.TENANT_SCOPE
@@ -117,14 +123,25 @@ class BaseDBRepo:
         if not scope or ctx is None or not ctx.get("farm_name"):
             return data
         farm = ctx["farm_name"]
-        if scope[0] == "column":
+        kind = scope[0]
+        if kind in ("column", "self"):
             data[scope[1]] = farm
-        elif scope[0] == "via_zone" and data.get("zone_name") is not None:
+        elif kind == "via_zone" and data.get("zone_name") is not None:
             from infrastructure.database.tables.zone import Zone
 
             owned = session.query(Zone.id).filter(Zone.zone_name == data["zone_name"], Zone.farm_name == farm).first()
             if owned is None:
                 raise NotFoundError("Zone not found")
+        elif kind == "via_sensor" and data.get("sensor_serial_number") is not None:
+            from infrastructure.database.tables.sensor import Sensor
+
+            owned = (
+                session.query(Sensor.id)
+                .filter(Sensor.serial_number == data["sensor_serial_number"], Sensor.farm_name == farm)
+                .first()
+            )
+            if owned is None:
+                raise NotFoundError("Sensor not found")
         return data
 
     # ---- errors --------------------------------------------------------------------------
@@ -247,8 +264,12 @@ class BaseDBRepo:
     # Endpoints produce it from the query string (BaseCrud.parse_filters); use cases build it inline.
 
     def _column(self, name: str):
-        """A mapped column of MODEL; relationships, metadata and private attributes are not filterable."""
-        if name not in self.MODEL.__table__.columns:
+        """
+        A mapped column of MODEL; relationships, metadata and private attributes are not filterable.
+        The entity's PRIVATE_FIELDS (a user's password hash) are stripped from every response, so
+        they must not be queryable either: an equality filter on one is an oracle.
+        """
+        if name not in self.MODEL.__table__.columns or name in self.ENTITY.PRIVATE_FIELDS:
             raise InvalidFilterError(f"{self.MODEL.__name__} has no attribute '{name}'")
         return getattr(self.MODEL, name)
 

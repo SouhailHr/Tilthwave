@@ -56,7 +56,8 @@ tests/                        pytest, SQLite
   Kafka gateway (`worker_use_cases`); the API and tests get a no-op one.
 - **Tenancy.** `TenantContextMiddleware` resolves the caller's farm into a ContextVar; every
   repository declares a `TENANT_SCOPE` (`("column", "farm_name")`, `("self", ...)`, `("via_zone",)`,
-  `("via_sensor",)`) and `BaseRepository` applies it to every query. There is no role-based
+  `("via_sensor",)`) and `BaseRepository` applies it to every query and binds it on every write
+  (a farm-scoped caller cannot create a row, including a farm, under another farm). There is no role-based
   bypass: an authenticated caller with no farm gets empty results on scoped repositories, and
   non-HTTP callers (flow runner, streamer, scripts) run unscoped. `without_tenant()` is the
   explicit escape hatch, used only for the caller's own account (profile, password), where the

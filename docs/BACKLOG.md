@@ -16,18 +16,10 @@ password flow, newest-first lists, full timestamps, sensor assignment, the user-
 
 ## Fix first
 
-Ordered by cross-tenant / data-loss risk. Each is small. The two control-loop items that
-headed this list (the flow runner's swallowed `sys.exit`, the streamer skipping messages during a
-DB outage) were fixed in `fix/control-loop-safety`.
+One item left. The control-loop items (`fix/control-loop-safety`) and the cross-tenant farm
+creation (`fix/tenancy-bind-self`) that headed this list are fixed.
 
-1. **[A] Cross-tenant farm creation** (Medium, CWE-284). `repositories/base.py:104-128`
-   `_bind_tenant` handles `column` and `via_zone`; `repositories/farm.py:15` declares
-   `("self", "farm_name")`; `constants.py` gives `owner` write on farms. An owner of farm A can
-   `POST /farms {"farm_name": "B"}` and create a row that nobody can see or delete through the API
-   (blocks onboarding that name until someone touches the DB). Fix: treat `self` like `column` in
-   `_bind_tenant`. Latent twin: no `via_sensor` branch either; unreachable today because
-   `sensor-records` is read-only for every role, so add the branch before granting write.
-2. **[A] `Idempotency-Key` is advertised and never honoured.** The web sends one per create
+1. **[A] `Idempotency-Key` is advertised and never honoured.** The web sends one per create
    (`_entity.ts:31-32`); the backend's only reference is the CORS allow-list (`main.py:51`).
    `irrigation_task` and `sensor_records` have no unique key, so a retried POST creates two tasks
    the flow runner acts on; on keyed resources the retry is a 409 shown as an error although the
@@ -212,8 +204,6 @@ Security (Lows; policy decisions, none exploitable for data today)
 - **[A] Live reset link written to the log when `SMTP_HOST` is unset.** Fine locally; a
   production stack that forgets SMTP logs every reset token. Gate on an explicit flag, or refuse
   startup when `API_COOKIE_SECURE=true` and SMTP is unset.
-- **[A] `users.password` is filterable** through the Filter DSL (exact match only, bcrypt, not
-  practically exploitable). Exclude `PRIVATE_FIELDS` in `_column`.
 - **[A] No server-side revocation**: a captured JWT stays valid up to 120 min after logout; only a
   password change or deactivation kills it. Accepted for the stateless design.
 
@@ -233,10 +223,10 @@ Structure (from the design-patterns inventory; sized by the tech-debt audit)
 - **[A] Duplicated sensor-type guard ×6** (`water_source.py`, `water_switcher.py`,
   `zone_sensors.py` create + update) and `update_by_serial_number` cloned between water source and
   switcher. One `require_sensor_of_type(serial, allowed)`.
-- **[A] Tenancy is half a Strategy**: `_apply_tenant` knows four scope kinds, `_bind_tenant` two
-  (the root cause of "Fix first" #1). Make `TENANT_SCOPE` an object with both `apply(query)` and
-  `bind(data)` so a kind cannot be added to one side only; extracting it from the 439-line
-  `BaseDBRepo` also makes it unit-testable.
+- **[A] Tenancy is two parallel `if` chains**: `_apply_tenant` and `_bind_tenant` each know the
+  four scope kinds (they agree again since `fix/tenancy-bind-self`, which is enforced only by
+  tests). Make `TENANT_SCOPE` an object with both `apply(query)` and `bind(data)` so a kind cannot
+  be added to one side only; extracting it from `BaseDBRepo` also makes it unit-testable.
 - **[A] `get_irrigation_tasks` returns `None` instead of `[]`**, forcing `or []` in the flow runner
   and a double query in `zone.get_stats`.
 - **[A] Entities are passed as dicts into the control loop** (`flow_runner.py:173`, then eleven
@@ -255,10 +245,7 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
   branch of `status_updaters`. The highest-volume event has no test.
 - **[A] Blind-zone boundaries**: exactly `MAX_READING_AGE_MINUTES`, one fresh + one stale sensor,
   saturation present but moisture missing while a task runs (must stop); two in-progress tasks.
-- **[A] Routes with no HTTP test**: `/farms` (the only `self` scope; list scoping unverified),
-  `/water-sources`, `/water-switchers` GET/PATCH/DELETE, `/irrigation-tasks`, `/zone-sensors`.
-- **[A] CSRF gate breadth**: only POST `/zones` and `/auth/logout` are tested; PATCH/DELETE via
-  cookie, `/auth/password/*` via cookie, and "bearer + cookie → bearer wins" are not.
+- **[A] Routes with no HTTP test**: `/water-sources`, `/water-switchers` GET/PATCH/DELETE, `/irrigation-tasks`, `/zone-sensors`.
 - **[A] Fixture tokens are minted without `pfp`** (`conftest.py:157-159`), so the suite runs on a
   token shape production never issues and `tenant.py:91` keeps a leniency branch for it. Mint via
   `AuthHelper.session_claims(user)`, then consider dropping the leniency. Password *reset*
@@ -302,10 +289,9 @@ Tests (backend suite is behavioural and green: 126 tests, SQLite, real middlewar
 ## Suggested PR order
 
 1. ~~`fix/control-loop-safety`~~ done.
-2. `fix/tenancy-bind-self`: Fix first #1, `PRIVATE_FIELDS` out of the Filter DSL, `/farms` scope
-   test, CSRF breadth test.
+2. ~~`fix/tenancy-bind-self`~~ done.
 3. `fix/web-contract-bugs`: trailing slashes, page reset, `toApiError` in fetchers, users edit
-   dialog, field errors onto the form; decide Fix first #2.
+   dialog, field errors onto the form; decide Fix first #1.
 4. `chore/ci-hardening`: pip-audit pin, simulator tests in CI, action SHAs, Node 22 in
    `Dockerfile.dev`, fixture tokens via `session_claims`.
 5. `perf/set-queries`: the `irrigation_task` index and the three N+1 shapes behind new
