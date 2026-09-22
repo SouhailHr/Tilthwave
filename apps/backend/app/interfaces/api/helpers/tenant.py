@@ -84,10 +84,9 @@ class TenantContextMiddleware:
                 user = await run_in_threadpool(self._active_user, claims.get("user_id"))
                 # A token with a `purpose` (password reset) is never a session, however valid its
                 # signature. A `pfp` that no longer matches the row means the password changed
-                # after this token was issued: the session is over. Tokens without a pfp (older
-                # ones, test fixtures) are not held to it.
-                pfp = claims.get("pfp")
-                stale = user is not None and pfp is not None and pfp != PasswordHasher.fingerprint(user.password)
+                # after this token was issued: the session is over. Every token login issues
+                # carries one (AuthHelper.session_claims), so a token without it is not a session.
+                stale = user is not None and claims.get("pfp") != PasswordHasher.fingerprint(user.password)
                 if user is None or claims.get("purpose") is not None or stale:
                     state[TOKEN_INVALID_STATE_KEY] = True
                 else:
