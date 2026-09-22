@@ -46,19 +46,6 @@ is removed from this file, not struck through; git history has the rest.
 
 ## Backend (`apps/backend`)
 
-Contract
-
-- **[A] Sensor list and detail have different shapes.** The list carries `assigned_to`
-  (`SensorCrudHelper._enrich_items`); `GET /sensors/{id}` returns the bare row. Fix: enrich in
-  `get_by_id` too.
-- **[A] Two 422 shapes.** Use-case 422s carry a string `detail`, validation 422s a list, so the
-  web branches on type; login stays 400 (the simulator retries on it as "admin not seeded yet").
-- **[A] Success bodies reuse `detail`** (`auth.py`, `account.py`) and login has two response
-  shapes keyed on `use_cookie`. Use `{"message"}` for success and one `LoginResponse`.
-- **[A] Timestamps are `str(datetime)` of a naive UTC column** ("2026-09-15 16:06:56.266864"),
-  not ISO 8601. The web compensates in `utils/dates.ts`; any new client using `Date.parse` reads
-  them as local time. Fix: `d.replace(tzinfo=UTC).isoformat()` in the adapter.
-
 Data and migrations
 
 - **Sensor records grow without bound.** No retention, rollup or cleanup; ~24k rows/week from the

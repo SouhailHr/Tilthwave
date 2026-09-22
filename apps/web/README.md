@@ -66,9 +66,9 @@ The session is an httpOnly cookie set by the API; the browser never sees the tok
 
 ## Dates
 
-The API returns naive UTC timestamps (`2026-09-15 16:06:56.266864`). `utils/dates.ts` parses them
-as UTC and renders local time to the second; use it rather than `new Date(value)`, which reads
-such a string as local time.
+The API returns ISO 8601 timestamps with a UTC offset (`2026-09-15T16:06:56.266864+00:00`);
+`utils/dates.ts` parses them (and the older naive form, as UTC) and renders local time to the
+second. Use it rather than `new Date(value)` so the naive form is never read as local time.
 
 ## Tests
 

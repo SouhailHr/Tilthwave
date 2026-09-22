@@ -91,7 +91,8 @@ tests/                        pytest, SQLite
 Two ways to present the same JWT; the API accepts either on every request.
 
 - **Bearer** (`Authorization: Bearer ...`) for API clients and the simulator: `POST /auth/login`
-  with a JSON body `{"username", "password"}` returns the token.
+  with a JSON body `{"username", "password"}` returns `{"token", "token_type": "bearer",
+  "expires_in"}`. The cookie channel returns the same shape with `token: null`.
 - **Cookie** for the browser: `POST /auth/login` with `use_cookie=true` sets `tw_access`
   (httpOnly, `SameSite=Lax`, `Secure` when `API_COOKIE_SECURE`) and `tw_csrf` (readable). Every
   non-safe request from the cookie session must echo `tw_csrf` in `X-CSRF-Token` (double-submit),
@@ -116,11 +117,15 @@ Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (the compose stack sets
 is off).
 
 Errors use one envelope, `{"detail", "error_code", "request_id"}`: the message is for people, the
-code (`not_found`, `conflict`, `invalid_filter`, `unprocessable`, `broker_unavailable`,
-`unauthenticated`, `csrf`, `forbidden`, `database_error`, `internal_error`) is what a client
-branches on, and the id is on the `X-Request-ID` response header and on every log line written
-while handling that request (send your own `X-Request-ID` to have it echoed). Request bodies are
-closed: an unknown field is a 422, on every create, update and auth schema.
+code (`not_found`, `conflict`, `invalid_filter`, `unprocessable`, `validation_error`,
+`bad_request`, `broker_unavailable`, `unauthenticated`, `csrf`, `forbidden`, `rate_limited`,
+`database_error`, `internal_error`) is what a client branches on, and the id is on the
+`X-Request-ID` response header and on every log line written while handling that request (send
+your own `X-Request-ID` to have it echoed). A request-validation failure (422,
+`validation_error`) adds `fields: {<field>: [<message>, ...]}`. Request bodies are closed: an
+unknown field is a 422, on every create, update and auth schema. Success bodies that carry a
+sentence use `message`, never `detail`. Timestamps are ISO 8601 with an explicit UTC offset
+(`2026-09-15T16:06:56.266864+00:00`).
 
 URL shape is part of the contract: collections end with a slash (`/zones/`), items do not
 (`/zones/1`), and a mismatch is a 404, never a redirect (`redirect_slashes=False`).
