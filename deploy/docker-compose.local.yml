@@ -1,0 +1,55 @@
+# Local development on top of docker-compose.yml: build the three app images from this checkout
+# and publish the host ports (127.0.0.1 unless BIND_ADDR says otherwise). `make up` uses both files:
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml --env-file deploy/.env up -d --build
+#
+# Production does not use this file: images come from the registry and the platform's proxy
+# reaches web/api on the container ports.
+x-backend-build: &backend-build
+  context: ../apps/backend
+  dockerfile: docker/Dockerfile
+
+x-simulator-build: &simulator-build
+  context: ../apps/simulator
+  dockerfile: docker/Dockerfile
+
+services:
+  db:
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${DB_PORT:-5432}:5432"
+
+  redpanda:
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${KAFKA_PORT:-9092}:9092"   # for host-side kafka clients only
+
+  console:
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${CONSOLE_PORT:-8082}:8080"
+
+  migrate:
+    build: *backend-build
+  api:
+    build: *backend-build
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${API_PORT:-8080}:8080"
+  seed:
+    build: *backend-build
+  streamer:
+    build: *backend-build
+  flow-runner:
+    build: *backend-build
+
+  sim-actuators:
+    build: *simulator-build
+  sim-sensors:
+    build: *simulator-build
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+      args:
+        # Inlined into the browser bundle: must be reachable from the HOST browser.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${WEB_PORT:-3000}:3000"

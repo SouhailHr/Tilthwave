@@ -52,6 +52,20 @@ app.add_middleware(
 )
 app.add_middleware(TenantContextMiddleware)
 
+
+@app.middleware("http")
+async def strict_transport_security(request, call_next):
+    """
+    HSTS, keyed on the same setting as the cookie Secure flag: COOKIE_SECURE=true means the API
+    is served over TLS, and then browsers must not fall back to http for the session cookie's
+    host. Off (the default, and the local stack) the header would be ignored anyway.
+    """
+    response = await call_next(request)
+    if settings.API.COOKIE_SECURE:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
 # Authenticated resources. The dependency does not authorize (RBACMiddleware does); it documents
 # the bearer requirement in OpenAPI and rejects requests carrying neither a bearer token nor the
 # session cookie with a JSON 401.
