@@ -7,7 +7,6 @@ out
 .vscode
 .env*.local
 *.md
-HANDOFF.md
 Dockerfile
 .dockerignore
 docker-compose.yml

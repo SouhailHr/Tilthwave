@@ -25,7 +25,8 @@ origin, which only works behind a proxy that serves the API on the same host.
 ## Layout
 
 ```
-middleware.ts             redirects to /login when the tw_access cookie is absent (fast path only)
+middleware.ts             per-request CSP nonce; redirects to /login when the tw_access cookie is
+                          absent (fast path only)
 src/
   app/
     (auth)/               login, forgot-password, reset-password

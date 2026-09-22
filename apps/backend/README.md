@@ -39,6 +39,7 @@ app/
   config/settings.py          pydantic-settings, one class per env prefix
   common/                     exceptions, tenant ContextVar, shared helpers
   core/                       domain: entities, use cases, security (passwords, fingerprints)
+  adapters/                   SQLAlchemy model <-> domain entity mappers, one per resource
   infrastructure/             SQLAlchemy tables, repositories, Kafka gateway, mailer
   interfaces/api/             FastAPI app, endpoints, middleware, helpers
   interfaces/streamer/        FastStream subscribers
@@ -73,7 +74,7 @@ tests/                        pytest, SQLite
 Two ways to present the same JWT; the API accepts either on every request.
 
 - **Bearer** (`Authorization: Bearer ...`) for API clients and the simulator: `POST /auth/login`
-  with a form body returns the token.
+  with a JSON body `{"username", "password"}` returns the token.
 - **Cookie** for the browser: `POST /auth/login` with `use_cookie=true` sets `tw_access`
   (httpOnly, `SameSite=Lax`, `Secure` when `API_COOKIE_SECURE`) and `tw_csrf` (readable). Every
   non-safe request from the cookie session must echo `tw_csrf` in `X-CSRF-Token` (double-submit),
@@ -133,8 +134,9 @@ SQLAlchemy URI (tests use `sqlite:///`).
 | `WEB_BASE_URL` | `http://localhost:3000` | where password-reset links point |
 
 **Mail** (`SMTP_`): `HOST` (unset = log instead of send), `PORT=587`, `USER`, `PASSWORD`,
-`FROM_ADDRESS=tilthwave@localhost`, `USE_TLS=true` (STARTTLS), `TIMEOUT_SECONDS=10`. The prefix is
-`SMTP_`, not `MAIL_`: a `MAIL` field would collide with the shell's `$MAIL`.
+`FROM_ADDRESS=tilthwave@localhost`, `USE_TLS=true` (STARTTLS), `TIMEOUT_SECONDS=10` (settings only;
+`deploy/docker-compose.yml` does not forward it yet). The prefix is `SMTP_`, not `MAIL_`: a `MAIL`
+field would collide with the shell's `$MAIL`.
 
 **Streamer** (`STREAMER_`): `BROKER_HOSTS` (JSON list, e.g. `["redpanda:29092"]`), `SENSORS_TOPIC`,
 `WATER_CONTROL_TOPIC`, `GROUP_ID=tilthwave-backend-streamer`, `LOG_LEVEL=INFO`.
