@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from infrastructure.database.tables.base import TilthwaveBaseModel
@@ -11,6 +11,9 @@ class IrrigationTask(TilthwaveBaseModel):
     """
 
     __tablename__ = "irrigation_task"
+    # The flow runner asks for a zone's in-progress task every tick and the dashboard counts by
+    # status; both filter on these two columns (revision d4e5f6a7b8c9).
+    __table_args__ = (Index("ix_irrigation_task_zone_name_status", "zone_name", "status"),)
 
     zone_name = Column(
         String,
