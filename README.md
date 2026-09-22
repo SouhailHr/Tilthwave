@@ -9,16 +9,16 @@ automated irrigation — with a live web dashboard. Runs as a 24/7 public demo a
 | Path | What it is | Stack |
 |---|---|---|
 | `apps/backend` | API, streamer, and flow-runner services | FastAPI · FastStream · SQLAlchemy · Alembic · Postgres |
-| `apps/web` | Web dashboard | Next.js 16 / React |
-| `apps/simulator` | Sensor simulator (SensorsGuardSandbox) | Python |
-| `apps/broker` | Message broker config (Redpanda/Kafka) | Redpanda |
-| `docs` | Project documentation | (cloned separately — see `docs/README.md`) |
-| `deploy` | Root compose, reverse proxy, env templates | Docker Compose · Caddy/Traefik |
+| `apps/web` | Web dashboard | Next.js 16 · React 19 · TanStack Query · shadcn/ui |
+| `apps/simulator` | Sensor and actuator simulators | Python · FastStream |
+| `apps/broker` | Message broker contract (Redpanda/Kafka) | Redpanda |
+| `deploy` | Root compose, env template, secret generation | Docker Compose |
+| `docs` | Project docs index and the [backlog](docs/BACKLOG.md) | Markdown |
 
 ## Backend services
 
 - **Streamer** — consumes sensor data from the broker in real time and persists it.
-- **API** — FastAPI REST endpoints with RBAC and per-farm object authorization.
+- **API** — FastAPI REST endpoints with RBAC, per-farm tenancy, and cookie or bearer sessions.
 - **Flow Runner** — evaluates real-time data and drives irrigation via the broker.
 
 ## Quick start (whole stack, one command)
@@ -44,12 +44,15 @@ user), then the simulator logs in, publishes fake readings, and the flow-runner 
 irrigation from the zone triggers. `make down` stops it (data kept); `make reset` wipes the volumes.
 Host ports bind to `127.0.0.1` only; set `BIND_ADDR` in `deploy/.env` to change that.
 
+"Forgot password" works locally without a mail server: with `SMTP_HOST` blank the API logs the
+reset link instead of sending it (`make logs s=api`).
+
 ## Per-app development
 
 Python apps use `pyproject.toml` + `uv.lock`:
 
 ```bash
-cd apps/backend && uv sync && uv run ruff check app     # same for apps/simulator
+cd apps/backend && uv sync && uv run ruff check app && uv run pytest -q   # same for apps/simulator
 cd apps/web && npm install && npm run dev
 ```
 
@@ -58,4 +61,5 @@ Individual services can be run in isolation with the same compose file, e.g.
 
 ## Documentation
 
-Project docs live in `docs/` — clone them per `docs/README.md`.
+Each app has its own README; `docs/README.md` indexes them, and `docs/BACKLOG.md` lists what is
+left to do per area. `CLAUDE.md` describes the security-assessment loop used on this repo.

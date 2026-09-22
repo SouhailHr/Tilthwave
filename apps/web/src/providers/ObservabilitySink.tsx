@@ -16,7 +16,7 @@ import { subscribe } from "@/lib/eventBus";
  * failures (the dashboard's live-polling cards, any future bare `useQuery`) have no error UI
  * anywhere else, so those get one. Every failure is logged regardless, since nothing logged
  * them before; this is a starting point for a real telemetry vendor, not a replacement for one
- * (see AUDIT_REAUDIT.md Sweep 3 P0 #1).
+ * (see docs/BACKLOG.md, "Telemetry").
  */
 export function ObservabilitySink({ children }: { children: ReactNode }) {
   useEffect(() => {

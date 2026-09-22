@@ -23,7 +23,8 @@ export function createEntity<T, TInput = Partial<T>>(
   input: TInput,
 ) {
   // Generated once per call, not in the axios interceptor: the interceptor fires on every
-  // POST including /auth/login (which must never carry one - see AUDIT_REAUDIT.md P1 #6),
+  // POST including /auth/login (which must never carry one: a replayed login must not be
+  // deduplicated into a stale session),
   // and a global per-request key can't survive a retry of the same logical attempt. Scoping
   // it here means it's tied to exactly one createEntity() invocation.
   const headers =
