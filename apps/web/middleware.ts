@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const SESSION_COOKIE = "tw_logged_in";
+// The API's httpOnly session cookie. httpOnly hides it from JavaScript, not from this server-side
+// check, and cookies are not port-scoped, so the one set by localhost:8080 reaches localhost:3000
+// (on split subdomains, API_COOKIE_DOMAIN makes it reach both). Presence only: this is a UX gate
+// that keeps anonymous visitors from loading the app shell; the API verifies the token itself.
+const SESSION_COOKIE = "tw_access";
 
 const PROTECTED_MATCHER = /^\/(?!login|api\/health|_next|brand|favicon\.ico|.*\.(?:svg|png|jpg|jpeg|webp|ico|js|css|map)$)/;
 
@@ -60,7 +64,7 @@ export function middleware(request: NextRequest) {
 
   if (!PROTECTED_MATCHER.test(pathname)) return response;
 
-  if (request.cookies.get(SESSION_COOKIE)?.value === "1") {
+  if (request.cookies.get(SESSION_COOKIE)?.value) {
     return response;
   }
 

@@ -19,7 +19,7 @@ from interfaces.api.endpoints import (
     zone,
     zone_sensors,
 )
-from interfaces.api.helpers.auth import oauth2_scheme
+from interfaces.api.helpers.auth import require_credential
 from interfaces.api.helpers.errors import register_exception_handlers
 from interfaces.api.helpers.permission import RBACMiddleware
 from interfaces.api.helpers.tenant import TenantContextMiddleware
@@ -46,13 +46,14 @@ app.add_middleware(
     allow_origins=settings.API.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-CSRF-Token"],
 )
 app.add_middleware(TenantContextMiddleware)
 
 # Authenticated resources. The dependency does not authorize (RBACMiddleware does); it documents
-# the bearer requirement in OpenAPI and rejects requests without a token with a JSON 401.
-api_router = APIRouter(dependencies=[Depends(oauth2_scheme)])
+# the bearer requirement in OpenAPI and rejects requests carrying neither a bearer token nor the
+# session cookie with a JSON 401.
+api_router = APIRouter(dependencies=[Depends(require_credential)])
 api_router.include_router(users.router)
 api_router.include_router(farm.router)
 api_router.include_router(zone.router)

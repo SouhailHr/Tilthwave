@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 import { useSensors } from "@/api/sensors";
-import { logout } from "@/api/auth";
+import { useLogout } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -124,10 +124,14 @@ function LiveSensorsBadge() {
 
 function UserMenu() {
   const router = useRouter();
+  const logoutMutation = useLogout();
 
-  function handleLogout() {
-    logout();
-    router.replace("/login");
+  async function handleLogout() {
+    try {
+      await logoutMutation.mutateAsync(); // POST /auth/logout clears the httpOnly cookie
+    } finally {
+      router.replace("/login");
+    }
   }
 
   return (

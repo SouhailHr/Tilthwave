@@ -1,66 +1,74 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { getCurrentUserId, isAuthenticated } from "./auth";
-import { setStoredToken, clearStoredToken } from "@/utils/tokenStorage";
 
-function makeJwt(claims: Record<string, unknown>): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url");
-  const body = Buffer.from(JSON.stringify(claims)).toString("base64url");
-  return `${header}.${body}.`;
-}
+const get = vi.fn();
+const post = vi.fn();
+vi.mock("@/api/client", () => ({ api: { get, post } }));
+
+const me = { user_id: 42, username: "admin", role: "admin", farm_name: "Sunny Farms", exp: 1 };
+const unauthorized = { isAxiosError: true, response: { status: 401 } };
 
 beforeEach(() => {
-  clearStoredToken();
+  get.mockReset();
+  post.mockReset();
 });
 
-describe("auth Flyweight + Zod claims", () => {
-  it("returns null when no token stored", () => {
-    expect(getCurrentUserId()).toBeNull();
-    expect(isAuthenticated()).toBe(false);
+describe("fetchSession", () => {
+  it("returns the identity the API reports", async () => {
+    get.mockResolvedValue({ data: me });
+    const { fetchSession } = await import("./auth");
+    expect(await fetchSession()).toEqual(me);
+    expect(get).toHaveBeenCalledWith("/auth/me");
   });
 
-  it("returns user_id for a valid unexpired token", () => {
-    const exp = Math.floor(Date.now() / 1000) + 3600;
-    setStoredToken(makeJwt({ user_id: 42, exp }));
-    expect(getCurrentUserId()).toBe(42);
-    expect(isAuthenticated()).toBe(true);
+  it("returns null on 401: nobody is signed in, not an error", async () => {
+    get.mockRejectedValue(unauthorized);
+    const { fetchSession } = await import("./auth");
+    expect(await fetchSession()).toBeNull();
   });
 
-  it("treats missing exp as invalid (no NaN forever-token)", () => {
-    setStoredToken(makeJwt({ user_id: 42 }));
-    expect(getCurrentUserId()).toBeNull();
+  it("rethrows anything else (an outage is not 'signed out')", async () => {
+    get.mockRejectedValue(new Error("network down"));
+    const { fetchSession } = await import("./auth");
+    await expect(fetchSession()).rejects.toThrow("network down");
   });
 
-  it("treats expired token as not authenticated", () => {
-    const exp = Math.floor(Date.now() / 1000) - 1;
-    setStoredToken(makeJwt({ user_id: 42, exp }));
-    expect(getCurrentUserId()).toBeNull();
-  });
-
-  it("rejects malformed token payloads", () => {
-    setStoredToken("not-a-jwt");
-    expect(getCurrentUserId()).toBeNull();
+  it("rejects a malformed identity rather than trusting it", async () => {
+    get.mockResolvedValue({ data: { username: "x" } });
+    const { fetchSession } = await import("./auth");
+    await expect(fetchSession()).rejects.toBeDefined();
   });
 });
 
-describe("login never carries an Idempotency-Key", () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it("posts without one (a caching layer must never dedupe/replay a login)", async () => {
-    const post = vi.fn().mockResolvedValue({ data: { token: "t" } });
-    vi.doMock("@/api/client", () => ({ api: { post } }));
-    vi.doMock("@/utils/tokenStorage", () => ({
-      getStoredToken: () => null,
-      setStoredToken: () => {},
-      clearStoredToken: () => {},
-    }));
-
+describe("login", () => {
+  it("asks for a cookie session, stores nothing, and returns the identity", async () => {
+    post.mockResolvedValue({ data: { token_type: "cookie" } });
+    get.mockResolvedValue({ data: me });
     const { login } = await import("./auth");
-    await login({ username: "admin", password: "pw" });
+
+    const session = await login({ username: "admin", password: "pw" });
 
     expect(post).toHaveBeenCalledTimes(1);
-    const [, , config] = post.mock.calls[0];
-    expect(config?.headers?.["Idempotency-Key"]).toBeUndefined();
+    const [url, body, config] = post.mock.calls[0];
+    expect(url).toBe("/auth/login/");
+    expect(body).toEqual({ username: "admin", password: "pw", use_cookie: true });
+    expect(config?.headers?.["Idempotency-Key"]).toBeUndefined(); // never on a login
+    expect(session).toEqual(me);
+    expect(typeof window === "undefined" || window.localStorage.getItem("access")).toBeNull();
+  });
+
+  it("fails loudly if the cookie did not come back", async () => {
+    post.mockResolvedValue({ data: { token_type: "cookie" } });
+    get.mockRejectedValue(unauthorized);
+    const { login } = await import("./auth");
+    await expect(login({ username: "admin", password: "pw" })).rejects.toThrow(/cookie/);
+  });
+});
+
+describe("logout", () => {
+  it("posts to /auth/logout so the API clears the httpOnly cookie", async () => {
+    post.mockResolvedValue({ status: 204 });
+    const { logout } = await import("./auth");
+    await logout();
+    expect(post).toHaveBeenCalledWith("/auth/logout");
   });
 });

@@ -7,7 +7,8 @@ from starlette.responses import JSONResponse, Response
 
 import common.constants as global_constants
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY
-from interfaces.api.helpers.tenant import TOKEN_INVALID_STATE_KEY
+from interfaces.api.helpers.cookies import UNSAFE_METHODS, csrf_ok
+from interfaces.api.helpers.tenant import AUTH_VIA_STATE_KEY, TOKEN_INVALID_STATE_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,18 @@ class RBACMiddleware(BaseHTTPMiddleware):
         claims = getattr(request.state, CLAIMS_STATE_KEY, None)
         if claims is None:
             return _unauthorized("Not authenticated")
+
+        # A cookie is attached by the browser on its own, so a state-changing request must also
+        # carry the CSRF header only our own page can produce (see helpers/cookies.py). A bearer
+        # header cannot be forged cross-site, so header-authenticated requests skip this.
+        if (
+            getattr(request.state, AUTH_VIA_STATE_KEY, None) == "cookie"
+            and request.method.upper() in UNSAFE_METHODS
+            and not csrf_ok(request)
+        ):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN, content={"detail": "CSRF token missing or invalid"}
+            )
 
         action = translate_method_to_action(request.method)
         if not has_permission(claims.get("role"), resource, action):

@@ -9,11 +9,32 @@ from starlette.responses import JSONResponse
 
 from config.settings import settings
 from core.security.password import PasswordHasher
+from interfaces.api.helpers.cookies import ACCESS_COOKIE
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# auto_error=False: a missing Authorization header is not an error by itself any more, the
+# credential may be in the session cookie instead (see require_credential). Keeping the scheme
+# object keeps the Authorize button and the bearer requirement in the OpenAPI docs.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
 # Where TenantContextMiddleware stores the decoded claims so the request is decoded once.
 CLAIMS_STATE_KEY = "auth_claims"
+
+
+def require_credential(request: Request, bearer: str | None = Depends(oauth2_scheme)) -> str:
+    """
+    Dependency: the raw credential of the request, from the Authorization header (API clients:
+    the simulator, curl, Burp) or the httpOnly session cookie (the web app). Neither present is
+    the same JSON 401 as before. Verification is not done here: TenantContextMiddleware decoded
+    the credential once already and the endpoint dependencies read its result from request.state.
+    """
+    token = bearer or request.cookies.get(ACCESS_COOKIE)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return token
 
 
 class AuthHelper:
@@ -84,16 +105,16 @@ class AuthHelper:
             ) from e
 
     @classmethod
-    def get_current_user(cls, request: Request, token: str = Depends(oauth2_scheme)):
+    def get_current_user(cls, request: Request, token: str = Depends(require_credential)):
         """
-        Dependency: the raw bearer token of an authenticated caller.
+        Dependency: the raw credential of an authenticated caller.
         """
         if cls._claims(request, token).get("user_id") is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
         return token
 
     @classmethod
-    def get_current_user_username(cls, request: Request, token: str = Depends(oauth2_scheme)):
+    def get_current_user_username(cls, request: Request, token: str = Depends(require_credential)):
         """
         Dependency: the username of the authenticated caller (used as performed_by).
         """

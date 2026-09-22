@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 
-import { login } from "@/api/auth";
+import { useLogin } from "@/api/auth";
 import { toApiError } from "@/api/errors";
 import { safeRedirect } from "@/utils/safeRedirect";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
+  const loginMutation = useLogin();
 
   useEffect(() => {
     if (searchParams.get("expired") === "1") {
@@ -55,7 +56,7 @@ function LoginForm() {
   async function onSubmit(values: LoginValues) {
     setSubmitting(true);
     try {
-      await login(values);
+      await loginMutation.mutateAsync(values);
       router.push(safeRedirect(searchParams.get("redirect")));
     } catch (err) {
       const apiError = toApiError(err, "Invalid credentials");

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AuthLogin(BaseModel):
@@ -8,6 +8,10 @@ class AuthLogin(BaseModel):
 
     username: str
     password: str
+    use_cookie: bool = Field(
+        default=False,
+        description="Browser clients: keep the session in httpOnly cookies and omit the token from the body.",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={

@@ -1,11 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock("@/utils/tokenStorage", () => ({
-  getStoredToken: () => null,
-  clearStoredToken: () => {},
-  setStoredToken: () => {},
-}));
-
 import {
   entityChildKey,
   entityDetailKey,
@@ -45,47 +39,61 @@ describe("Generic Repository key helpers", () => {
   });
 });
 
-describe("client interceptor 401 redirect contract", () => {
+type Handlers = {
+  handlers: { fulfilled: (cfg: unknown) => unknown; rejected: (err: unknown) => unknown }[];
+};
+
+describe("client interceptors", () => {
   beforeEach(() => {
     vi.resetModules();
+    document.cookie = "tw_csrf=; Max-Age=0; Path=/";
   });
 
-  it("emits auth:expired and clears the token on 401", async () => {
+  it("emits auth:expired on a 401 (and nothing else clears: the cookie is the server's)", async () => {
     const events: { type: string }[] = [];
-    let clearedCount = 0;
-
-    vi.doMock("@/utils/tokenStorage", () => ({
-      getStoredToken: () => "fake-token",
-      clearStoredToken: () => {
-        clearedCount += 1;
-      },
-      setStoredToken: () => {},
-    }));
     vi.doMock("@/lib/eventBus", () => ({
       emit: (e: { type: string }) => events.push(e),
       subscribe: () => () => {},
     }));
 
     const { api } = await import("./client");
-
-    // Manually trigger the interceptor's rejection handler the way axios would.
-    const interceptors = (
-      api.interceptors.response as unknown as {
-        handlers: { fulfilled: unknown; rejected: (err: unknown) => unknown }[];
-      }
-    ).handlers;
-    const handler = interceptors[0]?.rejected;
-    expect(handler).toBeTypeOf("function");
+    const rejected = (api.interceptors.response as unknown as Handlers).handlers[0]?.rejected;
+    expect(rejected).toBeTypeOf("function");
 
     await expect(
-      handler({
-        response: { status: 401 },
-        isAxiosError: true,
-      } as never),
+      rejected({ response: { status: 401 }, config: { url: "/zones/" }, isAxiosError: true }),
     ).rejects.toBeDefined();
-
-    expect(clearedCount).toBe(1);
     expect(events.some((e) => e.type === "auth:expired")).toBe(true);
+  });
+
+  it("does not emit auth:expired for a 401 from the /auth/me probe (nobody signed in is not an expiry)", async () => {
+    const events: { type: string }[] = [];
+    vi.doMock("@/lib/eventBus", () => ({
+      emit: (e: { type: string }) => events.push(e),
+      subscribe: () => () => {},
+    }));
+
+    const { api } = await import("./client");
+    const rejected = (api.interceptors.response as unknown as Handlers).handlers[0]?.rejected;
+
+    await expect(
+      rejected({ response: { status: 401 }, config: { url: "/auth/me" }, isAxiosError: true }),
+    ).rejects.toBeDefined();
+    expect(events).toEqual([]);
+  });
+
+  it("sends the CSRF cookie back as a header on mutations only, and sends credentials", async () => {
+    document.cookie = "tw_csrf=abc123; Path=/";
+    const { api, CSRF_HEADER } = await import("./client");
+    expect(api.defaults.withCredentials).toBe(true);
+    const fulfilled = (api.interceptors.request as unknown as Handlers).handlers[0]?.fulfilled;
+
+    const post = fulfilled({ method: "post", headers: {} }) as { headers: Record<string, string> };
+    expect(post.headers[CSRF_HEADER]).toBe("abc123");
+    const del = fulfilled({ method: "delete", headers: {} }) as { headers: Record<string, string> };
+    expect(del.headers[CSRF_HEADER]).toBe("abc123");
+    const get = fulfilled({ method: "get", headers: {} }) as { headers: Record<string, string> };
+    expect(get.headers[CSRF_HEADER]).toBeUndefined();
   });
 });
 

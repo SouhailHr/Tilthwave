@@ -1,50 +1,46 @@
 "use client";
 
-import { ReactNode, useEffect, useSyncExternalStore } from "react";
+import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { isAuthenticated } from "@/api/auth";
-import { subscribeToTokenChanges } from "@/utils/tokenStorage";
+import { useQueryClient } from "@tanstack/react-query";
+import { sessionKey, useSession } from "@/api/auth";
 import { subscribe } from "@/lib/eventBus";
 import { safeRedirect } from "@/utils/safeRedirect";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
-  // The server (and the first client render, which must match it to avoid a hydration
-  // mismatch) has no access to localStorage, so this is always "false" on that first pass,
-  // even for an already-authenticated user refreshing the page. React notices the mismatch
-  // on its own and schedules a corrective re-render, but that correction lands one render
-  // AFTER this component's own effects below run for the first time. The redirect effect
-  // must not trust this value directly; see the comment there.
-  const authed = useSyncExternalStore(
-    subscribeToTokenChanges,
-    () => isAuthenticated(),
-    () => false,
-  );
+  // The session is an httpOnly cookie the browser sends on its own, so JavaScript cannot read
+  // it: "am I signed in" is a question for the server (GET /auth/me), cached by React Query.
+  // Being async by construction also removes the old hydration race, where a synchronous check
+  // fed an SSR placeholder of "false" to a redirect effect before the real value had landed:
+  // isPending is true on the server and on the first client render alike, and nothing here
+  // redirects until the probe has actually answered.
+  const session = useSession();
 
   useEffect(() => {
     return subscribe((event) => {
       if (event.type !== "auth:expired") return;
+      queryClient.setQueryData(sessionKey, null);
       const target = safeRedirect(event.redirect ?? pathname);
       const params = new URLSearchParams({ redirect: target, expired: "1" });
       router.replace(`/login?${params.toString()}`);
     });
-  }, [router, pathname]);
+  }, [queryClient, router, pathname]);
 
+  // Only a definite "nobody is signed in" (the probe answered 401) redirects. A failed probe
+  // (API unreachable) is not that: it renders nothing and ObservabilitySink toasts the error,
+  // rather than bouncing a user who may well be signed in to the login page.
+  const signedOut = session.isSuccess && session.data === null;
   useEffect(() => {
-    // Re-check freshly instead of trusting `authed`: an effect body only ever runs on the
-    // client, so this always reflects the real, current value, even on the very first render
-    // after hydration where `authed` above is still React's stale server-snapshot
-    // placeholder. Without this, refreshing an already-authenticated page bounced straight
-    // back to /login, because the redirect fired off that placeholder before React's own
-    // corrective re-render for `authed` had a chance to land.
-    if (!isAuthenticated()) {
+    if (signedOut) {
       const target = safeRedirect(pathname);
       router.replace(`/login?redirect=${encodeURIComponent(target)}`);
     }
-  }, [authed, pathname, router]);
+  }, [signedOut, pathname, router]);
 
-  if (!authed) return null;
+  if (!session.data) return null;
   return <>{children}</>;
 }
