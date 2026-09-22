@@ -1,14 +1,8 @@
 "use client";
 
 import { ReactNode } from "react";
-import {
-  DefaultValues,
-  FieldValues,
-  Path,
-  useForm,
-  type ControllerRenderProps,
-  type Resolver,
-} from "react-hook-form";
+import { DefaultValues, FieldValues, Path, useForm, type ControllerRenderProps, type Resolver } from "react-hook-form";
+import { toApiError } from "@/api/errors";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ZodType } from "zod";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,10 +101,25 @@ export function EntityForm<TValues extends FieldValues>({
 
   const isSubmitting = form.formState.isSubmitting;
 
+  // The API's validation errors land on the fields they name. The caller has already reported
+  // the failure (toast); what it rethrows is only for this mapping, so nothing propagates.
+  const submit = async (values: TValues) => {
+    try {
+      await onSubmit(values);
+    } catch (err) {
+      const { fieldErrors } = toApiError(err);
+      for (const [name, messages] of Object.entries(fieldErrors ?? {})) {
+        if (name in values) {
+          form.setError(name as Path<TValues>, { type: "server", message: messages.join(" ") });
+        }
+      }
+    }
+  };
+
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(submit)}
         className="grid gap-4"
         noValidate
       >

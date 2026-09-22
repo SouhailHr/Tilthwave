@@ -36,7 +36,7 @@ export async function fetchSession(): Promise<Session | null> {
 export async function login(payload: LoginPayload): Promise<Session> {
   // use_cookie: the API answers with Set-Cookie and no token in the body. Nothing is stored
   // client-side; the browser holds the session and sends it on its own from here on.
-  await api.post("/auth/login/", { ...payload, use_cookie: true });
+  await api.post("/auth/login", { ...payload, use_cookie: true });
   const session = await fetchSession();
   if (!session) throw new Error("Signed in, but the session cookie did not come back");
   return session;

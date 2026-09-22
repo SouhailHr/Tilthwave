@@ -17,7 +17,24 @@ interface ApiErrorResponseBody {
   errors?: Record<string, string[]>;
 }
 
+export function isApiError(err: unknown): err is ApiError {
+  // An AxiosError also carries status + message; ApiError is a plain object, never an Error.
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    !(err instanceof Error) &&
+    typeof (err as ApiError).status === "number" &&
+    typeof (err as ApiError).message === "string"
+  );
+}
+
+/**
+ * The one wire-to-domain boundary for failures. Idempotent: the entity fetchers already convert,
+ * so a caller that converts again (the CRUD page, the table) gets the same error back, message
+ * and field errors intact, instead of a fallback wrapped around a non-Error object.
+ */
 export function toApiError(err: unknown, fallback = "Something went wrong"): ApiError {
+  if (isApiError(err)) return err;
   if (!isAxiosError(err)) {
     return { status: 0, message: err instanceof Error ? err.message : fallback };
   }
@@ -57,8 +74,4 @@ export function toApiError(err: unknown, fallback = "Something went wrong"): Api
 
 export function getErrorMessage(err: unknown, fallback: string): string {
   return toApiError(err, fallback).message;
-}
-
-export function toastDescription(apiError: { requestId?: string }): string | undefined {
-  return apiError.requestId ? `ref: ${apiError.requestId}` : undefined;
 }
