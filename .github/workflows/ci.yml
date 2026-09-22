@@ -116,7 +116,7 @@ jobs:
     needs: [backend, simulator]
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Backend image builds
         run: docker build -f apps/backend/docker/Dockerfile apps/backend
       - name: Simulator image builds
