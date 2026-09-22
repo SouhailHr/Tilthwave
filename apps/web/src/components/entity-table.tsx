@@ -73,7 +73,15 @@ export function EntityTable<T extends EntityWithId>({
   const search = useDebounced(searchInput);
   const [confirmRow, setConfirmRow] = useState<T | null>(null);
 
-  // Reset to page 1 when the debounced search value changes, not the raw input.
+  // Back to page 1 when the debounced search value changes (not on every keystroke): a search
+  // narrows the result set, so the page the user was on may no longer exist. Done during render,
+  // the way React adjusts state when a value changes, rather than in an effect one render late.
+  const [searchOfPage, setSearchOfPage] = useState(search);
+  if (search !== searchOfPage) {
+    setSearchOfPage(search);
+    setPage(1);
+  }
+
   const params = useMemo(() => {
     return { page, size: pageSize, ...(search ? { search } : {}) };
   }, [page, pageSize, search]);

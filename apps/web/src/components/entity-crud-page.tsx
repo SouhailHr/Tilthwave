@@ -102,17 +102,18 @@ export function EntityCrudPage<
 
   const capitalised = `${entity[0].toUpperCase()}${entity.slice(1)}`;
 
+  // Toast the failure, then hand the ApiError back so the form can put field errors on fields.
   const reportError = useCallback(
-    (err: unknown, mode: Mode) => {
+    (err: unknown, mode: Mode): ApiError => {
       const apiError = toApiError(
         err,
         `Failed to ${mode === "create" ? "create" : "update"} ${entity}`,
       );
-      toast.error(apiError.message, {
-        description: apiError.requestId
-          ? `ref: ${apiError.requestId}`
-          : undefined,
-      });
+      toast.error(
+        apiError.fieldErrors ? "Please check the highlighted fields" : apiError.message,
+        { description: apiError.requestId ? `ref: ${apiError.requestId}` : undefined },
+      );
+      return apiError;
     },
     [entity],
   );
@@ -124,7 +125,7 @@ export function EntityCrudPage<
         toast.success(`${capitalised} created`);
         handleClose();
       } catch (err) {
-        reportError(err, "create");
+        throw reportError(err, "create");
       }
     },
     [createMutation, toCreateInput, capitalised, handleClose, reportError],
@@ -141,7 +142,7 @@ export function EntityCrudPage<
         toast.success(`${capitalised} updated`);
         handleClose();
       } catch (err) {
-        reportError(err, "edit");
+        throw reportError(err, "edit");
       }
     },
     [editing, updateMutation, toUpdateInput, capitalised, handleClose, reportError],

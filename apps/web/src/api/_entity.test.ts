@@ -97,28 +97,48 @@ describe("client interceptors", () => {
   });
 });
 
-describe("createEntity Idempotency-Key", () => {
+describe("entity fetchers", () => {
   beforeEach(() => {
     vi.resetModules();
   });
 
-  it("attaches a fresh key per call, scoped to this request only", async () => {
-    // Regression for: the key used to be generated in the axios request interceptor, so it
-    // fired for every POST including /auth/login (which must never carry one), and a key
-    // generated there can't survive being the same across a retry of one logical attempt.
-    const post = vi.fn().mockResolvedValue({ data: { id: 1 } });
-    vi.doMock("@/api/client", () => ({ api: { post } }));
+  it("addresses collections with a trailing slash and items without one", async () => {
+    // The API does not redirect a mismatched slash (redirect_slashes is off): the old `/zones/7/`
+    // shape cost a 307 per call and, behind a proxy, could bounce the browser to http://.
+    const get = vi.fn().mockResolvedValue({ data: {} });
+    const post = vi.fn().mockResolvedValue({ data: {} });
+    const patch = vi.fn().mockResolvedValue({ data: {} });
+    const del = vi.fn().mockResolvedValue({});
+    vi.doMock("@/api/client", () => ({ api: { get, post, patch, delete: del } }));
 
-    const { createEntity } = await import("./_entity");
+    const { fetchEntityList, fetchEntity, createEntity, updateEntity, deleteEntity } = await import("./_entity");
+    await fetchEntityList("zones", { page: 1 });
+    await fetchEntity("zones", 7);
     await createEntity("zones", { zone_name: "Zone A" });
-    await createEntity("zones", { zone_name: "Zone B" });
+    await updateEntity("zones", 7, { size: 1 });
+    await deleteEntity("zones", 7);
 
-    expect(post).toHaveBeenCalledTimes(2);
-    const [, , firstConfig] = post.mock.calls[0];
-    const [, , secondConfig] = post.mock.calls[1];
-    const firstKey = firstConfig.headers["Idempotency-Key"];
-    const secondKey = secondConfig.headers["Idempotency-Key"];
-    expect(firstKey).toEqual(expect.any(String));
-    expect(firstKey).not.toBe(secondKey);
+    expect(get.mock.calls.map((c) => c[0])).toEqual(["/zones/", "/zones/7"]);
+    expect(post.mock.calls[0][0]).toBe("/zones/");
+    expect(patch.mock.calls[0][0]).toBe("/zones/7");
+    expect(del.mock.calls[0][0]).toBe("/zones/7");
+    // No per-request headers any more: the Idempotency-Key the backend never read is gone.
+    expect(post.mock.calls[0][2]).toBeUndefined();
+  });
+
+  it("rejects with an ApiError carrying the API's message, not axios's", async () => {
+    const { AxiosError } = await import("axios");
+    const failure = new AxiosError(
+      "Request failed with status code 500",
+      "ERR_BAD_RESPONSE",
+      undefined,
+      undefined,
+      { status: 500, statusText: "", headers: {}, config: {} as never, data: { detail: "Database error" } },
+    );
+    const get = vi.fn().mockRejectedValue(failure);
+    vi.doMock("@/api/client", () => ({ api: { get } }));
+
+    const { fetchEntity } = await import("./_entity");
+    await expect(fetchEntity("zones", 1)).rejects.toMatchObject({ status: 500, message: "Database error" });
   });
 });
