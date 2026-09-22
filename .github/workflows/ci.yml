@@ -61,18 +61,29 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - name: Migrations apply, match the models, and roll back
+      - name: Migrations apply, backfill real rows, match the models, and roll back
+        env:
+          PSQL: postgresql://postgres:ci-only-postgres-pw@localhost:5432/tilthwave
         run: |
+          # Populate the tables at the last revision before the data-carrying ones, so every
+          # backfill (sensor.farm_name from the link tables, created_date NOT NULL) and every
+          # downgrade runs on real rows, not on empty tables where a wrong JOIN would pass.
+          uv run alembic upgrade a1c2e3f4b5d6
+          psql "$PSQL" -v ON_ERROR_STOP=1 -c \
+            "insert into farm (farm_name, address, size) values ('CI Farm', 'x', 1);
+             insert into zone (farm_name, zone_name, size, soil_type) values ('CI Farm', 'CI Zone', 1, 'x');
+             insert into sensor (serial_number, type, is_active) values ('CI001', 'moisture_sensor', true);
+             insert into zone_sensors (zone_name, sensor_serial_number) values ('CI Zone', 'CI001');
+             insert into sensor_records (sensor_serial_number, data) values ('CI001', '{\"type\": \"moisture\", \"value\": 1}');
+             insert into irrigation_task (zone_name, status) values ('CI Zone', 'completed');"
           uv run alembic upgrade head
           uv run alembic check
-          # a populated table proves the downgrade path (NOT NULL columns need server defaults)
-          psql "postgresql://postgres:ci-only-postgres-pw@localhost:5432/tilthwave" -c \
-            "insert into sensor (serial_number, type, is_active) values ('CI001', 'moisture_sensor', true);
-             insert into farm (farm_name, address, size) values ('CI Farm', 'x', 1);
-             insert into zone (farm_name, zone_name, size, soil_type) values ('CI Farm', 'CI Zone', 1, 'x');
-             insert into irrigation_task (zone_name, status) values ('CI Zone', 'completed');"
+          psql "$PSQL" -v ON_ERROR_STOP=1 -tAc "select count(*) from sensor where farm_name is null" | grep -qx 0
+          psql "$PSQL" -v ON_ERROR_STOP=1 -tAc "select count(*) from sensor_records where created_date is null or updated_date is null" | grep -qx 0
           uv run alembic downgrade base
           uv run alembic upgrade head
+          # the downgrade snapshot restored nothing (tables were recreated empty) and is gone again
+          psql "$PSQL" -v ON_ERROR_STOP=1 -tAc "select to_regclass('sensor_farm_name_snapshot') is null" | grep -qx t
 
   simulator:
     runs-on: ubuntu-latest

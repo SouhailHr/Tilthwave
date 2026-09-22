@@ -24,6 +24,28 @@ depends_on: Union[str, Sequence[str], None] = None
 FK_NAME = 'sensor_farm_name_fkey'
 INDEX_NAME = 'ix_sensor_farm_name'
 
+# The downgrade keeps what it drops: a sensor assigned by an admin has no link row, so the
+# backfill below cannot re-derive its farm after a downgrade/upgrade round trip. The upgrade
+# restores from that snapshot first (only farms that still exist), then removes it.
+SNAPSHOT_TABLE = 'sensor_farm_name_snapshot'
+SNAPSHOT = f"""
+    CREATE TABLE IF NOT EXISTS {SNAPSHOT_TABLE} AS
+    SELECT serial_number, farm_name FROM sensor WHERE farm_name IS NOT NULL
+"""
+RESTORE = f"""
+    DO $$
+    BEGIN
+        IF to_regclass('{SNAPSHOT_TABLE}') IS NOT NULL THEN
+            UPDATE sensor AS s SET farm_name = b.farm_name
+            FROM {SNAPSHOT_TABLE} AS b
+            WHERE b.serial_number = s.serial_number AND s.farm_name IS NULL
+              AND EXISTS (SELECT 1 FROM farm AS f WHERE f.farm_name = b.farm_name);
+            DROP TABLE {SNAPSHOT_TABLE};
+        END IF;
+    END
+    $$
+"""
+
 BACKFILL = (
     # zone sensors -> zone.farm_name
     """
@@ -58,11 +80,13 @@ def upgrade() -> None:
         FK_NAME, 'sensor', 'farm', ['farm_name'], ['farm_name'], onupdate='CASCADE', ondelete='SET NULL'
     )
     op.create_index(INDEX_NAME, 'sensor', ['farm_name'])
+    op.execute(sa.text(RESTORE))
     for statement in BACKFILL:
         op.execute(sa.text(statement))
 
 
 def downgrade() -> None:
+    op.execute(sa.text(SNAPSHOT))
     op.drop_index(INDEX_NAME, table_name='sensor')
     op.drop_constraint(FK_NAME, 'sensor', type_='foreignkey')
     op.drop_column('sensor', 'farm_name')
