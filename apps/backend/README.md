@@ -1,134 +1,149 @@
-# Tilthwave - Backend
-Tilthwave employs a full IoT architecture with 
-several microservices working together seamlessly. 
-The backend consists of three primary services: 
-Streamer, API, and Flow Runner, 
-each performing specific roles to ensure the smooth functioning of the system.
+# Tilthwave backend
 
-## Backend Services Overview
-### Streamer
-#### Functionality: 
-Listens for incoming data from the Broker Sandbox, processes it in real time, and stores it in the database.
+One Python package, three processes, one image. FastAPI · FastStream · SQLAlchemy · Alembic ·
+Postgres. Python 3.12, managed with `uv`.
 
-#### Technology: 
-FastStream for high-throughput data streaming.
-#### Key Features:
-Efficient handling of large data volumes.
-Ensures data integrity during the streaming process.
+| Process | Entry point | Role |
+|---|---|---|
+| **API** | `docker/api`, `interfaces.api.main:app` | REST endpoints, auth, RBAC, per-farm tenancy |
+| **Streamer** | `docker/streamer` | Consumes the sensors topic, persists readings and actuator confirmations |
+| **Flow runner** | `docker/flow_runner` | Every `FLOW_RUNNER_MINUTES`, evaluates each zone's latest readings against its triggers and publishes `On`/`Off` commands |
+| **migrate** | `docker/migrate` | One-shot `alembic upgrade head`, run before the others |
 
-### API
-#### Functionality: 
-Provides RESTful endpoints for CRUD operations on the database.
-#### Technology: 
-FastAPI for building modern, fast (high-performance) web APIs with Python.
-#### Key Features:
-Secure and efficient communication between frontend and backend.
-Role-Based Access Control (RBAC) for protecting data.
+The backend runs as part of the full stack (`make up` at the repo root). Everything below is for
+working on it directly.
 
-### Flow Runner
-#### Functionality: 
-Automates irrigation based on real-time data analysis, 
-initiating actions according to predefined rules.
-#### Technology: 
-Kafka Producer for asynchronous communication and data streaming.
-#### Key Features:
-Real-time data analysis and decision-making.
-Event-driven communication with sensors to control irrigation.
-
-## Usage
-
-The backend runs as part of the full stack: `make up` at the repository root (see the root README).
-It ships as one image with four entrypoints under `docker/`: `migrate` (one-shot `alembic upgrade head`),
-`api`, `streamer` and `flow_runner`.
-
-### Development
+## Development
 
 ```bash
-uv sync                      # creates .venv from uv.lock
+uv sync                      # .venv from uv.lock
 uv run ruff check app tests  # lint (blocking in CI)
-uv run pytest -q             # tests run against SQLite, no services needed
+uv run pytest -q             # tests run on SQLite, no services needed
 ```
 
-Modules are imported with `PYTHONPATH=app` (`from core.use_cases...`). Running a process locally
-against the docker stack:
+Modules are imported with `PYTHONPATH=app` (`from core.use_cases...`). To run one process on the
+host against the docker stack:
 
 ```bash
 cp .env.example .env         # POSTGRES_HOST=localhost, real API_SECRET_KEY (>= 32 chars)
 PYTHONPATH=app uv run uvicorn interfaces.api.main:app --reload --port 8080
 ```
 
-### Architecture notes
+Migrations: `make migrate` / `make migration-create m="..."` at the repo root. CI runs
+`alembic upgrade head`, `alembic check` (models must match the migrations) and a full downgrade.
 
-- `wiring.py` is the composition root: repositories and use cases are built once per process, with a
-  Kafka broker gateway only for the flow runner (`worker_use_cases`) and a no-op gateway everywhere else.
-- Requests are authorized by `RBACMiddleware` (role x method x resource) and scoped to the caller's farm by
-  `TenantContextMiddleware` + `TENANT_SCOPE` on each repository.
-- Domain exceptions (`common/exceptions.py`) are translated to HTTP responses in one place,
+## Layout
+
+```
+app/
+  config/settings.py          pydantic-settings, one class per env prefix
+  common/                     exceptions, tenant ContextVar, shared helpers
+  core/                       domain: entities, use cases, security (passwords, fingerprints)
+  infrastructure/             SQLAlchemy tables, repositories, Kafka gateway, mailer
+  interfaces/api/             FastAPI app, endpoints, middleware, helpers
+  interfaces/streamer/        FastStream subscribers
+  interfaces/flow_runner/     the control loop
+  wiring.py                   composition root
+alembic/                      migrations
+docker/                       the four entry points
+tests/                        pytest, SQLite
+```
+
+## Architecture
+
+- `wiring.py` builds repositories and use cases once per process. Only the flow runner gets a real
+  Kafka gateway (`worker_use_cases`); the API and tests get a no-op one.
+- **Tenancy.** `TenantContextMiddleware` resolves the caller's farm into a ContextVar; every
+  repository declares a `TENANT_SCOPE` (`("column", "farm_name")`, `("self", ...)`, `("via_zone",)`,
+  `("via_sensor",)`) and `BaseRepository` applies it to every query. There is no role-based
+  bypass: an authenticated caller with no farm gets empty results on scoped repositories, and
+  non-HTTP callers (flow runner, streamer, scripts) run unscoped. `without_tenant()` is the
+  explicit escape hatch, used only for the caller's own account (profile, password), where the
+  row is the caller's by construction and a farm-less bootstrap admin must still reach it.
+- **Authorization.** `RBACMiddleware` checks role × method × resource before the endpoint runs.
+- **Errors.** Domain exceptions (`common/exceptions.py`) become HTTP responses in one place,
   `interfaces/api/helpers/errors.py`; endpoints never build error bodies.
-- The flow runner publishes commands before persisting task state and enforces two safety limits
-  (`FLOW_RUNNER_MAX_IRRIGATION_MINUTES`, `FLOW_RUNNER_MAX_READING_AGE_MINUTES`).
+- **Flow runner safety.** Commands are published before task state is persisted, and two limits
+  apply: `FLOW_RUNNER_MAX_IRRIGATION_MINUTES` (a task is stopped regardless of readings) and
+  `FLOW_RUNNER_MAX_READING_AGE_MINUTES` (stale readings never start irrigation).
+- **Lists** are newest-first by default (`order_by=id desc`), paginated with `page` / `size`.
+
+## Authentication
+
+Two ways to present the same JWT; the API accepts either on every request.
+
+- **Bearer** (`Authorization: Bearer ...`) for API clients and the simulator: `POST /auth/login`
+  with a form body returns the token.
+- **Cookie** for the browser: `POST /auth/login` with `use_cookie=true` sets `tw_access`
+  (httpOnly, `SameSite=Lax`, `Secure` when `API_COOKIE_SECURE`) and `tw_csrf` (readable). Every
+  non-safe request from the cookie session must echo `tw_csrf` in `X-CSRF-Token` (double-submit),
+  including `/auth/*`. `POST /auth/logout` clears both. `GET /auth/me` is the session probe the
+  web app uses; it returns 401, never a redirect.
+
+The token carries `pfp`, a 16-char fingerprint of the password hash. Changing or resetting a
+password changes `pfp`, which invalidates every existing session for that user at the next
+request. Password-reset tokens are separate JWTs (`purpose=password_reset`, 30 minutes) and are
+refused as session tokens.
+
+Login and forgot/reset password are rate-limited per client IP, in separate windows
+(`API_LOGIN_RATE_LIMIT_PER_MINUTE`, in-process per worker; keep `UVICORN_WORKERS=1` or limit at
+the proxy). The client IP is the TCP peer unless it is in `API_TRUSTED_PROXIES`, in which case
+`X-Forwarded-For` is used. Unknown usernames are verified against a fixed hash so the response
+time does not reveal whether the account exists.
+
+## Endpoints
+
+Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (the compose stack sets it; the default
+is off).
+
+| Prefix | Notes |
+|---|---|
+| `/auth` | `login`, `logout`, `me`, `password/forgot`, `password/reset`, `token/verify/` |
+| `/account` | `GET/PATCH profile`, `POST password` (own account, current password required) |
+| `/dashboard` | `GET summary/`: counts for the dashboard cards, computed in SQL |
+| `/farms`, `/zones`, `/trees`, `/sensors`, `/water-sources`, `/water-switchers`, `/irrigation-tasks`, `/users` | CRUD, paginated lists, tenant-scoped |
+| `/zone-sensors`, `/sensor-records` | links and raw readings |
+| `/health` | liveness, unauthenticated |
+
+`POST /auth/password/forgot` always returns 202. When the identifier matches a user, a reset link
+(`API_WEB_BASE_URL/reset-password?token=...`) is emailed via SMTP; with no `SMTP_HOST` configured
+the message, link included, is written to the API log instead (`make logs s=api`).
 
 ## Configuration
 
-Environment variables (all read by `config/settings.py`; a `.env` at `apps/backend/.env` is optional):
+All settings are read by `config/settings.py`, grouped by env prefix. A `.env` at
+`apps/backend/.env` is optional; containers get everything from `deploy/docker-compose.yml`.
 
-1 - Database
-```bash
- POSTGRES_HOST= YOUR DB HOST
- POSTGRES_DB= YOUR DB
- POSTGRES_USER= YOUR DB USER
- POSTGRES_PASSWORD= YOUR DB PASSWORD
- POSTGRES_PORT= 5432
- POSTGRES_URI= optional full SQLAlchemy URI (e.g. sqlite:///... for tests)
-```
+**Database** (`POSTGRES_`): `HOST`, `DB`, `USER`, `PASSWORD`, `PORT=5432`, or `URI` for a full
+SQLAlchemy URI (tests use `sqlite:///`).
 
-2- API
-```bash
-API_SECRET_KEY=            # >= 32 random chars; placeholders are refused at startup
-API_ALGORITHM=HS256
-API_ACCESS_TOKEN_EXPIRE=120
-API_CORS_ORIGINS=["http://localhost:3000"]
-API_LOGIN_RATE_LIMIT_PER_MINUTE=10
-```
+**API** (`API_`):
 
-3 - Broker
-```bash
- STREAMER_BROKER_HOSTS=["redpanda:29092"]
- STREAMER_SENSORS_TOPIC=tilthwave.sensors.dev
- STREAMER_WATER_CONTROL_TOPIC=tilthwave.water-control.dev
- STREAMER_GROUP_ID=tilthwave-backend-streamer
- LOG_LEVEL=INFO
-```
+| Variable | Default | Purpose |
+|---|---|---|
+| `SECRET_KEY` | required | ≥ 32 random chars; placeholders are refused at startup |
+| `ALGORITHM` | `HS256` | JWT algorithm |
+| `ACCESS_TOKEN_EXPIRE` | `120` | session lifetime, minutes (also the cookie `Max-Age`) |
+| `CORS_ORIGINS` | `["http://localhost:3000"]` | JSON list; credentials are allowed for these origins |
+| `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | per client IP, per worker |
+| `TRUSTED_PROXIES` | `[]` | proxies whose `X-Forwarded-For` is believed |
+| `DOCS_ENABLED` | `false` | serve `/docs` and `/openapi.json` |
+| `COOKIE_SECURE` | `false` | `Secure` flag on session cookies; `true` behind TLS |
+| `COOKIE_DOMAIN` | unset | host-only by default; `.example.com` when web and API are on different subdomains |
+| `WEB_BASE_URL` | `http://localhost:3000` | where password-reset links point |
 
-4 - Flow runner
-```bash
- FLOW_RUNNER_MINUTES=0.2
- FLOW_RUNNER_MAX_IRRIGATION_MINUTES=60
- FLOW_RUNNER_MAX_READING_AGE_MINUTES=30
-```
+**Mail** (`SMTP_`): `HOST` (unset = log instead of send), `PORT=587`, `USER`, `PASSWORD`,
+`FROM_ADDRESS=tilthwave@localhost`, `USE_TLS=true` (STARTTLS), `TIMEOUT_SECONDS=10`. The prefix is
+`SMTP_`, not `MAIL_`: a `MAIL` field would collide with the shell's `$MAIL`.
 
-####  Source Code Links of other needed projects for the app 
+**Streamer** (`STREAMER_`): `BROKER_HOSTS` (JSON list, e.g. `["redpanda:29092"]`), `SENSORS_TOPIC`,
+`WATER_CONTROL_TOPIC`, `GROUP_ID=tilthwave-backend-streamer`, `LOG_LEVEL=INFO`.
 
-##### Broker Sandbox : 
-../broker (apps/broker in this monorepo)
+**Flow runner** (`FLOW_RUNNER_`): `MINUTES` (tick interval, required), `MAX_IRRIGATION_MINUTES=60`,
+`MAX_READING_AGE_MINUTES=30`.
 
-##### Sensors Guard Sandbox : 
+## Related
 
-../simulator (apps/simulator in this monorepo)
-
-### Conclusion
-Tilthwave's backend is a robust system designed to handle the complexities of farm management 
-through real-time data processing, efficient communication, and automation. 
-By leveraging modern technologies and containerization, it ensures scalability, reliability, and ease of deployment.
-
-
-## Contributing
-
-Contributions are welcome! If you'd like to contribute to this project, please fork the repository and submit a pull
-request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
-
+- `../broker`: topics and payload contract.
+- `../simulator`: the sensors and actuators the streamer and flow runner talk to.
+- `../../docs/BACKLOG.md`: what is left to do here.

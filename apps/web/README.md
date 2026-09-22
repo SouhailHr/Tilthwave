@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tilthwave web
 
-## Getting Started
+The farm dashboard. Next.js 16 (App Router, `src/`, Turbopack) · React 19 · TypeScript ·
+Tailwind v4 + shadcn/ui (base-ui) · TanStack Query · react-hook-form + Zod · axios · Vitest.
 
-First, run the development server:
+It runs as the `web` service of the stack (`make up` at the repo root, http://localhost:3000).
+Everything below is for working on it directly.
+
+> This Next.js version differs from older training data; `AGENTS.md` points agents at the
+> bundled docs in `node_modules/next/dist/docs/` before they write code.
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 npm run dev   # against the docker API
+npm run lint          # eslint
+npm test              # vitest run  (npm run test:watch)
+npm run build         # next build (standalone output, what the Dockerfile ships)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`NEXT_PUBLIC_API_BASE_URL` is baked in at build time. Unset, the client falls back to the current
+origin, which only works behind a proxy that serves the API on the same host.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+middleware.ts             redirects to /login when the tw_access cookie is absent (fast path only)
+src/
+  app/
+    (auth)/               login, forgot-password, reset-password
+    (app)/                the shell: dashboard, farms, zones, trees, sensors, water-sources,
+                          water-switchers, irrigation-tasks, users, settings
+    api/health            liveness for compose
+    error.tsx, global-error.tsx
+  api/                    axios client + one module per resource (useX hooks); _entity.ts is the
+                          generic list / get / create / update / delete layer
+  components/             app-shell, require-auth, entity-crud-page / entity-form / entity-table,
+                          dashboard cards, ui/ (shadcn)
+  providers/              QueryProvider, ObservabilitySink
+  hooks/, lib/, utils/    useDebounced, useDisclosure, eventBus, dates (naive UTC -> local)
+  types/                  hand-written API types, one file per resource
+```
 
-## Learn More
+Every resource page is `EntityCrudPage` plus a column list, a Zod schema and a field config; the
+generic layer handles pagination, search, the FK picker, create/edit dialogs and delete
+confirmation. Lists come newest-first from the API.
 
-To learn more about Next.js, take a look at the following resources:
+## Auth
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The session is an httpOnly cookie set by the API; the browser never sees the token.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `useLogin` posts to `/auth/login` with `use_cookie=true`; the API sets `tw_access` (httpOnly)
+  and `tw_csrf` (readable).
+- The axios client sends `withCredentials` and copies `tw_csrf` into `X-CSRF-Token` on every
+  non-GET request. A 401 anywhere but `/auth/me` emits `auth:expired`, which clears the session
+  query and redirects to `/login?redirect=...`.
+- `RequireAuth` asks `/auth/me` (`useSession`) and renders nothing until it has an answer; it
+  redirects only on a confirmed `null` session, so a refresh never bounces a logged-in user.
+- `middleware.ts` only checks that the cookie exists, to skip rendering protected pages for
+  anonymous visitors; the server-backed check above is the real gate.
+- Settings (`/settings`) changes the password through `/account/password`; forgot/reset password
+  go through `/auth/password/forgot` and `/auth/password/reset`. Any password change invalidates
+  every other session for that user (the API fingerprints the hash into the token).
 
-## Deploy on Vercel
+## Dates
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The API returns naive UTC timestamps (`2026-09-15 16:06:56.266864`). `utils/dates.ts` parses them
+as UTC and renders local time to the second; use it rather than `new Date(value)`, which reads
+such a string as local time.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tests
+
+Vitest with jsdom and Testing Library, next to the code (`*.test.ts(x)`). Covered: the auth
+hooks and client, the generic entity layer, error mapping, `RequireAuth`, the observability
+sink, `useDebounced`, dates, and the dropdown menu (regression: a `DropdownMenuLabel` must sit
+inside a `DropdownMenuGroup`, or base-ui throws when the menu opens).
+
+What is left to do here is in `../../docs/BACKLOG.md`.
