@@ -43,7 +43,9 @@ def _attributes() -> dict:
 
 
 def set_session_cookies(response: Response, token: str, csrf_token: str) -> None:
-    max_age = settings.API.ACCESS_TOKEN_EXPIRE * 60  # same lifetime as the token inside it
+    max_age = (
+        settings.API.SESSION_MAX_HOURS * 3600
+    )  # the token's absolute lifetime; the server ends it earlier when idle
     response.set_cookie(ACCESS_COOKIE, token, max_age=max_age, httponly=True, **_attributes())
     response.set_cookie(CSRF_COOKIE, csrf_token, max_age=max_age, httponly=False, **_attributes())
 

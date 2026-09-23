@@ -93,7 +93,7 @@ def test_change_password_rotates_this_cookie_session_and_signs_the_others_out(cl
     # This browser: still signed in, on the re-issued cookie.
     assert client.get("/auth/me").status_code == 200
     assert client.get("/zones/").status_code == 200
-    # The other device: its token carries the old password fingerprint.
+    # The other device: its session was ended by the change.
     response = client.get("/zones/", headers=other_device)
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid or expired token"

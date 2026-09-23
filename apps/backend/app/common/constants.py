@@ -32,7 +32,8 @@ IRRIGATION_TASK_STATUS = _pattern(IRRIGATION_TASK_STATUSES)
 # role-based access control (RBAC) structure
 
 # Two profiles: admins and owners manage the farm; workers and engineers observe it (and may
-# update a tree, e.g. its measurements). Every role reaches its own profile through /account.
+# update a tree, e.g. its measurements). Every role reaches its own profile and sessions through
+# /account (delete = ending one of its own sessions).
 _MANAGE = {
     "users": ["read", "write", "update", "delete"],
     "farms": ["read", "write", "update", "delete"],
@@ -45,7 +46,7 @@ _MANAGE = {
     "sensor-records": ["read"],
     "trees": ["read", "write", "update", "delete"],
     "dashboard": ["read"],
-    "account": ["read", "write", "update"],
+    "account": ["read", "write", "update", "delete"],
 }
 _OBSERVE = {
     # No "users": the staff list (email, phone, name of every colleague) is for admins and owners.
@@ -59,7 +60,7 @@ _OBSERVE = {
     "sensor-records": ["read"],
     "trees": ["read", "update"],
     "dashboard": ["read"],
-    "account": ["read", "write", "update"],
+    "account": ["read", "write", "update", "delete"],
 }
 RESOURCES_FOR_ROLES = {"admin": _MANAGE, "owner": _MANAGE, "worker": _OBSERVE, "engineer": _OBSERVE}
 

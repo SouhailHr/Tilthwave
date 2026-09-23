@@ -22,6 +22,7 @@ from core.use_cases.irrigation_task import IrrigationTaskUseCase
 from core.use_cases.sensor import SensorUseCase
 from core.use_cases.sensor_record import SensorRecordUseCase
 from core.use_cases.tree import TreeUseCase
+from core.use_cases.user_session import UserSessionUseCase
 from core.use_cases.users import UserUseCase
 from core.use_cases.water_source import WaterSourceUseCase
 from core.use_cases.water_switcher import WaterSwitcherUseCase
@@ -33,6 +34,7 @@ from infrastructure.repositories.irrigation_task import IrrigationTaskDBReposito
 from infrastructure.repositories.sensor import SensorDBRepository
 from infrastructure.repositories.sensor_record import SensorRecordDBRepository
 from infrastructure.repositories.tree import TreeDBRepository
+from infrastructure.repositories.user_session import UserSessionDBRepository
 from infrastructure.repositories.users import UserDBRepository
 from infrastructure.repositories.water_source import WaterSourceBrokerRepository, WaterSourceDBRepository
 from infrastructure.repositories.water_switcher import WaterSwitcherBrokerRepository, WaterSwitcherDBRepository
@@ -52,6 +54,7 @@ class Repositories:
     tree: TreeDBRepository
     irrigation_task: IrrigationTaskDBRepository
     users: UserDBRepository
+    user_session: UserSessionDBRepository
 
 
 @dataclass(frozen=True)
@@ -72,6 +75,7 @@ class UseCases:
     tree: TreeUseCase
     irrigation_task: IrrigationTaskUseCase
     users: UserUseCase
+    sessions: UserSessionUseCase
     dashboard: DashboardUseCase
 
 
@@ -87,6 +91,7 @@ def build_repositories(uri: str) -> Repositories:
         tree=TreeDBRepository(uri=uri),
         irrigation_task=IrrigationTaskDBRepository(uri=uri),
         users=UserDBRepository(uri=uri),
+        user_session=UserSessionDBRepository(uri=uri),
     )
 
 
@@ -107,6 +112,7 @@ def build_kafka_broker_repositories() -> BrokerRepositories:
 
 def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases:
     """The whole graph, built once, leaves first: a use case that needs another receives it."""
+    sessions = UserSessionUseCase(repo=repos.user_session)
     sensors = SensorUseCase(
         repo=repos.sensor,
         zone_sensors_repo=repos.zone_sensors,
@@ -146,7 +152,8 @@ def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases
         water_switcher=water_switchers,
         tree=TreeUseCase(repo=repos.tree),
         irrigation_task=irrigation_tasks,
-        users=UserUseCase(repo=repos.users),
+        users=UserUseCase(repo=repos.users, sessions=sessions),
+        sessions=sessions,
         dashboard=DashboardUseCase(
             sensor_repo=repos.sensor,
             water_source_repo=repos.water_source,

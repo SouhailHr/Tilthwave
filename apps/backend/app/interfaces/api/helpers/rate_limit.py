@@ -1,7 +1,14 @@
 """
-In-process sliding-window rate limiter, used as a FastAPI dependency on /auth/login.
+In-process sliding-window rate limiters for the auth routes.
 
-Scoped per client IP. The client IP is the TCP peer unless that peer is a trusted reverse proxy
+Two keys. Per client IP (limit_login_attempts, limit_password_reset_attempts) bounds what one
+address can try. Per account (account_lockout) bounds what can be tried against one username from
+any number of addresses: LOGIN_FAILURES_PER_ACCOUNT wrong passwords in LOGIN_FAILURE_WINDOW_MINUTES
+and the account is refused with a 429 until the window slides, right password or not; a successful
+login clears the count. Without it a credential-stuffing run spread over many addresses would never
+hit the per-IP limit.
+
+The per-IP key is scoped per client IP. The client IP is the TCP peer unless that peer is a trusted reverse proxy
 (API_TRUSTED_PROXIES), in which case the first X-Forwarded-For hop is used: a header from an
 untrusted peer is never believed, so it cannot be rotated to escape the limit.
 
@@ -58,6 +65,53 @@ class SlidingWindowRateLimiter:
             self._hits.clear()
 
 
+class FailureLockout:
+    """
+    Sliding window over *failures* per key. `check` refuses a key with `limit` failures in the
+    window (429 with Retry-After), `record` adds one, `clear` forgets the key.
+    """
+
+    def __init__(self, limit: int, window_seconds: int):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self._failures = defaultdict(deque)
+        self._lock = threading.Lock()
+
+    def _prune(self, key: str, now: float) -> deque:
+        failures = self._failures[key]
+        while failures and now - failures[0] > self.window_seconds:
+            failures.popleft()
+        if not failures:
+            del self._failures[key]
+        return failures
+
+    def check(self, key: str) -> None:
+        now = time.monotonic()
+        with self._lock:
+            failures = self._prune(key, now)
+            if len(failures) >= self.limit:
+                retry_after = int(self.window_seconds - (now - failures[0])) + 1
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many login attempts, try again later",
+                    headers={"Retry-After": str(retry_after)},
+                )
+
+    def record(self, key: str) -> None:
+        now = time.monotonic()
+        with self._lock:
+            self._prune(key, now)
+            self._failures[key].append(now)
+
+    def clear(self, key: str) -> None:
+        with self._lock:
+            self._failures.pop(key, None)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._failures.clear()
+
+
 login_rate_limiter = SlidingWindowRateLimiter(limit=settings.API.LOGIN_RATE_LIMIT_PER_MINUTE)
 
 
@@ -90,3 +144,8 @@ password_reset_rate_limiter = SlidingWindowRateLimiter(limit=settings.API.LOGIN_
 
 def limit_password_reset_attempts(request: Request) -> None:
     password_reset_rate_limiter.check(client_ip(request))
+
+
+account_lockout = FailureLockout(
+    limit=settings.API.LOGIN_FAILURES_PER_ACCOUNT, window_seconds=settings.API.LOGIN_FAILURE_WINDOW_MINUTES * 60
+)

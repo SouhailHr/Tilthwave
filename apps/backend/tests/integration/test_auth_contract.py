@@ -96,9 +96,10 @@ def test_login_is_rate_limited(client, make_farm, make_user):
 
     make_farm()
     make_user("jo", password="Passw0rd-Test!")
+    # One username per attempt: the per-IP window is what is under test, not the account lockout.
     responses = [
-        client.post("/auth/login", json={"username": "jo", "password": "bad"})
-        for _ in range(login_rate_limiter.limit + 1)
+        client.post("/auth/login", json={"username": f"jo-{i}", "password": "bad"})
+        for i in range(login_rate_limiter.limit + 1)
     ]
     assert [r.status_code for r in responses[:-1]] == [400] * login_rate_limiter.limit
     assert responses[-1].status_code == 429
@@ -111,7 +112,9 @@ def test_forwarded_for_from_an_untrusted_peer_does_not_reset_the_limit(client, m
     make_user("jo", password="Passw0rd-Test!")
     statuses = [
         client.post(
-            "/auth/login", json={"username": "jo", "password": "bad"}, headers={"X-Forwarded-For": f"203.0.113.{i}"}
+            "/auth/login",
+            json={"username": f"jo-{i}", "password": "bad"},
+            headers={"X-Forwarded-For": f"203.0.113.{i}"},
         ).status_code
         for i in range(login_rate_limiter.limit + 1)
     ]
@@ -125,7 +128,9 @@ def test_forwarded_for_is_honoured_only_from_a_trusted_proxy(client, make_farm, 
     make_user("jo", password="Passw0rd-Test!")
     statuses = [
         client.post(
-            "/auth/login", json={"username": "jo", "password": "bad"}, headers={"X-Forwarded-For": f"203.0.113.{i}"}
+            "/auth/login",
+            json={"username": f"jo-{i}", "password": "bad"},
+            headers={"X-Forwarded-For": f"203.0.113.{i}"},
         ).status_code
         for i in range(login_rate_limiter.limit + 1)
     ]

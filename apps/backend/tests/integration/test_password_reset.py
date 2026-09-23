@@ -130,7 +130,7 @@ def test_without_smtp_the_link_is_logged_instead_of_sent(client, make_farm, make
 
 
 def test_a_reset_signs_every_live_session_out(client, make_farm, make_user, outbox, auth_headers):
-    """The fingerprint in a session token stops matching once the password is reset (not only changed)."""
+    """A reset ends every session of the user (not only a change through /account)."""
     make_farm(FARM_A)
     make_user("alice")
     live = auth_headers(username="alice")

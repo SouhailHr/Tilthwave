@@ -17,6 +17,14 @@ _UNKNOWN_USER_HASH = PasswordHasher.hash("not-a-real-password")
 class UserUseCase(BaseUseCase):
     ENTITY = UserEntity
 
+    def __init__(self, repo, sessions):
+        """
+        @param sessions: UserSessionUseCase; deactivating or deleting a user ends their sessions, and
+        a password change or reset ends every session but the one that made the change.
+        """
+        super().__init__(repo)
+        self.sessions = sessions
+
     @classmethod
     def verify_password(cls, plain_password, hashed_password):
         """
@@ -87,7 +95,17 @@ class UserUseCase(BaseUseCase):
             data["is_superuser"] = self.is_superuser_role(role)
 
         # Proceed with the update, whether 'role' was included or not
-        return self.repo.update(id, data)
+        updated = self.repo.update(id, data)
+        if updated is not None and (data.get("is_active") is False or "password" in data):
+            # A deactivated account is refused on its next request anyway (the middleware reloads the
+            # row); ending the sessions makes the sessions list say so too. A password set by an
+            # admin signs the user out everywhere, as their own change would.
+            self.sessions.revoke_all(id)
+        return updated
+
+    def delete(self, id: int):
+        self.sessions.revoke_all(id)
+        return self.repo.delete(id)
 
     def find_by_identifier(self, identifier: str):
         """The user whose username or email is exactly `identifier`, or None."""
@@ -110,9 +128,12 @@ class UserUseCase(BaseUseCase):
         with without_tenant():
             return self.repo.update(user_id, data)
 
-    def set_password(self, user_id: int, new_password: str):
+    def set_password(self, user_id: int, new_password: str, keep_token_id: str | None = None):
+        """Store a new password and end every session of the user, except `keep_token_id`."""
         with without_tenant():
-            return self.repo.update(user_id, {"password": PasswordHasher.hash(new_password)})
+            user = self.repo.update(user_id, {"password": PasswordHasher.hash(new_password)})
+        self.sessions.revoke_all(user_id, except_token_id=keep_token_id)
+        return user
 
     def change_password(self, user_id: int, current_password: str, new_password: str):
         """

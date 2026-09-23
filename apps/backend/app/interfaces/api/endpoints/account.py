@@ -1,14 +1,13 @@
 """
-The caller's own account: profile and password. Self-service for every role, own row only - the
-user_id comes from the verified session, never from the request.
+The caller's own account: profile, password and sessions. Self-service for every role, own row only
+- the user_id comes from the verified session, never from the request.
 """
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from starlette import status
 
 from common.exceptions import NotFoundError
-from config.settings import settings
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import new_csrf_token, set_session_cookies
 from interfaces.api.helpers.tenant import AUTH_VIA_STATE_KEY
@@ -19,9 +18,13 @@ router = APIRouter(prefix="/account", tags=["Account"])
 use_cases = api_use_cases()
 
 
-def _user_id(request: Request) -> int:
+def _claims(request: Request) -> dict:
     # RBACMiddleware already guaranteed a verified session with claims for every /account route.
-    return getattr(request.state, CLAIMS_STATE_KEY)["user_id"]
+    return getattr(request.state, CLAIMS_STATE_KEY)
+
+
+def _user_id(request: Request) -> int:
+    return _claims(request)["user_id"]
 
 
 @router.get("/profile")
@@ -51,18 +54,56 @@ def change_password(request: Request, data: PasswordChange):
     """
     Change the caller's own password after verifying the current one.
 
-    Every other session of this user stops verifying immediately (their tokens carry the old
-    password fingerprint). This session is re-issued in the same response so the caller stays
-    signed in: new cookies for a browser session, a new bearer token for an API client.
+    Every session of this user is ended, this one included, and a fresh one is opened in the same
+    response so the caller stays signed in: new cookies for a browser session, a new bearer token
+    for an API client. Every other device is signed out at its next request.
     """
     user = use_cases.users.change_password(_user_id(request), data.current_password, data.new_password)
-    access_token = AuthHelper.create_access_token(AuthHelper.session_claims(user))
+    channel = getattr(request.state, AUTH_VIA_STATE_KEY, None)
+    access_token = AuthHelper.open_session(user, channel or "header", request)
     # Same shape as /auth/login plus the message: token is null when the session travels as a cookie.
-    expires_in = settings.API.ACCESS_TOKEN_EXPIRE * 60
-    if getattr(request.state, AUTH_VIA_STATE_KEY, None) == "cookie":
+    expires_in = AuthHelper.session_lifetime_seconds()
+    if channel == "cookie":
         body = {"message": "Password changed", "token": None, "token_type": "cookie", "expires_in": expires_in}
         response = JSONResponse(status_code=status.HTTP_200_OK, content=body)
         set_session_cookies(response, access_token, new_csrf_token())
         return response
     body = {"message": "Password changed", "token": access_token, "token_type": "bearer", "expires_in": expires_in}
     return JSONResponse(status_code=status.HTTP_200_OK, content=body)
+
+
+def _session_view(session, current_id: int) -> dict:
+    return {**session.to_public_dict(), "current": session.id == current_id}
+
+
+@router.get("/sessions")
+def list_sessions(request: Request):
+    """
+    The caller's live sessions (this one flagged `current`), newest first: where and since when
+    they are signed in. A session that was signed out or timed out is not listed.
+    """
+    claims = _claims(request)
+    sessions = use_cases.sessions.live_for(claims["user_id"])
+    return {"items": [_session_view(s, claims["session_id"]) for s in sessions]}
+
+
+@router.delete("/sessions", status_code=status.HTTP_200_OK)
+def revoke_other_sessions(request: Request):
+    """Sign out everywhere else: every session of the caller but this one is ended."""
+    claims = _claims(request)
+    revoked = use_cases.sessions.revoke_all(claims["user_id"], except_token_id=claims["jti"])
+    return {"message": "Other sessions signed out", "revoked": revoked}
+
+
+@router.delete("/sessions/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_session(id: int, request: Request):
+    """
+    End one of the caller's own sessions, this one included (which is a logout). Another user's
+    session is 404: it is not theirs to see.
+    """
+    claims = _claims(request)
+    session = use_cases.sessions.get(id)
+    if session is None or session.user_id != claims["user_id"] or session.revoked_at is not None:
+        raise NotFoundError("Session not found")
+    use_cases.sessions.revoke(claims["user_id"], session.token_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

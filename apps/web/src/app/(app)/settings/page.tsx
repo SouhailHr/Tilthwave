@@ -5,7 +5,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { useChangePassword, useProfile, useUpdateProfile } from "@/api/account";
+import {
+  useChangePassword,
+  useProfile,
+  useRevokeOtherSessions,
+  useRevokeSession,
+  useSessions,
+  useUpdateProfile,
+} from "@/api/account";
 import { toApiError } from "@/api/errors";
 import { PasswordInput } from "@/components/password-input";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +36,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PASSWORDS_MUST_MATCH, passwordSchema, passwordsMatch } from "@/lib/password-schema";
+import type { UserSession } from "@/types/account";
 import type { User } from "@/types/user";
+import { formatDateTime, formatRelative } from "@/utils/dates";
 
 const profileSchema = z.object({
   email: z.email("Invalid email"),
@@ -272,6 +281,105 @@ function AccountCard({ user }: { user: User }) {
   );
 }
 
+function describeSession(session: UserSession): string {
+  const ua = session.user_agent ?? "";
+  const browser =
+    /Edg\//.test(ua) ? "Edge"
+    : /OPR\//.test(ua) ? "Opera"
+    : /Firefox\//.test(ua) ? "Firefox"
+    : /Chrome\//.test(ua) ? "Chrome"
+    : /Safari\//.test(ua) ? "Safari"
+    : null;
+  const os =
+    /Windows/.test(ua) ? "Windows"
+    : /Android/.test(ua) ? "Android"
+    : /iPhone|iPad/.test(ua) ? "iOS"
+    : /Mac OS/.test(ua) ? "macOS"
+    : /Linux/.test(ua) ? "Linux"
+    : null;
+  if (session.channel === "header") return browser ? `API client (${browser})` : "API client";
+  if (browser && os) return `${browser} on ${os}`;
+  return browser ?? os ?? "Browser";
+}
+
+function SessionsCard() {
+  const sessions = useSessions();
+  const revoke = useRevokeSession();
+  const revokeOthers = useRevokeOtherSessions();
+  const others = sessions.data?.filter((s) => !s.current).length ?? 0;
+
+  async function endSession(session: UserSession) {
+    try {
+      await revoke.mutateAsync(session.id);
+      toast.success(session.current ? "Signed out" : "Device signed out");
+    } catch (err) {
+      toast.error(toApiError(err, "Could not sign that device out").message);
+    }
+  }
+
+  async function endOthers() {
+    try {
+      const revoked = await revokeOthers.mutateAsync();
+      toast.success(revoked === 1 ? "1 other device signed out" : `${revoked} other devices signed out`);
+    } catch (err) {
+      toast.error(toApiError(err, "Could not sign the other devices out").message);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sessions</CardTitle>
+        <CardDescription>
+          Where you are signed in. A session ends after an hour without activity, twelve hours after
+          signing in, or when you end it here. Ending one signs that device out at its next request.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {sessions.isPending ? (
+          <Skeleton className="h-16 w-full" />
+        ) : sessions.isError ? (
+          <p className="text-sm text-muted-foreground">{sessions.error.message}</p>
+        ) : (
+          <ul className="grid gap-2">
+            {sessions.data.map((session) => (
+              <li
+                key={session.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2 text-sm"
+              >
+                <div className="grid gap-0.5">
+                  <span className="flex items-center gap-2 font-medium">
+                    {describeSession(session)}
+                    {session.current && <Badge variant="secondary">This device</Badge>}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {session.client_ip ? `${session.client_ip} · ` : ""}
+                    signed in {formatDateTime(session.created_date)} · last seen{" "}
+                    {formatRelative(session.last_seen)}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={revoke.isPending}
+                  onClick={() => endSession(session)}
+                >
+                  {session.current ? "Sign out" : "Sign out device"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex justify-end">
+          <Button variant="destructive" disabled={others === 0 || revokeOthers.isPending} onClick={endOthers}>
+            {revokeOthers.isPending ? "Signing out…" : "Sign out everywhere else"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const profile = useProfile();
 
@@ -279,7 +387,7 @@ export default function SettingsPage() {
     <div className="grid max-w-3xl gap-6">
       <div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Your account, your details, your password.</p>
+        <p className="text-sm text-muted-foreground">Your account, your details, your password, your sessions.</p>
       </div>
       {profile.isPending ? (
         <div className="grid gap-6">
@@ -297,6 +405,7 @@ export default function SettingsPage() {
           <AccountCard user={profile.data} />
           <ProfileCard user={profile.data} />
           <PasswordCard />
+          <SessionsCard />
         </>
       )}
     </div>

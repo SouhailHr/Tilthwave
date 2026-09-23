@@ -105,6 +105,7 @@ proxy config is not in this repo yet. In `.env`:
 | `API_DOCS_ENABLED` | `false` |
 | `SMTP_HOST` and the other `SMTP_*` | a real mail relay, or password reset only works from the logs |
 | `UVICORN_WORKERS` | `1`, or move login rate limiting to the proxy |
+| `API_SESSION_IDLE_MINUTES`, `API_SESSION_MAX_HOURS` | `60` and `12` unless the farm office needs longer; sessions are server-side, so logout and "sign out everywhere" are immediate |
 
 `Strict-Transport-Security` is sent by the apps themselves (web always, API when
 `API_COOKIE_SECURE=true`). The broker has no TLS or auth and must stay on the compose network.

@@ -10,7 +10,7 @@ from core.security.password import PasswordHasher
 from infrastructure.mail import mailer
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import clear_session_cookies, new_csrf_token, set_session_cookies
-from interfaces.api.helpers.rate_limit import limit_login_attempts, limit_password_reset_attempts
+from interfaces.api.helpers.rate_limit import account_lockout, limit_login_attempts, limit_password_reset_attempts
 from interfaces.api.helpers.tenant import TOKEN_INVALID_STATE_KEY
 from interfaces.api.schemas.auth import AuthLogin, PasswordForgot, PasswordReset
 from wiring import api_use_cases
@@ -25,21 +25,27 @@ RESET_INVALID_DETAIL = "This password reset link is invalid or has expired. Requ
 
 
 @router.post("/login", dependencies=[Depends(limit_login_attempts)])
-def login(data: AuthLogin):
+def login(data: AuthLogin, request: Request):
     """
-    Router for Login. Rate limited per client IP (API_LOGIN_RATE_LIMIT_PER_MINUTE).
+    Router for Login. Rate limited per client IP (API_LOGIN_RATE_LIMIT_PER_MINUTE) and locked per
+    account after API_LOGIN_FAILURES_PER_ACCOUNT wrong passwords (helpers/rate_limit.py).
 
+    Opens a server-side session (core/use_cases/user_session.py) and returns the token naming it.
     API clients get the token in the body and send it back as Authorization: Bearer. The web app
     sends use_cookie=true and gets the session as httpOnly cookies instead (helpers/cookies.py):
     the token is then never in a body JavaScript can read, which is the point.
     """
+    account = data.username.strip().lower()
+    account_lockout.check(account)
     user = use_cases.users.authenticate_user(data.username, data.password)
     if not user or not user.is_active:
+        account_lockout.record(account)
         # 400 (not 401) on purpose: the web client treats 401 as "session expired".
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect username or password")
-    access_token = AuthHelper.create_access_token(AuthHelper.session_claims(user))
+    account_lockout.clear(account)
+    access_token = AuthHelper.open_session(user, "cookie" if data.use_cookie else "header", request)
     # One response shape for both channels: token is null when the session travels as a cookie.
-    expires_in = settings.API.ACCESS_TOKEN_EXPIRE * 60
+    expires_in = AuthHelper.session_lifetime_seconds()
     if data.use_cookie:
         response = JSONResponse(content={"token": None, "token_type": "cookie", "expires_in": expires_in})
         set_session_cookies(response, access_token, new_csrf_token())
@@ -48,11 +54,15 @@ def login(data: AuthLogin):
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout():
+def logout(request: Request):
     """
-    Clear the browser session cookies. Bearer clients have nothing to clear (the token simply
-    expires); for them this is a harmless no-op.
+    End the session: the row behind the token is revoked, so the token is refused from here on
+    whichever channel carried it, and the browser cookies are cleared. Without a live session
+    (already expired or signed out) it just clears the cookies.
     """
+    claims = getattr(request.state, CLAIMS_STATE_KEY, None)
+    if claims is not None:
+        use_cases.sessions.revoke(claims["user_id"], claims["jti"])
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session_cookies(response)
     return response
@@ -125,7 +135,8 @@ def forgot_password(data: PasswordForgot, background: BackgroundTasks):
 def reset_password(data: PasswordReset):
     """
     Set a new password from a reset link. The token is single-use: it carries a fingerprint of
-    the password it was issued against, so once the password changes it stops matching.
+    the password it was issued against, so once the password changes it stops matching. Every
+    session of the user is ended: a reset is what someone does when they suspect a stolen one.
     """
     try:
         claims = AuthHelper.decode_password_reset_token(data.token)

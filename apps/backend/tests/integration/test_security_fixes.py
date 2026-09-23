@@ -4,10 +4,13 @@ effect of deactivation / role changes (finding 2), constant-shape login (finding
 least-privilege simulator account (finding 4).
 """
 
+from datetime import timedelta
+
 import pytest
 
 from adapters.sensor import SensorAdaptor
 from adapters.sensor_record import SensorRecordAdaptor
+from common.dates import utc_now
 from config.settings import settings
 from core.use_cases import users as users_module
 from infrastructure.scripts import seed_data
@@ -181,18 +184,19 @@ def test_hsts_header_follows_the_cookie_secure_setting(client, monkeypatch):
     assert client.get("/health").headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
 
 
-def test_a_token_without_the_password_fingerprint_is_not_a_session(client, make_farm, make_user):
+def test_a_token_without_a_session_is_not_a_session(client, make_farm, make_user):
     """
-    Every token login issues carries pfp (AuthHelper.session_claims). The leniency for pfp-less
-    tokens existed for test fixtures that minted claims by hand; the fixtures now mint the real
-    shape, so a token without it is rejected like any other stale one.
+    Every token login issues names a user_sessions row in `jti` (AuthHelper.open_session). A
+    correctly signed token without one, or with one that names no row, is rejected like any
+    other stale one: the signature alone never authenticates.
     """
 
     make_farm(FARM_A)
     user = make_user("alice")
-    bare = AuthHelper.create_access_token(
-        {"role": user.role, "username": user.username, "user_id": user.id, "farm_name": FARM_A}
-    )
+    claims = {"role": user.role, "username": user.username, "user_id": user.id, "farm_name": FARM_A}
+    bare = AuthHelper.encode(claims, utc_now() + timedelta(hours=1))
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {bare}"}).status_code == 401
-    real = AuthHelper.create_access_token(AuthHelper.session_claims(user))
+    unknown = AuthHelper.encode({**claims, "jti": "no-such-session"}, utc_now() + timedelta(hours=1))
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {unknown}"}).status_code == 401
+    real = AuthHelper.open_session(user, "header")
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {real}"}).status_code == 200

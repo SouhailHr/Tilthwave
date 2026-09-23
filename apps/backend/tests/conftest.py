@@ -27,8 +27,6 @@ os.environ.update(
         "POSTGRES_PASSWORD": "unused",
         "POSTGRES_DB": "unused",
         "API_SECRET_KEY": "k7Zq2vXm9pL4nR8tW1yB6cD3fG5hJ0aE2sU4iO7rT9wQ1eY3",
-        "API_ALGORITHM": "HS256",
-        "API_ACCESS_TOKEN_EXPIRE": "60",
         "STREAMER_BROKER_HOSTS": '["broker:9092"]',
         "STREAMER_SENSORS_TOPIC": "test.sensors",
         "STREAMER_WATER_CONTROL_TOPIC": "test.water-control",
@@ -57,7 +55,7 @@ from core.security.password import PasswordHasher
 from infrastructure.database.base import Base
 from infrastructure.repositories.base import BaseDBRepo
 from interfaces.api.helpers.auth import AuthHelper
-from interfaces.api.helpers.rate_limit import login_rate_limiter, password_reset_rate_limiter
+from interfaces.api.helpers.rate_limit import account_lockout, login_rate_limiter, password_reset_rate_limiter
 from interfaces.api.main import app
 from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 from wiring import (
@@ -84,6 +82,7 @@ def clean_tables():
 
     login_rate_limiter.reset()
     password_reset_rate_limiter.reset()
+    account_lockout.reset()
     yield
     engine = BaseDBRepo.get_engine(settings.DATABASE.URI)
     with engine.begin() as connection:
@@ -160,29 +159,23 @@ def make_user(repos, make_farm):
 @pytest.fixture
 def token_for(repos, make_user):
     """
-    A signed token for a user that exists in the database (created on demand, or aligned to the
-    requested role/farm when it already exists): the middleware validates the row on every request.
-    The claims are the ones login issues (AuthHelper.session_claims, pfp included), so the suite
-    runs on the token shape production uses. Pass user_id to mint a token for a row that does
-    not exist.
+    A session token for a user that exists in the database (created on demand, or aligned to the
+    requested role/farm when it already exists): the middleware validates the user row and the
+    session row on every request. The token is the one login issues (AuthHelper.open_session), so
+    the suite runs on the token shape production uses. Pass user_id to mint a token for a row
+    that does not exist.
     """
 
     def _token(username="admin", role="admin", farm_name=FARM_A, user_id=None):
         if user_id is not None:
-            claims = {
-                "role": role,
-                "username": username,
-                "user_id": user_id,
-                "user_full_name": username,
-                "farm_name": farm_name,
-            }
-            return AuthHelper.create_access_token(claims)
+            claims = {"role": role, "username": username, "user_id": user_id, "farm_name": farm_name, "jti": "x"}
+            return AuthHelper.encode(claims, utc_now() + timedelta(hours=1))
         user = repos.users.first([{"attribute": "username", "value": username, "condition": "eq"}])
         if user is None:
             user = make_user(username, role=role, farm_name=farm_name)
         elif user.role != role or user.farm_name != farm_name:
             user = repos.users.update(user.id, {"role": role, "farm_name": farm_name})
-        return AuthHelper.create_access_token(AuthHelper.session_claims(user))
+        return AuthHelper.open_session(user, "header")
 
     return _token
 
