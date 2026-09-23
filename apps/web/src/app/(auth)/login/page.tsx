@@ -49,7 +49,8 @@ function LoginForm() {
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: "", password: "", remember: true },
+    // Unticked by default: a shared farm-office computer should not keep a session unless asked.
+    defaultValues: { username: "", password: "", remember: false },
   });
 
   async function onSubmit(values: LoginValues) {

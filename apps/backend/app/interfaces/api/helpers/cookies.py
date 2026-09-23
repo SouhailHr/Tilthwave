@@ -46,7 +46,9 @@ def set_session_cookies(response: Response, token: str, csrf_token: str, persist
     """
     persistent (the sign-in form's "Keep me signed in"): the cookies outlive a browser restart,
     for the token's absolute lifetime; the server still ends the session earlier when idle.
-    Otherwise they carry no Max-Age and the browser drops them when it closes.
+    Otherwise they carry no Max-Age and the browser drops them when it closes (unless it restores
+    the previous session, as Chrome's "Continue where you left off" does; the server-side idle and
+    absolute limits end the session either way).
     """
     max_age = settings.API.SESSION_MAX_HOURS * 3600 if persistent else None
     response.set_cookie(ACCESS_COOKIE, token, max_age=max_age, httponly=True, **_attributes())

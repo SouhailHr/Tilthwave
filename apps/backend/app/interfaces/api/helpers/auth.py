@@ -76,8 +76,12 @@ class AuthHelper:
     # absolute end, so logout and "sign out everywhere" take effect at once.
 
     @classmethod
-    def open_session(cls, user, channel: str, request: Request | None = None) -> str:
-        """Open a server-side session for `user` and return the token that names it."""
+    def open_session(cls, user, channel: str, request: Request | None = None, remember: bool = True) -> str:
+        """
+        Open a server-side session for `user` and return the token that names it. `remember` (the
+        sign-in form's "Keep me signed in") rides in the token as `rmb`, so a session re-issued later
+        (a password change) keeps the same kind of cookie.
+        """
         session = api_use_cases().sessions.open(
             user_id=user.id,
             channel=channel,
@@ -87,6 +91,7 @@ class AuthHelper:
         claims = {
             "sub": str(user.id),
             "jti": session.token_id,
+            "rmb": remember,
             "user_id": user.id,
             "username": user.username,
             "role": user.role,

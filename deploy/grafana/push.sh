@@ -14,10 +14,11 @@ here="$(cd "$(dirname "$0")" && pwd)"
 : "${GRAFANA_URL:?GRAFANA_URL is required}"
 : "${GRAFANA_TOKEN:?GRAFANA_TOKEN is required (service account token with the Editor role)}"
 
+# The token goes to curl on stdin as a header file, never on its command line (visible in `ps`).
 api() { # method path [json]
   local method=$1 path=$2 body=${3:-}
-  curl -fsS -X "$method" "$GRAFANA_URL$path" \
-    -H "Authorization: Bearer $GRAFANA_TOKEN" -H "Content-Type: application/json" -H "X-Disable-Provenance: true" \
+  printf 'Authorization: Bearer %s\n' "$GRAFANA_TOKEN" | curl -fsS -X "$method" "$GRAFANA_URL$path" \
+    -H @- -H "Content-Type: application/json" -H "X-Disable-Provenance: true" \
     ${body:+--data "$body"}
 }
 
