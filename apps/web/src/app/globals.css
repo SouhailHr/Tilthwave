@@ -8,7 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* next/font sets --font-manrope on <html>; the fallbacks are tokens.css's --tw-font. */
+  --font-sans: var(--font-manrope), "Helvetica Neue", Arial, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
