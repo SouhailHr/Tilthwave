@@ -23,11 +23,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Absolute base for the share-card URLs link previews fetch (WhatsApp, Slack, LinkedIn, X).
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tilthwave.hannibyte.com";
+const SHARE_IMAGE = {
+  url: "/brand/png/tilthwave-og-1200x630.png",
+  width: 1200,
+  height: 630,
+  alt: "tilthwave: the field's true voice",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "tilthwave",
   description: "The field's true voice",
   applicationName: "tilthwave",
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    siteName: "tilthwave",
+    title: "tilthwave",
+    description: "The field's true voice",
+    url: "/",
+    images: [SHARE_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "tilthwave",
+    description: "The field's true voice",
+    images: [SHARE_IMAGE.url],
+  },
+  // iOS "Add to Home Screen": the name under the icon and a dark status bar over the loam UI.
+  appleWebApp: { capable: true, title: "tilthwave", statusBarStyle: "black-translucent" },
   icons: {
     icon: [
       { url: "/brand/png/tilthwave-mark-reverse-64.png", sizes: "64x64", type: "image/png" },
