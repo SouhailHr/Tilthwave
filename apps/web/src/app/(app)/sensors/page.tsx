@@ -3,6 +3,10 @@
 import { z } from "zod";
 
 import { useCreateSensor, useUpdateSensor } from "@/api/sensors";
+import { EntityCrudPage } from "@/components/entity-crud-page";
+import type { EntityFormField } from "@/components/entity-form";
+import type { Column } from "@/components/entity-table";
+import { Badge } from "@/components/ui/badge";
 import {
   SENSOR_TYPES,
   type CreateSensorInput,
@@ -10,10 +14,6 @@ import {
   type SensorType,
   type UpdateSensorInput,
 } from "@/types/sensor";
-import { Badge } from "@/components/ui/badge";
-import { EntityCrudPage } from "@/components/entity-crud-page";
-import type { EntityFormField } from "@/components/entity-form";
-import type { Column } from "@/components/entity-table";
 
 // What a sensor of each type attaches to. This is the API's own rule (only the three zone types
 // can be linked to a zone; a switcher/source sensor is linked through the water switcher/source

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+
 import { sessionKey } from "@/api/auth";
+import { api } from "@/api/client";
 import type { ApiError } from "@/api/errors";
 import type { PasswordChangeInput, ProfileUpdateInput } from "@/types/account";
 import type { User } from "@/types/user";

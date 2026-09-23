@@ -2,7 +2,13 @@
 
 import { z } from "zod";
 
+
 import { useCreateUser, useUpdateUser } from "@/api/users";
+import { EntityCrudPage } from "@/components/entity-crud-page";
+import type { EntityFormField } from "@/components/entity-form";
+import type { Column } from "@/components/entity-table";
+import { Badge } from "@/components/ui/badge";
+import { passwordSchema } from "@/lib/password-schema";
 import {
   USER_ROLES,
   type CreateUserInput,
@@ -10,10 +16,6 @@ import {
   type User,
   type UserRole,
 } from "@/types/user";
-import { Badge } from "@/components/ui/badge";
-import { EntityCrudPage } from "@/components/entity-crud-page";
-import type { EntityFormField } from "@/components/entity-form";
-import type { Column } from "@/components/entity-table";
 
 const roleOptions: { value: UserRole; label: string }[] = [
   { value: "admin", label: "Admin" },
@@ -36,7 +38,7 @@ const createUserSchema = z.object({
   ...baseUserShape,
   username: z.string().min(1, "Username is required"),
   // 8 matches the API (it 422s on less); the form used to say 6 and let those through to fail.
-  text_password: z.string().min(8, "Password must be at least 8 characters").max(72),
+  text_password: passwordSchema,
 });
 
 // No password here: a user changes their own in Settings, and a forgotten one goes through the

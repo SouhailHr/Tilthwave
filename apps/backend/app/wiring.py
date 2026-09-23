@@ -13,6 +13,8 @@ import random
 from dataclasses import dataclass
 from functools import cache
 
+from confluent_kafka import Producer
+
 from config.settings import settings
 from core.use_cases.dashboard import DashboardUseCase
 from core.use_cases.farm import FarmUseCase
@@ -95,7 +97,6 @@ def build_noop_broker_repositories() -> BrokerRepositories:
 
 def build_kafka_broker_repositories() -> BrokerRepositories:
     """Broker gateways publishing to Kafka: only the flow runner may actuate the field."""
-    from confluent_kafka import Producer  # imported lazily: only the flow runner needs librdkafka wiring
 
     broker = random.choice(settings.STREAMER.BROKER_HOSTS)
     producer = Producer({"bootstrap.servers": broker})

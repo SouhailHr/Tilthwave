@@ -17,7 +17,7 @@ working on it directly.
 
 ```bash
 uv sync                      # .venv from uv.lock
-uv run ruff check app tests  # lint (blocking in CI)
+uv run ruff check app tests  # lint (blocking in CI); PLC0415 keeps every import at module top
 uv run pytest -q             # tests run on SQLite, no services needed
 ```
 

@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { EntityTable } from "./entity-table";
 
 const useEntityList = vi.fn();
-vi.mock("@/api/_entity", () => ({
+vi.mock("@/api/entity-queries", () => ({
   useEntityList: (...args: unknown[]) => useEntityList(...args),
   useDeleteEntity: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));

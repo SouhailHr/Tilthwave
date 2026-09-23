@@ -8,11 +8,14 @@ from datetime import datetime
 import pytest
 from sqlalchemy import event
 
+import interfaces.flow_runner.flow_runner as flow_runner
 from adapters.sensor import SensorAdaptor
 from adapters.sensor_record import SensorRecordAdaptor
 from adapters.zone_sensors import ZoneSensorsAdaptor
 from common.tenant_context import reset_tenant, set_tenant
+from infrastructure.database.tables.sensor_record import SensorRecord
 from tests.conftest import FARM_A, FARM_B
+from tests.integration.test_irrigation import RecordingBroker, _use_cases_with
 
 
 @pytest.fixture
@@ -96,8 +99,6 @@ def test_monthly_consumption_sums_in_the_database(repos, make_farm, count_statem
     for month, amount in ((1, 10.5), (1, 4.5), (3, 7)):
         record = _record(repos, "SRC", {"type": "source", "consumption": amount})
         with repos.sensor_record.Session() as session:
-            from infrastructure.database.tables.sensor_record import SensorRecord
-
             session.get(SensorRecord, record.id).created_date = datetime(year, month, 15)
             session.commit()
     _record(repos, "SRC", {"type": "source"})  # no consumption key: ignored, not an error
@@ -111,8 +112,6 @@ def test_a_tick_costs_the_same_number_of_queries_for_one_zone_and_for_five(
     repos, make_farm, make_zone, count_statements
 ):
     """Regression for the O(zones x sensors) tick: zones with sensors but nothing to start."""
-    import interfaces.flow_runner.flow_runner as flow_runner
-    from tests.integration.test_irrigation import RecordingBroker, _use_cases_with
 
     helper = flow_runner.ZoneAutomaticIrrigationHelper
     make_farm(FARM_A)

@@ -3,18 +3,15 @@
 import { z } from "zod";
 
 import { useCreateFarm, useUpdateFarm } from "@/api/farms";
-import type { CreateFarmInput, Farm, UpdateFarmInput } from "@/types/farm";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
+import type { CreateFarmInput, Farm, UpdateFarmInput } from "@/types/farm";
 
 const farmSchema = z.object({
   farm_name: z.string().min(1, "Farm name is required").max(100),
   address: z.string().min(1, "Address is required").max(255),
-  size: z
-    .string()
-    .refine((v) => v !== "" && !Number.isNaN(Number(v)), "Size is required")
-    .refine((v) => Number(v) > 0, "Size must be greater than 0"),
+  size: z.number({ error: "Size is required" }).positive("Size must be greater than 0"),
   lat: z
     .string()
     .refine(
@@ -35,7 +32,7 @@ const farmFields: EntityFormField<FarmValues>[] = [
   { name: "farm_name", label: "Farm name", placeholder: "e.g. Sunny Farms" },
   { name: "address", label: "Address" },
   {
-    name: "size",
+    name: "size", type: "number",
     label: "Size (hectares)",
     placeholder: "e.g. 120",
     description: "Total cultivated area.",
@@ -73,7 +70,7 @@ function buildInput(values: FarmValues): CreateFarmInput {
   return {
     farm_name: values.farm_name,
     address: values.address,
-    size: Number(values.size),
+    size: values.size,
     location:
       hasLat && hasLon
         ? { lat: Number(values.lat), lon: Number(values.lon) }
@@ -94,14 +91,13 @@ export default function FarmsPage() {
       createDefaults={{
         farm_name: "",
         address: "",
-        size: "",
         lat: "",
         lon: "",
       }}
       toEditDefaults={(farm) => ({
         farm_name: farm.farm_name,
         address: farm.address,
-        size: String(farm.size),
+        size: farm.size,
         lat: farm.location ? String(farm.location.lat) : "",
         lon: farm.location ? String(farm.location.lon) : "",
       })}

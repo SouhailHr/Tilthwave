@@ -1,3 +1,5 @@
+from config.settings import settings
+from interfaces.api.helpers.rate_limit import login_rate_limiter
 from tests.conftest import zone_payload
 
 
@@ -91,7 +93,6 @@ def test_create_returns_201_and_delete_returns_204(client, auth_headers, make_fa
 
 
 def test_login_is_rate_limited(client, make_farm, make_user):
-    from interfaces.api.helpers.rate_limit import login_rate_limiter
 
     make_farm()
     make_user("jo", password="Passw0rd-Test!")
@@ -105,7 +106,6 @@ def test_login_is_rate_limited(client, make_farm, make_user):
 
 
 def test_forwarded_for_from_an_untrusted_peer_does_not_reset_the_limit(client, make_farm, make_user):
-    from interfaces.api.helpers.rate_limit import login_rate_limiter
 
     make_farm()
     make_user("jo", password="Passw0rd-Test!")
@@ -119,8 +119,6 @@ def test_forwarded_for_from_an_untrusted_peer_does_not_reset_the_limit(client, m
 
 
 def test_forwarded_for_is_honoured_only_from_a_trusted_proxy(client, make_farm, make_user, monkeypatch):
-    from config.settings import settings
-    from interfaces.api.helpers.rate_limit import login_rate_limiter
 
     monkeypatch.setattr(settings.API, "TRUSTED_PROXIES", ["testclient"])
     make_farm()

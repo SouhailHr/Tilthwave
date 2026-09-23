@@ -7,6 +7,10 @@ import logging
 
 from starlette.requests import Request
 
+from common.request_context import RequestIdFilter, reset_request_id, set_request_id
+from config.settings import settings
+from infrastructure.mail import Mailer
+from interfaces.api.helpers.rate_limit import client_ip
 from tests.conftest import FARM_A, zone_payload
 
 
@@ -40,7 +44,6 @@ def test_error_envelope_has_a_machine_code_and_the_request_id(client, auth_heade
 
 
 def test_log_records_carry_the_current_request_id_or_a_dash():
-    from common.request_context import RequestIdFilter, reset_request_id, set_request_id
 
     record = logging.LogRecord("t", logging.INFO, __file__, 1, "msg", None, None)
     RequestIdFilter().filter(record)
@@ -59,8 +62,6 @@ def _request(peer: str, forwarded: str | None) -> Request:
 
 
 def test_rate_limit_key_is_the_rightmost_untrusted_forwarded_hop(monkeypatch):
-    from config.settings import settings
-    from interfaces.api.helpers.rate_limit import client_ip
 
     monkeypatch.setattr(settings.API, "TRUSTED_PROXIES", ["10.0.0.1", "10.0.0.2"])
     # a client that prepends addresses cannot pick its own bucket
@@ -90,8 +91,6 @@ def test_workers_and_engineers_cannot_read_the_staff_list(client, auth_headers, 
 
 
 def test_unconfigured_mailer_never_logs_the_reset_link_on_a_tls_deployment(monkeypatch, caplog):
-    from config.settings import settings
-    from infrastructure.mail import Mailer
 
     class NoSmtp:
         HOST = None

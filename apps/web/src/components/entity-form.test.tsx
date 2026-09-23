@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { EntityForm, type EntityFormField } from "./entity-form";
+
 import type { ApiError } from "@/api/errors";
+
+import { EntityForm, type EntityFormField } from "./entity-form";
 
 const schema = z.object({ zone_name: z.string().min(1, "Zone name is required") });
 type Values = z.infer<typeof schema>;

@@ -1,9 +1,10 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
+
 
 import { useChangePassword, useProfile, useUpdateProfile } from "@/api/account";
 import { toApiError } from "@/api/errors";
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PASSWORDS_MUST_MATCH, passwordSchema, passwordsMatch } from "@/lib/password-schema";
 import type { User } from "@/types/user";
 
 const profileSchema = z.object({
@@ -38,24 +40,18 @@ const profileSchema = z.object({
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
-const passwordSchema = z
+const changePasswordSchema = z
   .object({
     current_password: z.string().min(1, "Enter your current password"),
-    new_password: z
-      .string()
-      .min(8, "Use at least 8 characters")
-      .max(72, "Use at most 72 characters"),
+    new_password: passwordSchema,
     confirm_password: z.string(),
   })
-  .refine((v) => v.new_password === v.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  })
+  .refine(passwordsMatch, PASSWORDS_MUST_MATCH)
   .refine((v) => v.new_password !== v.current_password, {
     message: "Choose a password you are not already using",
     path: ["new_password"],
   });
-type PasswordValues = z.infer<typeof passwordSchema>;
+type PasswordValues = z.infer<typeof changePasswordSchema>;
 
 function toProfileValues(user: User): ProfileValues {
   return {
@@ -163,7 +159,7 @@ function ProfileCard({ user }: { user: User }) {
 function PasswordCard() {
   const change = useChangePassword();
   const form = useForm<PasswordValues>({
-    resolver: zodResolver(passwordSchema),
+    resolver: zodResolver(changePasswordSchema),
     defaultValues: { current_password: "", new_password: "", confirm_password: "" },
   });
 

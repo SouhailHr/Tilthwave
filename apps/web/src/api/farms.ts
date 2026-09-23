@@ -1,9 +1,9 @@
-import { useCreateEntity, useUpdateEntity } from "@/api/_entity";
+import { useCreateEntity, useUpdateEntity } from "@/api/entity-queries";
 import type { CreateFarmInput, Farm, UpdateFarmInput } from "@/types/farm";
 
 const RESOURCE = "farms";
 
-// Thin typed facades over _entity.ts: EntityTable/EntityCrudPage already get list and delete
+// Thin typed facades over entity-queries.ts: EntityTable/EntityCrudPage already get list and delete
 // generically from the resource string, and the dashboard reads the farm's stats from
 // /dashboard/summary instead of the separate /farms/stats/{name} query it used to make here.
 // useUpdateFarm used to be a hand-rolled mutation that only invalidated the root key; the

@@ -9,20 +9,6 @@ is removed from this file, not struck through; git history has the rest.
 
 - **Farm map.** The farm page was meant to carry a Leaflet map of the zones (`react-leaflet`).
   Not installed, no map. The only unfinished item of the original plan.
-- **Stringly-typed numeric form fields.** 13 fields (trees 3, water-sources 2, zones 5, farms 3)
-  hold numbers as strings with a `refine`; `positiveNumber` is duplicated. **[A]** The typed field
-  already exists: `EntityForm` accepts `type: "number"` and coerces (`entity-form.tsx`); no page
-  uses it. Fix: `z.number()` + `type: "number"`, delete both `positiveNumber` copies.
-- **FK picker.** Loads the referenced resource with `size: 100` and no "showing first N of M": at
-  more than 100 rows it silently truncates. Either page the picker (search-as-you-type against
-  the list endpoint) or show the overflow; the 30 s global `staleTime` already applies.
-- **[A] Duplicated config across pages.** `statusOptions`/`statusVariant` (water-sources =
-  water-switchers; irrigation-tasks = `recent-activity-card.tsx`), the password rule
-  `min(8).max(72)` ×3 and the confirm-password refine ×2. Fix: `status-ui.ts`, shared
-  `passwordSchema`.
-- **[A] Dead exports.** `users.ts` `fetchUsers`/`fetchUser`/`useUsers`/`useUser`/`useDeleteUser`
-  (the other seven `api/*.ts` were trimmed), `useDisclosure` `toggle`/`setOpen`; `_entity.ts` is
-  imported by components despite the private-looking name.
 - **Response validation.** Only `/auth/me` is Zod-parsed; the login body is discarded and the
   profile and every entity list are hand-typed and trusted. The decision behind it (OpenAPI codegen
   vs hand-written types) is open.
@@ -31,9 +17,11 @@ is removed from this file, not struck through; git history has the rest.
   `request_id` to send along.
 - **Reliability knobs.** No mutation retry policy or backoff, no optimistic updates, no offline
   detection.
-- **[A] Bundle.** Every route, including login, ships ≥ 189 KB gz of JS because `QueryProvider`,
-  the toaster and the zod + base-ui + react-query chunk sit in the root layout. Move them to
-  `(app)/layout.tsx`; consider `zod/mini` in the form schemas. Recharts is correctly code-split.
+- **[A] Bundle.** Every route, including login, ships ≥ 189 KB gz of JS. Not the quick win it
+  looked like: the sign-in, forgot and reset pages use react-query (their mutations) and zod (their
+  forms) themselves, so `QueryProvider` cannot leave the root layout and the shared chunk is their
+  own dependency. What remains is `zod/mini` in the form schemas (a schema-syntax migration) and
+  auditing base-ui's share; measure with `next build` before starting.
 - **Dashboard shell.** `(app)/page.tsx` is a ~230-line client component. **[A]** Already one
   query plus pure helpers; the RSC split buys little. Low priority.
 - **Env.** `NEXT_PUBLIC_API_BASE_URL` is not validated at build time (the release workflow

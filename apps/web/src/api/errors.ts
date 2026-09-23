@@ -75,7 +75,3 @@ export function toApiError(err: unknown, fallback = "Something went wrong"): Api
     fieldErrors,
   };
 }
-
-export function getErrorMessage(err: unknown, fallback: string): string {
-  return toApiError(err, fallback).message;
-}

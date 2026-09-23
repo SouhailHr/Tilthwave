@@ -1,15 +1,16 @@
 "use client";
 
-import { ReactNode, useState } from "react";
-import dynamic from "next/dynamic";
 import {
   MutationCache,
   QueryCache,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
+import dynamic from "next/dynamic";
+import { ReactNode, useState } from "react";
+
 import { toApiError, type ApiError } from "@/api/errors";
+import { Toaster } from "@/components/ui/sonner";
 import { emit } from "@/lib/eventBus";
 
 const ReactQueryDevtools = dynamic(

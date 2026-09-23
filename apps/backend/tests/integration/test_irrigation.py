@@ -16,7 +16,10 @@ from adapters.water_switcher import WaterSwitcherAdaptor
 from adapters.zone_sensors import ZoneSensorsAdaptor
 from common.dates import utc_now
 from common.exceptions import BrokerError
+from infrastructure.database.tables.irrigation_task import IrrigationTask
+from infrastructure.database.tables.sensor_record import SensorRecord
 from infrastructure.repositories.base import BaseBrokerRepo
+from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 from tests.conftest import FARM_A
 from wiring import BrokerRepositories, build_use_cases
 
@@ -99,8 +102,6 @@ def test_stop_irrigation_publishes_off_then_completes_with_utc_duration(repos, f
     zone_uc = _use_cases_with(repos, broker).zone
     task = zone_uc.start_irrigation("Zone A")
     with repos.irrigation_task.Session() as session:  # backdate 5 minutes, in UTC like the DB default
-        from infrastructure.database.tables.irrigation_task import IrrigationTask
-
         row = session.get(IrrigationTask, task.id)
         row.created_date = utc_now() - timedelta(minutes=5)
         session.commit()
@@ -122,8 +123,6 @@ def _record(repos, serial, type_, value, age_minutes=0):
         )
     )
     if age_minutes:
-        from infrastructure.database.tables.sensor_record import SensorRecord
-
         with repos.sensor_record.Session() as session:
             session.get(SensorRecord, entity.id).created_date = utc_now() - timedelta(minutes=age_minutes)
             session.commit()
@@ -135,7 +134,6 @@ def _clear_records(repos):
 
 
 def test_flow_runner_hard_limits(repos, farm_with_zone):
-    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 
     use_cases = _use_cases_with(repos, RecordingBroker())
     helper.configure(use_cases)
@@ -157,7 +155,6 @@ def test_flow_runner_hard_limits(repos, farm_with_zone):
     # running longer than MAX_IRRIGATION_MINUTES -> hard stop even with fresh, dry readings
     _record(repos, "MSN1", "moisture", 20)
     _record(repos, "SAT1", "saturation", 30)
-    from infrastructure.database.tables.irrigation_task import IrrigationTask
 
     with repos.irrigation_task.Session() as session:
         session.get(IrrigationTask, task.id).created_date = utc_now() - timedelta(minutes=61)
@@ -167,7 +164,6 @@ def test_flow_runner_hard_limits(repos, farm_with_zone):
 
 
 def test_auto_irrigation_tick_starts_then_hard_stops(repos, farm_with_zone):
-    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 
     broker = RecordingBroker()
     helper.configure(_use_cases_with(repos, broker))
@@ -177,8 +173,6 @@ def test_auto_irrigation_tick_starts_then_hard_stops(repos, farm_with_zone):
     helper.auto_irrigation()
     tasks = repos.irrigation_task.filter([])
     assert [t.status for t in tasks] == [global_constants.IRRIGATION_TASK_IN_PROGRESS]
-
-    from infrastructure.database.tables.irrigation_task import IrrigationTask
 
     with repos.irrigation_task.Session() as session:
         session.get(IrrigationTask, tasks[0].id).created_date = utc_now() - timedelta(minutes=61)
@@ -203,7 +197,6 @@ def test_auto_irrigation_tick_starts_then_hard_stops(repos, farm_with_zone):
     ],
 )
 def test_blind_zone_boundaries(repos, farm_with_zone, moisture_age, saturation_age, running, expected):
-    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 
     use_cases = _use_cases_with(repos, RecordingBroker())
     helper.configure(use_cases)
@@ -217,7 +210,6 @@ def test_blind_zone_boundaries(repos, farm_with_zone, moisture_age, saturation_a
 
 def test_two_in_progress_tasks_for_one_zone_are_handled_from_the_oldest(repos, farm_with_zone):
     """A duplicated task (a retried start) must not make the tick raise or leave a valve open."""
-    from interfaces.flow_runner.flow_runner import ZoneAutomaticIrrigationHelper as helper
 
     broker = RecordingBroker()
     helper.configure(_use_cases_with(repos, broker))

@@ -1,14 +1,17 @@
+import pytest
+
 from adapters.sensor import SensorAdaptor
 from adapters.water_source import WaterSourceAdaptor
 from adapters.water_switcher import WaterSwitcherAdaptor
 from core.use_cases.exceptions import UseCaseException
+from infrastructure.repositories.base import BaseDBRepo
+from interfaces.streamer.event_handler import EventHandler
 from tests.conftest import FARM_A
 
 
 def test_readiness_reports_503_when_the_database_is_unreachable_but_liveness_stays_200(client, monkeypatch):
     """A database outage is not a reason to restart the API: /health (the container healthcheck)
     keeps answering; /health/ready is the probe that looks at the database."""
-    from infrastructure.repositories.base import BaseDBRepo
 
     def broken(*_args, **_kwargs):
         raise RuntimeError("connection refused")
@@ -21,7 +24,6 @@ def test_readiness_reports_503_when_the_database_is_unreachable_but_liveness_sta
 
 
 def test_status_event_updates_the_switcher_then_records_it(repos, make_farm, make_zone):
-    from interfaces.streamer.event_handler import EventHandler
 
     make_farm(FARM_A)
     make_zone("Zone A")
@@ -51,9 +53,6 @@ def test_status_event_updates_the_switcher_then_records_it(repos, make_farm, mak
 
 
 def test_unknown_events_are_rejected_not_swallowed():
-    import pytest
-
-    from interfaces.streamer.event_handler import EventHandler
 
     for event in ({}, {"event_type": "bogus"}, {"event_type": "status_data", "data": {"type": "valve"}}):
         with pytest.raises(UseCaseException):
@@ -61,7 +60,6 @@ def test_unknown_events_are_rejected_not_swallowed():
 
 
 def test_status_event_updates_the_source_then_records_it(repos, make_farm):
-    from interfaces.streamer.event_handler import EventHandler
 
     make_farm(FARM_A)
     repos.sensor.create(
@@ -92,7 +90,6 @@ def test_status_event_updates_the_source_then_records_it(repos, make_farm):
 
 
 def test_data_record_event_saves_the_reading_and_touches_no_actuator(repos, make_farm, make_zone):
-    from interfaces.streamer.event_handler import EventHandler
 
     make_farm(FARM_A)
     make_zone("Zone A")

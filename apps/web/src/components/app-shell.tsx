@@ -1,9 +1,5 @@
 "use client";
 
-import { ReactNode, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Droplets,
@@ -18,9 +14,13 @@ import {
   Users,
   Waves,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useState } from "react";
 
-import { useSensors } from "@/api/sensors";
 import { useLogout, useSession } from "@/api/auth";
+import { useSensors } from "@/api/sensors";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

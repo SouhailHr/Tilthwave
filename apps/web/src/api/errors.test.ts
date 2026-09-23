@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { AxiosError, type AxiosResponse } from "axios";
-import { toApiError, getErrorMessage } from "./errors";
+import { describe, expect, it } from "vitest";
+
+import { toApiError } from "./errors";
 
 function fakeAxiosError(
   status: number,
@@ -58,17 +59,6 @@ describe("toApiError", () => {
   it("falls back to provided message when body is empty", () => {
     const err = fakeAxiosError(500, {});
     expect(toApiError(err, "fallback").message).toBe("fallback");
-  });
-});
-
-describe("getErrorMessage", () => {
-  it("returns the parsed message", () => {
-    const err = fakeAxiosError(400, { detail: "no" });
-    expect(getErrorMessage(err, "fallback")).toBe("no");
-  });
-
-  it("returns the fallback when nothing is parseable", () => {
-    expect(getErrorMessage(null, "fallback")).toBe("fallback");
   });
 });
 

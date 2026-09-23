@@ -1,8 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RequireAuth } from "./require-auth";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
 import { emit } from "@/lib/eventBus";
+
+import { RequireAuth } from "./require-auth";
 
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({

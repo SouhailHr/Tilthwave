@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+
 import { emit } from "@/lib/eventBus";
 
 // The session is an httpOnly cookie set by POST /auth/login (use_cookie: true): the browser
