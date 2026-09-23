@@ -63,8 +63,9 @@ timestamp and the consecutive-failure count, and broker commands by topic and ou
 ### Grafana Cloud
 
 The sink is Grafana Cloud (free tier: 14-day retention, no time limit on the account) with one
-agent on the host, Grafana Alloy (`alloy` service, `profiles: [observability]`,
-`deploy/alloy/config.alloy`). It scrapes the three `/metrics` on the compose network (the API's
+agent on the host, Grafana Alloy (`alloy` service, `profiles: [observability]`; its config is the
+`alloy_config` block at the end of `docker-compose.yml`, inline because Coolify cannot bind-mount
+a file from the checkout). It scrapes the three `/metrics` on the compose network (the API's
 with `API_METRICS_TOKEN`) and tails every container's log through the docker socket (read-only;
 the socket is root on the host, which is why the service is opt-in), turning the backend's JSON
 lines into a `level` label and `logger` / `request_id` structured metadata. Every series and line

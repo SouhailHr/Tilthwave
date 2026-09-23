@@ -368,7 +368,7 @@ services:
 
   # Observability (opt-in: COMPOSE_PROFILES=observability, or --profile observability). One agent:
   # scrapes the three /metrics endpoints on this network and ships the containers' logs, both to
-  # Grafana Cloud (deploy/alloy/config.alloy, deploy/README.md). It reads the docker socket to
+  # Grafana Cloud (the alloy_config block at the end of this file, deploy/README.md). It reads the docker socket to
   # discover containers and read their logs; that socket is root on the host, which is why the
   # service is opt-in and the mount is read-only.
   alloy:
@@ -397,9 +397,14 @@ services:
       GRAFANA_CLOUD_TOKEN: ${GRAFANA_CLOUD_TOKEN:-}
       TZ: ${TZ:-Europe/Paris}
     volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
+    # The config is a compose `configs` entry (below), not a bind mount: Coolify rewrites relative
+    # bind paths to its own data directory and creates them as empty directories, which docker
+    # then cannot mount onto a file. Inline content is materialised by docker itself.
+    configs:
+      - source: alloy_config
+        target: /etc/alloy/config.alloy
     depends_on:
       api:
         condition: service_healthy
@@ -413,6 +418,106 @@ services:
     mem_limit: 256m
     restart: unless-stopped
     logging: *default-logging
+
+configs:
+  alloy_config:
+    content: |
+      // Grafana Alloy: the one agent on the host. Scrapes the three /metrics endpoints on the compose
+      // network and tails the containers' logs through the docker socket, and pushes both to Grafana
+      // Cloud. Nothing here is reachable from outside: the API's /metrics is scraped on the network
+      // with API_METRICS_TOKEN, and Alloy's own UI (:12345) is not published.
+      //
+      // Every value that names the account comes from the environment (deploy/.env): the stack's
+      // Prometheus and Loki push URLs and user ids, one access-policy token with metrics:write and
+      // logs:write, and SITE_NAME to tell farms apart in one Grafana.
+
+      // ---- metrics --------------------------------------------------------------------------------------
+
+      prometheus.scrape "backend" {
+        targets = [
+          { __address__ = "streamer:8081", job = "streamer" },
+          { __address__ = "flow-runner:8082", job = "flow-runner" },
+        ]
+        scrape_interval = "30s"
+        forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+      }
+
+      prometheus.scrape "api" {
+        targets         = [{ __address__ = "api:8080", job = "api" }]
+        bearer_token    = sys.env("API_METRICS_TOKEN")
+        scrape_interval = "30s"
+        forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+      }
+
+      prometheus.remote_write "grafana_cloud" {
+        external_labels = { site = sys.env("SITE_NAME") }
+
+        endpoint {
+          url = sys.env("GRAFANA_CLOUD_PROM_URL")
+
+          basic_auth {
+            username = sys.env("GRAFANA_CLOUD_PROM_USER")
+            password = sys.env("GRAFANA_CLOUD_TOKEN")
+          }
+        }
+      }
+
+      // ---- logs -----------------------------------------------------------------------------------------
+
+      discovery.docker "compose" {
+        host = "unix:///var/run/docker.sock"
+
+        filter {
+          name   = "label"
+          values = ["com.docker.compose.project=tilthwave"]
+        }
+      }
+
+      discovery.relabel "compose" {
+        targets = discovery.docker.compose.targets
+
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+          target_label  = "service"
+        }
+      }
+
+      loki.source.docker "compose" {
+        host       = "unix:///var/run/docker.sock"
+        targets    = discovery.relabel.compose.output
+        labels     = { site = sys.env("SITE_NAME") }
+        forward_to = [loki.process.backend_json.receiver]
+      }
+
+      // The backend writes one JSON object per line (LOG_FORMAT=json): level becomes a label (a
+      // handful of values), logger and request_id become structured metadata (unbounded, queryable,
+      // not indexed). Lines that are not JSON (web, redpanda, postgres) pass through untouched.
+      loki.process "backend_json" {
+        forward_to = [loki.write.grafana_cloud.receiver]
+
+        stage.json {
+          expressions = { level = "level", logger = "logger", request_id = "request_id" }
+        }
+
+        stage.labels {
+          values = { level = "" }
+        }
+
+        stage.structured_metadata {
+          values = { logger = "", request_id = "" }
+        }
+      }
+
+      loki.write "grafana_cloud" {
+        endpoint {
+          url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+
+          basic_auth {
+            username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+            password = sys.env("GRAFANA_CLOUD_TOKEN")
+          }
+        }
+      }
 
 volumes:
   alloy-data:
