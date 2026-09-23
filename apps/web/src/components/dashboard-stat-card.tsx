@@ -17,8 +17,8 @@ interface DashboardStatCardProps {
 const toneClasses: Record<NonNullable<DashboardStatCardProps["tone"]>, string> =
   {
     default: "text-foreground",
-    pulse: "text-field",
-    harvest: "text-harvest",
+    pulse: "text-furrow",
+    harvest: "text-amber",
     loam: "text-loam",
   };
 

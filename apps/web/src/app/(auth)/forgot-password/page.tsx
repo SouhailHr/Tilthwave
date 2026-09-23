@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             // Same message whether or not the account exists: the API answers identically, and
             // so should the page, or it would be telling anyone which usernames are real.
             <div className="grid gap-4 text-center text-sm">
-              <MailCheck className="mx-auto size-8 text-field" aria-hidden="true" />
+              <MailCheck className="mx-auto size-8 text-furrow" aria-hidden="true" />
               <p>
                 If an account exists for <span className="font-medium">{form.getValues("identifier")}</span>,
                 a reset link is on its way. It works for 30 minutes.

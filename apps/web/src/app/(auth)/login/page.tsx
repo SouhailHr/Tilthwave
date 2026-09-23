@@ -67,7 +67,7 @@ function LoginForm() {
 
   return (
     <Card className="w-full max-w-sm">
-      <AuthCardHeader title="Sign in" description="Where farms speak. Fields listen." />
+      <AuthCardHeader title="Sign in" description="The field's true voice" />
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
