@@ -31,7 +31,7 @@ describe("LoginPage", () => {
     mutateAsync.mockResolvedValue({});
     render(<LoginPage />);
     signIn();
-    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ username: "admin", password: "Passw0rd-Test!" }));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ username: "admin", password: "Passw0rd-Test!", remember: true }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
   });
 
@@ -64,6 +64,22 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("Username is required")).toBeInTheDocument();
     expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("sends remember: false when Keep me signed in is unticked", async () => {
+    mutateAsync.mockResolvedValue({});
+    render(<LoginPage />);
+    fireEvent.click(screen.getByLabelText("Keep me signed in"));
+    signIn();
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ remember: false })));
+  });
+
+  it("shows the brand, the slogan and no dead sign-up link", () => {
+    render(<LoginPage />);
+    expect(screen.getByText("tilthwave")).toBeInTheDocument();
+    expect(screen.getByText("The field\u2019s true voice")).toBeInTheDocument();
+    expect(screen.queryByText(/farm watch/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /create an account/i })).toBeNull();
   });
 
   it("tells an expired session apart from a fresh password", () => {

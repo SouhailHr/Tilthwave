@@ -10,9 +10,8 @@ import * as z from "zod";
 
 import { useForgotPassword } from "@/api/auth";
 import { toApiError } from "@/api/errors";
-import { AuthCardHeader, AuthPage } from "@/components/auth-page";
+import { AuthCard, AuthCardHeader, AuthPage } from "@/components/auth-page";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -45,12 +44,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthPage>
-      <Card className="w-full max-w-sm">
+      <AuthCard>
         <AuthCardHeader
           title="Forgot your password?"
           description="We'll email you a link to choose a new one."
         />
-        <CardContent>
+        <div>
           {sent ? (
             // Same message whether or not the account exists: the API answers identically, and
             // so should the page, or it would be telling anyone which usernames are real.
@@ -91,13 +90,13 @@ export default function ForgotPasswordPage() {
               </form>
             </Form>
           )}
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="auth-foot">
             <Link href="/login" className="underline-offset-4 hover:text-foreground hover:underline">
               Back to sign in
             </Link>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </AuthCard>
     </AuthPage>
   );
 }

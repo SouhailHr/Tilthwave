@@ -42,10 +42,13 @@ def _attributes() -> dict:
     }
 
 
-def set_session_cookies(response: Response, token: str, csrf_token: str) -> None:
-    max_age = (
-        settings.API.SESSION_MAX_HOURS * 3600
-    )  # the token's absolute lifetime; the server ends it earlier when idle
+def set_session_cookies(response: Response, token: str, csrf_token: str, persistent: bool = True) -> None:
+    """
+    persistent (the sign-in form's "Keep me signed in"): the cookies outlive a browser restart,
+    for the token's absolute lifetime; the server still ends the session earlier when idle.
+    Otherwise they carry no Max-Age and the browser drops them when it closes.
+    """
+    max_age = settings.API.SESSION_MAX_HOURS * 3600 if persistent else None
     response.set_cookie(ACCESS_COOKIE, token, max_age=max_age, httponly=True, **_attributes())
     response.set_cookie(CSRF_COOKIE, csrf_token, max_age=max_age, httponly=False, **_attributes())
 

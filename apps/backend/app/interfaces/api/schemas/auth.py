@@ -14,6 +14,13 @@ class AuthLogin(BaseModel):
         default=False,
         description="Browser clients: keep the session in httpOnly cookies and omit the token from the body.",
     )
+    remember: bool = Field(
+        default=True,
+        description=(
+            "Cookie sessions only: keep the cookies across browser restarts for the session's lifetime. "
+            "False makes them browser-session cookies. The server-side limits apply either way."
+        ),
+    )
 
     model_config = ConfigDict(
         extra="forbid",

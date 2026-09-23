@@ -1,42 +1,44 @@
-import Image from "next/image";
 import { ReactNode } from "react";
 
-import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandMarkOnDark } from "@/components/brand-mark";
+import { FieldBackground } from "@/components/field-background";
 
-/** The full-bleed backdrop shared by sign-in, forgot-password and reset-password. */
+/**
+ * The sign-in, forgot-password and reset-password screen (brand handoff,
+ * login/reference-login.html): the animated field on a canvas, a grain and a vignette over it,
+ * and a frosted card. The whole screen is in the dark palette (`dark`), so the shared form
+ * components read sage on loam without per-field overrides. Safe-area insets keep the card
+ * clear of a notch; the card's entrance animation is off under prefers-reduced-motion.
+ */
 export function AuthPage({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
-      {/* Animated brand SVG kept as a plain img so the embedded SMIL/CSS
-          animations actually play and so we don't need next.config's
-          dangerouslyAllowSVG escape hatch. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/brand/tilthwave-bg-hero-animated.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 size-full object-cover"
-      />
+    <div className="dark auth-screen">
+      <FieldBackground />
+      <div className="auth-grain" aria-hidden="true" />
+      <div className="auth-vignette" aria-hidden="true" />
       {children}
     </div>
   );
 }
 
-/** Brand lockup plus a title, at the top of every auth card. */
+/** The frosted card every auth screen sits in. */
+export function AuthCard({ children }: { children: ReactNode }) {
+  return <main className="auth-card">{children}</main>;
+}
+
+/** Brand row (mark, wordmark, slogan), then the screen's title and lead line. */
 export function AuthCardHeader({ title, description }: { title: string; description: string }) {
   return (
-    <CardHeader className="items-center text-center">
-      <div className="mb-2 flex flex-col items-center gap-2">
-        <Image src="/brand/tilthwave-mark.svg" alt="tilthwave" width={40} height={40} priority />
-        <div className="flex items-baseline gap-2">
-          <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
-            tilthwave
-          </span>
-          <span className="text-xs text-muted-foreground">· farm watch</span>
+    <header>
+      <div className="auth-brand">
+        <BrandMarkOnDark className="size-11 flex-none" />
+        <div>
+          <div className="auth-brand-name">tilthwave</div>
+          <div className="auth-brand-slogan">The field&rsquo;s true voice</div>
         </div>
       </div>
-      <CardTitle>{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
+      <h1 className="auth-title">{title}</h1>
+      <p className="auth-lead">{description}</p>
+    </header>
   );
 }

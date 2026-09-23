@@ -8,6 +8,8 @@ import type { ApiError } from "@/api/errors";
 export interface LoginPayload {
   username: string;
   password: string;
+  /** "Keep me signed in": false makes the session cookies end with the browser. */
+  remember?: boolean;
 }
 
 // What GET /auth/me returns: the identity the API established from the session cookie, with

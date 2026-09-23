@@ -165,3 +165,147 @@
 .tilthwave-pulse-dot {
   animation: tilthwave-pulse 1.6s ease-in-out infinite;
 }
+/* ---- Sign-in screens (brand handoff, login/reference-login.html) ------------------------------ */
+/* Unlayered on purpose: these rules win over the shared components' utility classes, so the
+   forms stay the same components with the reference's sizes. */
+
+.auth-screen {
+  position: relative;
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--tw-loam-deep);
+  color: var(--tw-sage);
+  font-family: var(--font-sans);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.auth-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.auth-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(10, 16, 10, 0.75) 100%);
+}
+
+.auth-card {
+  position: relative;
+  z-index: 2;
+  width: min(400px, 100%);
+  padding: 36px 34px 30px;
+  border-radius: var(--tw-radius-lg);
+  background: rgba(30, 42, 28, 0.55);
+  border: 1px solid rgba(238, 242, 228, 0.14);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(238, 242, 228, 0.08);
+  animation: auth-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (max-width: 380px) {
+  .auth-card {
+    padding: 28px 20px 24px;
+  }
+}
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card {
+    animation: none;
+  }
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.auth-brand-name {
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.6px; /* -1.6 at 60 px, scaled */
+  line-height: 1;
+}
+.auth-brand-slogan {
+  margin-top: 4px;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--tw-shoot);
+}
+.auth-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.auth-lead {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: rgba(238, 242, 228, 0.62);
+}
+.auth-card [data-slot="form-label"] {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tw-sage);
+}
+.auth-card [data-slot="input"] {
+  height: auto;
+  padding: 12px 14px;
+  border-radius: var(--tw-radius-sm);
+  font-size: 15px;
+  color: var(--tw-sage);
+  background: rgba(17, 26, 16, 0.55);
+  border-color: rgba(238, 242, 228, 0.14);
+}
+.auth-card [data-slot="input"]:focus-visible {
+  border-color: var(--tw-shoot);
+  box-shadow: 0 0 0 3px rgba(140, 203, 94, 0.22);
+}
+.auth-card [data-slot="form-description"],
+.auth-meta {
+  font-size: 13px;
+  color: rgba(238, 242, 228, 0.62);
+}
+.auth-card a {
+  color: var(--tw-shoot);
+  text-decoration: none;
+}
+.auth-card a:hover {
+  text-decoration: underline;
+}
+.auth-card [data-slot="button"][type="submit"] {
+  height: auto;
+  margin-top: 6px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.auth-foot {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(238, 242, 228, 0.62);
+}
+.auth-foot strong {
+  color: var(--tw-sage);
+  font-weight: 700;
+}
