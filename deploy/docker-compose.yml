@@ -49,6 +49,11 @@ x-broker-env: &broker-env
 # Images: `make up` builds them from this checkout under the :local tag. A release tag
 # (TILTHWAVE_TAG=v1.2.3 in .env) names the images .github/workflows/release.yml published
 # instead, and `make deploy` pulls them without building.
+# Secrets are plain ${VAR}, never ${VAR:?message}: Coolify's compose parser takes the message of a
+# `:?` guard as a default VALUE, so the sentence "run make env..." became the database password on
+# the first production deploy. Left blank, each one fails loudly on its own: postgres refuses to
+# start without a password, the API refuses a short API_SECRET_KEY, the seed exits without
+# ADMIN_PASSWORD. `make env` fills them all for a local stack.
 x-backend: &backend
   image: ghcr.io/souhailhr/tilthwave-backend:${TILTHWAVE_TAG:-local}
   environment: &backend-env
@@ -57,8 +62,8 @@ x-backend: &backend
     POSTGRES_PORT: "5432"
     POSTGRES_DB: ${POSTGRES_DB:-tilthwave}
     POSTGRES_USER: ${POSTGRES_USER:-postgres}
-    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
-    API_SECRET_KEY: ${API_SECRET_KEY:?run `make env` to generate deploy/.env}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    API_SECRET_KEY: ${API_SECRET_KEY}
     API_SESSION_IDLE_MINUTES: ${API_SESSION_IDLE_MINUTES:-60}
     API_SESSION_MAX_HOURS: ${API_SESSION_MAX_HOURS:-12}
     API_CORS_ORIGINS: ${API_CORS_ORIGINS:-["http://localhost:3000"]}
@@ -94,7 +99,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tilthwave}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: ${TZ:-Europe/Paris}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -117,7 +122,7 @@ services:
     environment:
       PGHOST: db
       PGUSER: ${POSTGRES_USER:-postgres}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB:-tilthwave}
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
@@ -255,9 +260,9 @@ services:
     environment:
       <<: *backend-env
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run `make env` to generate deploy/.env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       SIM_USERNAME: ${SIM_USERNAME:-simulator}
-      SIM_PASSWORD: ${SIM_PASSWORD:?add SIM_PASSWORD to deploy/.env (see deploy/.env.example)}
+      SIM_PASSWORD: ${SIM_PASSWORD}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -332,7 +337,7 @@ services:
       API_BASE_URL: http://api:8080
       # Read-only worker account seeded by the seed job: the simulator never holds admin credentials.
       API_USERNAME: ${SIM_USERNAME:-simulator}
-      API_PASSWORD: ${SIM_PASSWORD:?add SIM_PASSWORD to deploy/.env (see deploy/.env.example)}
+      API_PASSWORD: ${SIM_PASSWORD}
       SENSORS_ROUNDS: ${SENSORS_ROUNDS:-0}
       SENSORS_INTERVAL_SECONDS: ${SENSORS_INTERVAL_SECONDS:-15}
       SENSORS_CYCLE_ROUNDS: ${SENSORS_CYCLE_ROUNDS:-10}
