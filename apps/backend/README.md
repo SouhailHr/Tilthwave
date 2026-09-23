@@ -46,7 +46,7 @@ app/
   core/                       domain: entities, use cases, security (passwords, fingerprints), sessions
   adapters/                   SQLAlchemy model <-> domain entity mappers, one per resource
   infrastructure/             SQLAlchemy tables, repositories, Kafka gateway, mailer
-  interfaces/api/             FastAPI app, endpoints, middleware, helpers
+  interfaces/api/             FastAPI app, endpoints (crud_router builds each resource's five routes), middleware, helpers
   interfaces/streamer/        FastStream subscribers
   interfaces/flow_runner/     the control loop
   wiring.py                   composition root
@@ -81,6 +81,10 @@ tests/                        pytest, SQLite
   locked), logout, password change, forgot and reset, session revocation, user creation, role
   change, activation, deactivation, deletion and email change, with actor, target and address,
   under the request id of the request that caused it.
+- **Routes.** A resource is a `BaseCrud` subclass (adaptor, use case, identifier, hooks) and one
+  `crud_router(prefix, tag, helper, Create, Update, noun=...)` call (`endpoints/base.py`): POST,
+  GET page, GET one, DELETE and, with an update schema, PATCH. Only `/users` (password hashing)
+  and `/account`, `/auth`, `/dashboard`, `/health` write their routes by hand.
 - **Errors.** Domain exceptions (`common/exceptions.py`) become HTTP responses in one place,
   `interfaces/api/helpers/errors.py`; endpoints never build error bodies.
 - **Flow runner safety.** Commands are published before task state is persisted, and two limits

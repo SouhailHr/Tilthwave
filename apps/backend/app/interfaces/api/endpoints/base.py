@@ -1,12 +1,14 @@
 import json
 import logging
 
-from fastapi import Response
+from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
+from fastapi_pagination import Page
 from fastapi_pagination.api import create_page, resolve_params
 from starlette import status
 
 from common.exceptions import InvalidFilterError, NotFoundError
+from interfaces.api.helpers.auth import AuthHelper
 
 logger = logging.getLogger(__name__)
 
@@ -178,3 +180,62 @@ class BaseCrud:
             for attribute, value in filters_dict.items():
                 filters.append({"attribute": attribute, "value": value, "condition": "eq"})
         return filters
+
+
+def crud_router(
+    prefix: str,
+    tag: str,
+    helper: type[BaseCrud],
+    create_schema: type,
+    update_schema: type | None = None,
+    *,
+    noun: str,
+    plural: str | None = None,
+) -> APIRouter:
+    """
+    The REST routes of one resource: POST / , GET / (a page), GET /{id}, DELETE /{id} and, when an
+    update schema is given, PATCH /{id}. Every resource had these five in its own file with only
+    the names differing; an endpoint-wide change (a header, a dependency, a response shape) is
+    one edit here. `helper` keeps the per-resource behaviour: SensorCrudHelper enriches items and
+    checks assignments, UserCrudHelper hashes passwords.
+
+    Annotations are evaluated when the inner functions are defined, so FastAPI validates the
+    body against the resource's own schema and documents it; the docstrings become the OpenAPI
+    summaries.
+    """
+    router = APIRouter(prefix=prefix, tags=[tag])
+    plural = plural or f"{noun}s"
+
+    @router.post("/", status_code=status.HTTP_201_CREATED)
+    def create(data: create_schema, username: str = Depends(AuthHelper.get_current_user_username)):
+        return helper.create(data=data, performed_by=username)
+
+    @router.get("/", response_model=Page[dict])
+    def get_all(
+        filters: str | None = Query(None, description=helper.filters_doc()),
+        search: str | None = Query(None, description="Case-insensitive match on the identifier"),
+    ):
+        return helper.get_all(filters_str=filters, search=search)
+
+    @router.get("/{id}")
+    def get_by_id(id: int):
+        return helper.get_by_id(id=id)
+
+    @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_by_id(id: int):
+        return helper.delete_by_id(id=id)
+
+    create.__doc__ = f"Create a {noun}"
+    get_all.__doc__ = f"One page of {plural}"
+    get_by_id.__doc__ = f"A {noun} by id"
+    delete_by_id.__doc__ = f"Delete a {noun} by id"
+
+    if update_schema is not None:
+
+        @router.patch("/{id}")
+        def update_by_id(id: int, data: update_schema, username: str = Depends(AuthHelper.get_current_user_username)):
+            return helper.update_by_id(id=id, data=data.model_dump(exclude_unset=True), performed_by=username)
+
+        update_by_id.__doc__ = f"Update the given fields of a {noun}"
+
+    return router
