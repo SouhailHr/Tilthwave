@@ -38,25 +38,6 @@ def require_credential(request: Request, bearer: str | None = Depends(oauth2_sch
 
 class AuthHelper:
     @classmethod
-    def verify_password(cls, plain_password, hashed_password):
-        """
-        Function to verify password
-        @param plain_password:
-        @param hashed_password:
-        @return:
-        """
-        return PasswordHasher.verify(plain_password, hashed_password)
-
-    @classmethod
-    def get_password_hash(cls, password):
-        """
-        Function to hash a plain password
-        @param password:
-        @return: Hashed Password
-        """
-        return PasswordHasher.hash(password)
-
-    @classmethod
     def create_access_token(cls, data: dict) -> str:
         """
         Function to create access token

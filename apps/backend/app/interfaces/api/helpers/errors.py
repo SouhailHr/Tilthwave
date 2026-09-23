@@ -62,7 +62,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
     app.add_exception_handler(RequestValidationError, _validation_error_handler)
     app.add_exception_handler(DBReposException, _database_error_handler)
-    app.add_exception_handler(Exception, _unexpected_error_handler)
+    # Anything else is answered by RequestIdMiddleware (see its docstring): an app-level Exception
+    # handler would run outside it and lose the request id.
 
 
 async def _http_exception_handler(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
@@ -90,10 +91,12 @@ def _client_facing_handler(status_code: int, error_code: str):
 
 
 async def _database_error_handler(request: Request, exc: DBReposException) -> JSONResponse:
+    """
+    503, not 500: the application is fine, its database is not. Monitors and the proxy read 500
+    as an application bug; 503 with Retry-After says "try again shortly", which is the truth
+    (pool_pre_ping reconnects on its own once the database is back).
+    """
     logger.error("Database error on %s %s: %s", request.method, request.url.path, exc, exc_info=exc)
-    return _error_response(status.HTTP_500_INTERNAL_SERVER_ERROR, "Database error", "database_error")
-
-
-async def _unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.error("Unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
-    return _error_response(status.HTTP_500_INTERNAL_SERVER_ERROR, "Internal server error", "internal_error")
+    response = _error_response(status.HTTP_503_SERVICE_UNAVAILABLE, "Database unavailable", "database_unavailable")
+    response.headers["Retry-After"] = "5"
+    return response

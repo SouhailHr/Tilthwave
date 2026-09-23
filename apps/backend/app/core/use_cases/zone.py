@@ -1,8 +1,9 @@
 import logging
+from datetime import timedelta
 
 import common.constants as global_constants
 from adapters.irrigation_task import IrrigationTaskAdaptor
-from common.dates import command_timestamp
+from common.dates import command_timestamp, utc_now
 from config.settings import settings
 from core.entities.zone import Zone as ZoneEntity
 from core.use_cases.base import BaseUseCase
@@ -40,7 +41,7 @@ class ZoneUseCase(BaseUseCase):
 
         @param moisture: int - The current moisture level of the zone.
         @param saturation: int - The current saturation level of the zone.
-        @param zone: dict - A dictionary representing the zone, which should contain the keys
+        @param zone: the Zone entity - A dictionary representing the zone, which should contain the keys
          'moisture_trigger_start' and 'saturation_trigger_start'.
         @return: bool - True if irrigation needs to be started, False otherwise.
         """
@@ -67,7 +68,7 @@ class ZoneUseCase(BaseUseCase):
 
         @param moisture: int - The current moisture level of the zone.
         @param saturation: int - The current saturation level of the zone.
-        @param zone: dict - A dictionary representing the zone, which should contain the keys
+        @param zone: the Zone entity - A dictionary representing the zone, which should contain the keys
          'moisture_trigger_stop' and 'saturation_trigger_stop'.
         @return: bool - True if irrigation needs to be stopped, False otherwise.
         """
@@ -79,15 +80,6 @@ class ZoneUseCase(BaseUseCase):
             return False
 
         return saturation >= saturation_trigger_stop and moisture >= moisture_trigger_stop
-
-    def get_irrigation_tasks(self, zone_name: str, task_status: str) -> list:
-        """The zone's irrigation tasks with `task_status` (oldest first); [] when there are none."""
-        return self.irrigation_task_use_case.filter(
-            filters=[
-                {"attribute": "zone_name", "value": zone_name, "condition": "eq"},
-                {"attribute": "status", "value": task_status, "condition": "eq"},
-            ]
-        )
 
     def get_all_irrigation_tasks(self, task_status: str) -> list:
         """Every irrigation task with `task_status`, oldest first; [] when there are none."""
@@ -144,8 +136,12 @@ class ZoneUseCase(BaseUseCase):
             filters=[{"attribute": "zone_name", "value": zone_names, "condition": "in"}]
         )
         serials = sorted({link.sensor_serial_number for link in links})
+        # Only readings the freshness rule would accept: anything older makes the zone blind
+        # either way, and the bound keeps the scan to one index range per sensor.
+        since = utc_now() - timedelta(minutes=settings.FLOW_RUNNER.MAX_READING_AGE_MINUTES)
         latest = {
-            record.sensor_serial_number: record for record in self.sensor_record_use_case.latest_per_sensor(serials)
+            record.sensor_serial_number: record
+            for record in self.sensor_record_use_case.latest_per_sensor(serials, since=since)
         }
         readings: dict = {}
         for link in links:
@@ -170,14 +166,12 @@ class ZoneUseCase(BaseUseCase):
          logic :
             1- get all the entities of water switchers
             2- extract only the serial_numbers from water switchers data and return water switchers list
-            3- if results in none raise an exception
         @param zone_name: str representing a zone by its name
         @return: list of water switchers serial numbers
         """
         filter_by = [{"attribute": "zone_name", "value": zone_name, "condition": "eq"}]
 
-        water_switchers_data = self.water_switcher_use_case.filter(filters=filter_by)
-        return water_switchers_data if water_switchers_data else []
+        return self.water_switcher_use_case.filter(filters=filter_by)
 
     @staticmethod
     def _switcher_command(water_switcher, status: str) -> dict:

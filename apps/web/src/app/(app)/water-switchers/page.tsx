@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 
-
 import {
   useCreateWaterSwitcher,
   useUpdateWaterSwitcher,
@@ -28,7 +27,6 @@ const waterSwitcherSchema = z.object({
 });
 
 type WaterSwitcherValues = z.infer<typeof waterSwitcherSchema>;
-
 
 const waterSwitcherFields: EntityFormField<WaterSwitcherValues>[] = [
   { name: "serial_number", label: "Serial number", placeholder: "e.g. WS00123" },
@@ -61,7 +59,6 @@ const waterSwitcherFields: EntityFormField<WaterSwitcherValues>[] = [
     placeholder: "Sensor serial",
   },
 ];
-
 
 const waterSwitcherColumns: Column<WaterSwitcher>[] = [
   {

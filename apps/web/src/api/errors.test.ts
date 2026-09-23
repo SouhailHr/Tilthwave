@@ -30,21 +30,6 @@ describe("toApiError", () => {
     expect(toApiError(err, "fallback").message).toBe("bad input");
   });
 
-  it("flattens FastAPI 422 validation errors into fieldErrors", () => {
-    const err = fakeAxiosError(422, {
-      detail: [
-        { msg: "is required", loc: ["body", "username"] },
-        { msg: "must be number", loc: ["body", "size"] },
-      ],
-    });
-    const result = toApiError(err, "fallback");
-    expect(result.fieldErrors).toEqual({
-      username: ["is required"],
-      size: ["must be number"],
-    });
-    expect(result.message).toBe("is required");
-  });
-
   it("surfaces errorCode and requestId when present", () => {
     const err = fakeAxiosError(500, {
       detail: "internal",

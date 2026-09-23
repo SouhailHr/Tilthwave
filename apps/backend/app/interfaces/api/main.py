@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi_pagination import add_pagination
 from starlette.middleware.cors import CORSMiddleware
@@ -57,7 +59,15 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 app.add_middleware(TenantContextMiddleware)
-app.add_middleware(RequestIdMiddleware)  # outermost: ids every response, including the auth middlewares' 401/403
+app.add_middleware(RequestIdMiddleware)
+
+if settings.API.COOKIE_SECURE and not settings.API.TRUSTED_PROXIES:
+    # Behind a TLS proxy every request's TCP peer is the proxy: one rate-limit bucket for everyone,
+    # so ten failed logins from anyone lock every user out of login and password reset.
+    logging.getLogger(__name__).warning(
+        "API_COOKIE_SECURE=true but API_TRUSTED_PROXIES is empty: the login rate limit keys on the proxy's "
+        "address, one bucket for all clients. Set API_TRUSTED_PROXIES to the proxy's address."
+    )  # outermost: ids every response, including the auth middlewares' 401/403
 
 
 @app.middleware("http")

@@ -20,11 +20,13 @@ class SensorRecordDBRepository(BaseDBRepo):
     ADAPTOR = SensorRecordAdaptor
     TENANT_SCOPE = TenantScope.via_sensor()
 
-    def latest_per_sensor(self, serial_numbers) -> list[SensorRecordEntity]:
+    def latest_per_sensor(self, serial_numbers, since: datetime | None = None) -> list[SensorRecordEntity]:
         """
         The newest record of each of the given sensors, in one round trip. `id` is monotonic with
         insertion (and never ties, unlike created_date), so the newest row is the max id per
-        sensor; the (sensor_serial_number, created_date) index serves the per-sensor scan.
+        sensor. With `since`, only records at or after it count and the
+        (sensor_serial_number, created_date) index serves a bounded range per sensor; without it
+        every record of every sensor is scanned to find the max, O(total records).
         """
         serial_numbers = list(serial_numbers)
         if not serial_numbers:
@@ -37,6 +39,8 @@ class SensorRecordDBRepository(BaseDBRepo):
                 .filter(model.sensor_serial_number.in_(serial_numbers))
                 .group_by(model.sensor_serial_number)
             )
+            if since is not None:
+                newest_ids = newest_ids.filter(model.created_date >= since)
             rows = session.query(model).filter(model.id.in_(newest_ids.scalar_subquery())).all()
             return [self.ADAPTOR.model_to_entity(row) for row in rows]
         except Exception as e:
@@ -45,11 +49,10 @@ class SensorRecordDBRepository(BaseDBRepo):
         finally:
             session.close()
 
-    def monthly_consumption(self, serial_numbers, year: int) -> dict[int, float]:
+    def monthly_consumption(self, serial_numbers, year: int, from_month: int = 1) -> dict[int, float]:
         """
-        Sum of data->consumption per calendar month of `year` over the given sensors, in one
-        statement: {month: total}. Months without records are absent. Replaces loading every
-        record of every source into Python to add them up.
+        Sum of data->consumption per calendar month of `year` (from `from_month` on) over the
+        given sensors, in one statement: {month: total}. Months without records are absent.
         """
         serial_numbers = list(serial_numbers)
         if not serial_numbers:
@@ -63,7 +66,7 @@ class SensorRecordDBRepository(BaseDBRepo):
                 self._apply_tenant(session.query(month, total), session)
                 .filter(
                     model.sensor_serial_number.in_(serial_numbers),
-                    model.created_date >= datetime(year, 1, 1),
+                    model.created_date >= datetime(year, from_month, 1),
                     model.created_date < datetime(year + 1, 1, 1),
                 )
                 .group_by(month)

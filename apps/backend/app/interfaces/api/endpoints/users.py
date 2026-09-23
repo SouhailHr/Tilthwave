@@ -6,6 +6,7 @@ from fastapi_pagination import Page
 from starlette import status
 
 from adapters.users import UserAdaptor
+from core.security.password import PasswordHasher
 from interfaces.api.endpoints.base import BaseCrud
 from interfaces.api.helpers.auth import AuthHelper
 from interfaces.api.schemas.users import UserCreate, UserUpdate
@@ -28,7 +29,7 @@ class UserCrudHelper(BaseCrud):
         never reaches the entity.
         """
         payload = data.model_dump()  # `password` is excluded by the schema
-        payload["password"] = AuthHelper.get_password_hash(payload.pop("text_password"))
+        payload["password"] = PasswordHasher.hash(payload.pop("text_password"))
         payload["performed_by"] = performed_by
         entity = cls.ADAPTOR_CLASS.dict_to_entity(payload)
         result = cls.USE_CASE_INSTANCE.create(entity)
@@ -78,5 +79,5 @@ def update_by_id(id: int, data: UserUpdate, username: str = Depends(AuthHelper.g
     payload = data.model_dump(exclude_unset=True)
     text_password = payload.pop("text_password", None)
     if text_password:
-        payload["password"] = AuthHelper.get_password_hash(text_password)
+        payload["password"] = PasswordHasher.hash(text_password)
     return UserCrudHelper.update_by_id(id=id, data=payload, performed_by=username)

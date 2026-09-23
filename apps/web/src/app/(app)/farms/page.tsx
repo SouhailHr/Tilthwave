@@ -2,16 +2,18 @@
 
 import { z } from "zod";
 
+
 import { useCreateFarm, useUpdateFarm } from "@/api/farms";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
+import { positiveNumber } from "@/lib/form-fields";
 import type { CreateFarmInput, Farm, UpdateFarmInput } from "@/types/farm";
 
 const farmSchema = z.object({
   farm_name: z.string().min(1, "Farm name is required").max(100),
   address: z.string().min(1, "Address is required").max(255),
-  size: z.number({ error: "Size is required" }).positive("Size must be greater than 0"),
+  size: positiveNumber("Size"),
   lat: z
     .string()
     .refine(

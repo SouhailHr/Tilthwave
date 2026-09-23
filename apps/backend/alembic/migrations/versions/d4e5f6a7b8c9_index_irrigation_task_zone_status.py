@@ -10,6 +10,7 @@ its own autocommit block, so the streamer and the API keep writing while it buil
 """
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -23,6 +24,9 @@ INDEX_NAME = 'ix_irrigation_task_zone_name_status'
 
 def upgrade() -> None:
     with op.get_context().autocommit_block():
+        # A CONCURRENTLY build cancelled by lock_timeout leaves the index behind, marked INVALID,
+        # with the revision unstamped; the next run must not die on "already exists".
+        op.execute(sa.text(f"DROP INDEX CONCURRENTLY IF EXISTS {INDEX_NAME}"))
         op.create_index(INDEX_NAME, 'irrigation_task', ['zone_name', 'status'], postgresql_concurrently=True)
 
 

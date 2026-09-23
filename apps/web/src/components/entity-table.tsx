@@ -138,7 +138,7 @@ export function EntityTable<T extends EntityWithId>({
 
       {isError ? (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-          {error instanceof Error ? error.message : "Failed to load"}
+          {error.message}
         </div>
       ) : null}
 

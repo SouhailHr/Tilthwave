@@ -76,17 +76,6 @@ export function useEntityList<T>(resource: string, params: ListParams = {}) {
   });
 }
 
-export function useEntity<T>(
-  resource: string,
-  id: number | string | null | undefined,
-) {
-  return useQuery<T, ApiError>({
-    queryKey: entityDetailKey(resource, id ?? ""),
-    enabled: id != null,
-    queryFn: () => fetchEntity<T>(resource, id as number | string),
-  });
-}
-
 export function useCreateEntity<T extends EntityWithId, TInput = Partial<T>>(
   resource: string,
 ) {

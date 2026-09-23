@@ -5,9 +5,6 @@ whatever the number of zones, sensors or records.
 
 from datetime import datetime
 
-import pytest
-from sqlalchemy import event
-
 import interfaces.flow_runner.flow_runner as flow_runner
 from adapters.sensor import SensorAdaptor
 from adapters.sensor_record import SensorRecordAdaptor
@@ -16,28 +13,6 @@ from common.tenant_context import reset_tenant, set_tenant
 from infrastructure.database.tables.sensor_record import SensorRecord
 from tests.conftest import FARM_A, FARM_B
 from tests.integration.test_irrigation import RecordingBroker, _use_cases_with
-
-
-@pytest.fixture
-def count_statements(repos):
-    """Number of SQL statements executed inside the `with` block, on the engine the repos use."""
-    engine = repos.sensor_record.engine
-
-    class Counter:
-        n = 0
-
-        def __enter__(self):
-            self.n = 0
-            event.listen(engine, "before_cursor_execute", self._hit)
-            return self
-
-        def __exit__(self, *_exc):
-            event.remove(engine, "before_cursor_execute", self._hit)
-
-        def _hit(self, *_args):
-            self.n += 1
-
-    return Counter()
 
 
 def _sensor(repos, serial, type_="moisture_sensor", farm=None):

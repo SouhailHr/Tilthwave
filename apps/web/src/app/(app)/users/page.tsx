@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 
-
 import { useCreateUser, useUpdateUser } from "@/api/users";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";

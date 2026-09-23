@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-
 import { useChangePassword, useProfile, useUpdateProfile } from "@/api/account";
 import { toApiError } from "@/api/errors";
 import { PasswordInput } from "@/components/password-input";

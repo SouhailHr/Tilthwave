@@ -25,12 +25,6 @@ class BaseDBRepo:
     ENTITY = None
     ADAPTOR = None
     READ_ONLY_FIELDS = ["id", "created_date"]
-    # Per-farm tenancy scope, overridden per repository. One of:
-    #   ("column", "<farm column>") direct farm column on the model
-    #   ("self", "<farm column>")   the farm row itself
-    #   ("via_zone",)               model.zone_name -> zone.farm_name
-    #   ("via_sensor",)             model.sensor_serial_number -> sensor.farm_name
-    #   None                        not tenant-scoped (no farm linkage)
     TENANT_SCOPE = None  # a TenantScope (repositories/tenancy.py), or None: no farm linkage
 
     def __init__(self, uri: str, echo: bool = False):

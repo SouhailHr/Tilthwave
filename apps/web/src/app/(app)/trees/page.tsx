@@ -2,20 +2,21 @@
 
 import { z } from "zod";
 
+
 import { useCreateTree, useUpdateTree } from "@/api/trees";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
+import { positiveNumber } from "@/lib/form-fields";
 import type { CreateTreeInput, Tree, UpdateTreeInput } from "@/types/tree";
-
 
 const treeSchema = z.object({
   zone_name: z.string().min(1, "Zone is required"),
   variety: z.string().min(1, "Variety is required"),
   planting_date: z.string().min(1, "Planting date is required"),
-  height: z.number({ error: "Height is required" }).positive("Height must be greater than 0"),
-  width_diameter: z.number({ error: "Width diameter is required" }).positive("Width diameter must be greater than 0"),
-  trunk_diameter: z.number({ error: "Trunk diameter is required" }).positive("Trunk diameter must be greater than 0"),
+  height: positiveNumber("Height"),
+  width_diameter: positiveNumber("Width diameter"),
+  trunk_diameter: positiveNumber("Trunk diameter"),
   serial_number: z.string().min(1, "Serial number is required"),
 });
 

@@ -32,6 +32,7 @@ class FarmUseCase(BaseUseCase):
         self.water_switcher_repo = water_switcher_repo
         self.water_source_repo = water_source_repo
         self.sensor_record_repo = sensor_record_repo
+        self._past_months: dict[tuple, tuple[int, dict[int, float]]] = {}
 
     def get_all_zones(self, farm_name: str):
         """
@@ -46,9 +47,9 @@ class FarmUseCase(BaseUseCase):
 
     def get_total_water_sources(self, farm_name: str):
         """
-         Get total water sources in the farm
+         The farm's water sources
         @param farm_name:
-        @return: int number of zones in the farm
+        @return: list of WaterSource entities
         """
 
         filter_by = [{"attribute": "farm_name", "value": farm_name, "condition": "eq"}]
@@ -57,6 +58,22 @@ class FarmUseCase(BaseUseCase):
 
     def _zone_names(self, farm_name: str) -> list[str]:
         return [zone.zone_name for zone in self.get_all_zones(farm_name=farm_name)]
+
+    def _consumption_by_month(self, farm_name: str, serials: list[str]) -> dict[int, float]:
+        """
+        This year's consumption per month. Past months never change, so they are computed once
+        per process and only the current month is re-summed on each call; the dashboard polls
+        this every 30 seconds per open tab, and a year of readings is millions of rows.
+        """
+        now = utc_now()
+        key = (farm_name, now.year, tuple(serials))
+        cached = self._past_months.get(key)
+        if cached is None or cached[0] != now.month - 1:
+            full = self.sensor_record_repo.monthly_consumption(serials, now.year)
+            self._past_months[key] = (now.month - 1, {m: v for m, v in full.items() if m < now.month})
+            return full
+        current = self.sensor_record_repo.monthly_consumption(serials, now.year, from_month=now.month)
+        return {**cached[1], **current}
 
     def get_stats(self, name: str):
         """
@@ -88,7 +105,7 @@ class FarmUseCase(BaseUseCase):
         in_zones = [{"attribute": "zone_name", "value": zones, "condition": "in"}]
         sources = self.get_total_water_sources(farm_name=name)
         serials = [source.sensor_serial_number for source in sources if source.sensor_serial_number]
-        monthly = self.sensor_record_repo.monthly_consumption(serials, utc_now().year)
+        monthly = self._consumption_by_month(name, serials)
         farm_stats: dict = {
             "total_zones": len(zones),
             "total_water_sources": len(sources),

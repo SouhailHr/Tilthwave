@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 
-
 import {
   useCreateIrrigationTask,
   useUpdateIrrigationTask,
@@ -28,7 +27,6 @@ const irrigationTaskSchema = z.object({
 
 type IrrigationTaskValues = z.infer<typeof irrigationTaskSchema>;
 
-
 const irrigationTaskFields: EntityFormField<IrrigationTaskValues>[] = [
   {
     name: "zone_name",
@@ -41,7 +39,6 @@ const irrigationTaskFields: EntityFormField<IrrigationTaskValues>[] = [
   },
   { name: "status", label: "Status", type: "select", options: IRRIGATION_TASK_STATUS_OPTIONS },
 ];
-
 
 const irrigationTaskColumns: Column<IrrigationTask>[] = [
   {

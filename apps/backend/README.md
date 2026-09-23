@@ -113,13 +113,13 @@ time does not reveal whether the account exists.
 
 ## Endpoints
 
-Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (the compose stack sets it; the default
-is off).
+Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (on in the local compose override, off in
+the production file and by default).
 
 Errors use one envelope, `{"detail", "error_code", "request_id"}`: the message is for people, the
 code (`not_found`, `conflict`, `invalid_filter`, `unprocessable`, `validation_error`,
 `bad_request`, `broker_unavailable`, `unauthenticated`, `csrf`, `forbidden`, `rate_limited`,
-`database_error`, `internal_error`) is what a client branches on, and the id is on the
+`database_unavailable` (503 with `Retry-After: 5`), `internal_error`) is what a client branches on, and the id is on the
 `X-Request-ID` response header and on every log line written while handling that request (send
 your own `X-Request-ID` to have it echoed). A request-validation failure (422,
 `validation_error`) adds `fields: {<field>: [<message>, ...]}`. Request bodies are closed: an
@@ -162,8 +162,8 @@ SQLAlchemy URI (tests use `sqlite:///`).
 | `ACCESS_TOKEN_EXPIRE` | `120` | session lifetime, minutes (also the cookie `Max-Age`) |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | JSON list; credentials are allowed for these origins |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | per client IP, per worker |
-| `TRUSTED_PROXIES` | `[]` | proxies whose `X-Forwarded-For` is believed |
-| `DOCS_ENABLED` | `false` | serve `/docs` and `/openapi.json` |
+| `TRUSTED_PROXIES` | `[]` | proxies whose `X-Forwarded-For` is believed; behind a TLS proxy this must name it, or every client shares one rate-limit bucket (the API warns at startup) |
+| `DOCS_ENABLED` | `false` | serve `/docs` and `/openapi.json` (the local compose override turns them on; the production file leaves them off) |
 | `COOKIE_SECURE` | `false` | `Secure` flag on session cookies; `true` behind TLS |
 | `COOKIE_DOMAIN` | unset | host-only by default; `.example.com` when web and API are on different subdomains |
 | `WEB_BASE_URL` | `http://localhost:3000` | where password-reset links point |

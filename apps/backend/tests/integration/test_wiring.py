@@ -46,13 +46,12 @@ def test_the_unconsumed_surface_is_gone(client, auth_headers, make_farm):
     assert client.post("/auth/token/verify/", json={"token": "x"}, headers=headers).status_code == 404
 
 
-def test_irrigation_task_lookups_return_lists(repos, make_farm, make_zone):
+def test_irrigation_task_lookup_returns_a_list(repos, make_farm, make_zone):
 
     make_farm(FARM_A)
     make_zone("Zone A")
     broker = RecordingBroker()
     zones = build_use_cases(repos, BrokerRepositories(water_source=broker, water_switcher=broker)).zone
-    assert zones.get_irrigation_tasks("Zone A", global_constants.IRRIGATION_TASK_IN_PROGRESS) == []
     assert zones.get_all_irrigation_tasks(global_constants.IRRIGATION_TASK_IN_PROGRESS) == []
 
 

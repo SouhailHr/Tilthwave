@@ -8,6 +8,7 @@ import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
 import type { Column } from "@/components/entity-table";
 import { Badge } from "@/components/ui/badge";
+import { positiveNumber } from "@/lib/form-fields";
 import { DEVICE_STATUS_OPTIONS, deviceStatusVariant } from "@/lib/status-ui";
 import {
   DEVICE_STATUSES,
@@ -17,19 +18,17 @@ import {
   type WaterSource,
 } from "@/types/water-source";
 
-
 const waterSourceSchema = z.object({
   serial_number: z.string().min(1, "Serial number is required"),
   farm_name: z.string().min(1, "Farm is required"),
   type: z.string().min(1, "Type is required").max(50),
-  water_pressure: z.number({ error: "Water pressure is required" }).positive("Water pressure must be greater than 0"),
-  water_volume: z.number({ error: "Water volume is required" }).positive("Water volume must be greater than 0"),
+  water_pressure: positiveNumber("Water pressure"),
+  water_volume: positiveNumber("Water volume"),
   status: z.enum(DEVICE_STATUSES),
   sensor_serial_number: z.string(),
 });
 
 type WaterSourceValues = z.infer<typeof waterSourceSchema>;
-
 
 const waterSourceFields: EntityFormField<WaterSourceValues>[] = [
   { name: "serial_number", label: "Serial number", placeholder: "e.g. WSDEEP00123" },
@@ -56,7 +55,6 @@ const waterSourceFields: EntityFormField<WaterSourceValues>[] = [
     placeholder: "Sensor serial",
   },
 ];
-
 
 const waterSourceColumns: Column<WaterSource>[] = [
   {

@@ -19,10 +19,10 @@ class SensorRecordUseCase(BaseUseCase):
         filter_by = [{"attribute": "sensor_serial_number", "value": serial_number, "condition": "eq"}]
         return self.first(filters=filter_by, order_by="created_date", order_direction="desc")
 
-    def latest_per_sensor(self, serial_numbers) -> list:
-        """The newest record of each sensor, one query for all of them (see the repository)."""
-        return self.repo.latest_per_sensor(serial_numbers)
+    def latest_per_sensor(self, serial_numbers, since=None) -> list:
+        """The newest record of each sensor (at or after `since`), one query (see the repository)."""
+        return self.repo.latest_per_sensor(serial_numbers, since=since)
 
-    def monthly_consumption(self, serial_numbers, year: int) -> dict[int, float]:
+    def monthly_consumption(self, serial_numbers, year: int, from_month: int = 1) -> dict[int, float]:
         """{month: total consumption} of `year` over the sensors, one query (see the repository)."""
-        return self.repo.monthly_consumption(serial_numbers, year)
+        return self.repo.monthly_consumption(serial_numbers, year, from_month)

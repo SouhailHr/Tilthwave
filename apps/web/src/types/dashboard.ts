@@ -17,6 +17,6 @@ export interface DashboardSummary {
   recent_tasks: IrrigationTask[];
   farms: { total: number };
   zones: { total: number };
-  /** The caller's farm with the same stats as GET /farms/stats/{farm_name}; null if they have none. */
+  /** The caller's farm with its counts and this year's consumption per month; null if they have none. */
   farm: ({ farm_name: string } & FarmStats) | null;
 }
