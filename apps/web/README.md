@@ -68,6 +68,17 @@ The session is an httpOnly cookie set by the API; the browser never sees the tok
   go through `/auth/password/forgot` and `/auth/password/reset`. Any password change invalidates
   every other session for that user (the API fingerprints the hash into the token).
 
+## Brand
+
+The brand kit lives in `public/brand` (SVG masters, reverse-mark PNGs for icons) and
+`src/app/tokens.css` (loam, loam-deep, furrow, shoot, amber, sage, radii), imported once by
+`globals.css`, which builds the shadcn variables and the `bg-loam` / `text-furrow` / `bg-shoot`
+utilities from it. Rules worth remembering: the wordmark is always the lowercase `tilthwave`
+lockup SVG, not live text (the sign-in card is the one approved exception); amber is a signal
+colour for live and alert states, never a fill; shoot text fails contrast on sage, so links are
+furrow on light and shoot on dark. The sign-in screens draw the animated field with
+`src/lib/field-background.ts` (a still frame under reduced motion, stopped on unmount).
+
 ## Dates
 
 The API returns ISO 8601 timestamps with a UTC offset (`2026-09-15T16:06:56.266864+00:00`);
