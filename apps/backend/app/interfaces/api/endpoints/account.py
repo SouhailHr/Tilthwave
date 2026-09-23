@@ -7,9 +7,11 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from starlette import status
 
+from common.audit import audit
 from common.exceptions import NotFoundError
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import new_csrf_token, set_session_cookies
+from interfaces.api.helpers.rate_limit import client_ip
 from interfaces.api.helpers.tenant import AUTH_VIA_STATE_KEY
 from interfaces.api.schemas.account import PasswordChange, ProfileUpdate
 from wiring import api_use_cases
@@ -40,10 +42,13 @@ def get_profile(request: Request):
 def update_profile(
     request: Request, data: ProfileUpdate, username: str = Depends(AuthHelper.get_current_user_username)
 ):
-    """Update the caller's own contact details. Role, farm and active flag are not editable here."""
-    payload = data.model_dump(exclude_unset=True)
+    """
+    Update the caller's own contact details. Role, farm and active flag are not editable here; a
+    new email needs `current_password`.
+    """
+    payload = data.model_dump(exclude_unset=True)  # current_password is excluded by the schema
     payload["performed_by"] = username
-    user = use_cases.users.update_own_profile(_user_id(request), payload)
+    user = use_cases.users.update_own_profile(_user_id(request), payload, data.current_password)
     if user is None:
         raise NotFoundError("Users not found")
     return user.to_public_dict()
@@ -59,6 +64,7 @@ def change_password(request: Request, data: PasswordChange):
     for an API client. Every other device is signed out at its next request.
     """
     user = use_cases.users.change_password(_user_id(request), data.current_password, data.new_password)
+    audit("account.password_change", user=user.username, ip=client_ip(request))
     channel = getattr(request.state, AUTH_VIA_STATE_KEY, None)
     access_token = AuthHelper.open_session(user, channel or "header", request)
     # Same shape as /auth/login plus the message: token is null when the session travels as a cookie.
@@ -92,6 +98,7 @@ def revoke_other_sessions(request: Request):
     """Sign out everywhere else: every session of the caller but this one is ended."""
     claims = _claims(request)
     revoked = use_cases.sessions.revoke_all(claims["user_id"], except_token_id=claims["jti"])
+    audit("session.revoke_others", user=claims["username"], revoked=revoked, ip=client_ip(request))
     return {"message": "Other sessions signed out", "revoked": revoked}
 
 
@@ -106,4 +113,5 @@ def revoke_session(id: int, request: Request):
     if session is None or session.user_id != claims["user_id"] or session.revoked_at is not None:
         raise NotFoundError("Session not found")
     use_cases.sessions.revoke(claims["user_id"], session.token_id)
+    audit("session.revoke", user=claims["username"], session=id, ip=client_ip(request))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

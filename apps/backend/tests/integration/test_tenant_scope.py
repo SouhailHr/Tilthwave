@@ -4,6 +4,7 @@ from adapters.sensor import SensorAdaptor
 from adapters.sensor_record import SensorRecordAdaptor
 from common.exceptions import InvalidFilterError, NotFoundError
 from common.tenant_context import get_current_tenant, reset_tenant, set_tenant
+from infrastructure.scripts.create_admin import bootstrap_admin
 from tests.conftest import FARM_A, FARM_B
 
 
@@ -46,11 +47,10 @@ def test_create_cannot_assign_another_farm(client, auth_headers, make_farm, repo
     assert repos.zone.get(response.json()["id"]).farm_name == FARM_A
 
 
-def test_caller_without_farm_sees_nothing(client, auth_headers, make_farm, make_zone):
+def test_caller_without_farm_is_refused(client, auth_headers, make_farm, make_zone):
     make_farm(FARM_A)
     make_zone("Zone A")
-    page = client.get("/zones/", headers=auth_headers(farm_name=None)).json()
-    assert page["total"] == 0
+    assert client.get("/zones/", headers=auth_headers(farm_name=None)).status_code == 401
 
 
 def test_non_http_callers_run_unscoped(repos, make_farm, make_zone):
@@ -86,11 +86,13 @@ def test_farm_scoped_owner_cannot_create_a_farm_under_another_name(client, auth_
     assert repos.farm.first([{"attribute": "farm_name", "value": "Squatted Farm", "condition": "eq"}]) is None
 
 
-def test_farm_less_bootstrap_admin_still_creates_farms(client, auth_headers, repos):
-    payload = {"farm_name": "Brand New Farm", "address": "1 Somewhere", "size": 5.0}
-    response = client.post("/farms/", json=payload, headers=auth_headers(farm_name=None))
-    assert response.status_code == 201
-    assert response.json()["farm_name"] == "Brand New Farm"
+def test_bootstrap_creates_the_farm_it_names(repos):
+    """The first account is the owner of a farm that may not exist yet: create_admin makes both."""
+    owner = bootstrap_admin("first", "Adm1n-Test-Passw0rd!", farm_name="Brand New Farm")
+    assert owner.role == "owner" and owner.farm_name == "Brand New Farm"
+    assert repos.farm.first([{"attribute": "farm_name", "value": "Brand New Farm", "condition": "eq"}]) is not None
+    with pytest.raises(ValueError, match="Farm name"):
+        bootstrap_admin("second", "Adm1n-Test-Passw0rd!", farm_name="")
 
 
 def test_sensor_record_cannot_be_written_into_another_farms_sensor(repos, make_farm):

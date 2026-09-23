@@ -1,9 +1,12 @@
 import type { User } from "@/types/user";
 
-/** What a user may change about themselves. Role, farm and active flag are an admin's. */
+/**
+ * What a user may change about themselves. Role, farm and active flag are an owner's. A new
+ * email needs the current password (it is where reset links go).
+ */
 export type ProfileUpdateInput = Partial<
   Pick<User, "email" | "phone_number" | "first_name" | "last_name">
->;
+> & { current_password?: string };
 
 export interface PasswordChangeInput {
   current_password: string;

@@ -136,13 +136,7 @@ def test_summary_requires_a_token(client):
     assert client.get("/dashboard/summary/").status_code == 401
 
 
-def test_caller_without_a_farm_gets_an_empty_summary(client, auth_headers, make_farm, make_zone, repos):
+def test_caller_without_a_farm_is_not_authenticated(client, auth_headers, make_farm, make_zone, repos):
     _two_farms(repos, make_farm, make_zone)
-
-    body = client.get("/dashboard/summary/", headers=auth_headers(username="nofarm", farm_name=None)).json()
-
-    assert body["sensors"]["total"] == 0
-    assert body["irrigation_tasks"]["total"] == 0
-    assert body["recent_tasks"] == []
-    assert body["farms"] == {"total": 0}
-    assert body["farm"] is None
+    response = client.get("/dashboard/summary/", headers=auth_headers(username="nofarm", farm_name=None))
+    assert response.status_code == 401

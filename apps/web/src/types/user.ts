@@ -25,11 +25,10 @@ export interface CreateUserInput {
   role: UserRole;
   is_active: boolean;
   farm_name?: string | null;
-  is_superuser?: boolean | null;
 }
 
 // What PATCH /users/{id} accepts (UserUpdate has extra="forbid"): no username, farm, password or
-// superuser flag. A password changes through Settings or the reset link.
+// superuser flag (derived from the role; not accepted on create either). A password changes through Settings or the reset link.
 export type UpdateUserInput = Partial<
   Pick<CreateUserInput, "email" | "phone_number" | "first_name" | "last_name" | "role" | "is_active">
 >;

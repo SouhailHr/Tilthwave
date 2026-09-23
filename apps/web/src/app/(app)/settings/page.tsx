@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -45,6 +45,7 @@ const profileSchema = z.object({
   phone_number: z.string().min(1, "Phone number is required").max(50),
   first_name: z.string().min(1, "First name is required").max(50),
   last_name: z.string().min(1, "Last name is required").max(50),
+  current_password: z.string().max(72),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
@@ -67,6 +68,7 @@ function toProfileValues(user: User): ProfileValues {
     phone_number: user.phone_number,
     first_name: user.first_name,
     last_name: user.last_name,
+    current_password: "",
   };
 }
 
@@ -78,13 +80,27 @@ function ProfileCard({ user }: { user: User }) {
     values: toProfileValues(user), // re-syncs if the record changes underneath
   });
 
+  const emailChanged = useWatch({ control: form.control, name: "email" }) !== user.email;
+
   async function onSubmit(values: ProfileValues) {
+    const { current_password, ...profile } = values;
+    if (emailChanged && !current_password) {
+      form.setError("current_password", { message: "Enter your password to change the email" });
+      return;
+    }
     try {
-      const saved = await update.mutateAsync(values);
+      const saved = await update.mutateAsync(
+        emailChanged ? { ...profile, current_password } : profile,
+      );
       form.reset(toProfileValues(saved));
       toast.success("Profile updated");
     } catch (err) {
-      toast.error(toApiError(err, "Could not update the profile").message);
+      const apiError = toApiError(err, "Could not update the profile");
+      if (apiError.status === 422 && /password/i.test(apiError.message)) {
+        form.setError("current_password", { message: apiError.message });
+      } else {
+        toast.error(apiError.message);
+      }
     }
   }
 
@@ -139,6 +155,22 @@ function ProfileCard({ user }: { user: User }) {
                 </FormItem>
               )}
             />
+            {emailChanged && (
+              <FormField
+                control={form.control}
+                name="current_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current password</FormLabel>
+                    <FormControl>
+                      <PasswordInput autoComplete="current-password" {...field} />
+                    </FormControl>
+                    <FormDescription>Required to change the email.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="phone_number"

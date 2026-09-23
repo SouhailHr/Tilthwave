@@ -8,8 +8,8 @@ class AuthLogin(BaseModel):
     Schema for Login , includes validation and serialization logic.
     """
 
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=50)
+    password: str = Field(min_length=1, max_length=72)
     use_cookie: bool = Field(
         default=False,
         description="Browser clients: keep the session in httpOnly cookies and omit the token from the body.",

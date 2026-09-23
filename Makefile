@@ -48,7 +48,7 @@ migrate: ## Apply pending migrations
 migration-create: ## Autogenerate a migration (m="message")
 	$(COMPOSE) run --rm migrate alembic revision --autogenerate -m "$(m)"
 
-create-admin: ## Bootstrap an extra admin (ADMIN_* env vars or prompts)
+create-admin: ## Bootstrap a farm's owner account (ADMIN_* env vars or prompts)
 	$(COMPOSE) run --rm -it seed python /backend/app/infrastructure/scripts/create_admin.py
 
 psql: ## Open psql on the stack database

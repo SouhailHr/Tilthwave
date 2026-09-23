@@ -19,7 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
 from adapters.exceptions import AdaptorException
-from common.exceptions import BrokerError, ConflictError, InvalidFilterError, NotFoundError
+from common.exceptions import BrokerError, ConflictError, ForbiddenError, InvalidFilterError, NotFoundError
 from common.request_context import current_request_id
 from core.use_cases.exceptions import UseCaseException
 from infrastructure.exceptions import DBReposException
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 CLIENT_FACING = {
     NotFoundError: (status.HTTP_404_NOT_FOUND, "not_found"),
     ConflictError: (status.HTTP_409_CONFLICT, "conflict"),
+    ForbiddenError: (status.HTTP_403_FORBIDDEN, "forbidden"),
     InvalidFilterError: (status.HTTP_400_BAD_REQUEST, "invalid_filter"),
     AdaptorException: (status.HTTP_422_UNPROCESSABLE_CONTENT, "unprocessable"),
     UseCaseException: (status.HTTP_422_UNPROCESSABLE_CONTENT, "unprocessable"),

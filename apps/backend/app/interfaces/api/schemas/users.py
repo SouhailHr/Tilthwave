@@ -28,8 +28,8 @@ class UserCreate(BaseModel):
     last_name: str
     role: str = Field(pattern=global_constants.USER_ROLES, description="User's role within the system.")
     is_active: bool = True
+    # is_superuser is not accepted: it is derived from the role by the use case (extra="forbid" makes sending it a 422).
     farm_name: str | None = Field(description="The name of the farm managed by the user.", max_length=100)
-    is_superuser: bool | None = Field(default=False, description="Indicates if the user has superuser privileges.")
 
     model_config = ConfigDict(
         extra="forbid",

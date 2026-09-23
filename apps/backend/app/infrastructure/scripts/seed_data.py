@@ -12,7 +12,7 @@ this DB unchanged.
 
 Linkage:
   Sunny Farms
-    └─ admin user (farm_name=Sunny Farms)
+    └─ owner account (farm_name=Sunny Farms; ADMIN_USERNAME, default admin)
     └─ Zone A
         ├─ trees: TREEA001..TREEA003 (olive)
         ├─ sensors: TSN123456 (temp), MSN123456 (moisture), SAT123456 (saturation)
@@ -73,6 +73,18 @@ def _exists(repo, attribute: str, value) -> bool:
     return bool(repo.filter([{"attribute": attribute, "value": value, "condition": "eq"}]))
 
 
+def _exists_owner(farm_name) -> bool:
+    return bool(
+        user_repo.filter(
+            [
+                {"attribute": "farm_name", "value": farm_name, "condition": "eq"},
+                {"attribute": "role", "value": "owner", "condition": "eq"},
+                {"attribute": "is_active", "value": True, "condition": "eq"},
+            ]
+        )
+    )
+
+
 def _create(repo, adaptor, data: dict, label: str, key_attr: str):
     if _exists(repo, key_attr, data[key_attr]):
         log.info("→  exists  %s (%s=%s)", label, key_attr, data[key_attr])
@@ -98,14 +110,21 @@ def seed_farm():
 
 def seed_admin():
     """
-    Create an admin user owned by the seeded farm.
+    Create the owner account of the seeded farm.
 
     ADMIN_PASSWORD is required: there is no default, so a seeded stack can never carry a
     well-known superuser password. Username/email are overridable via env.
     """
     username = os.environ.get("ADMIN_USERNAME", "admin")
-    if _exists(user_repo, "username", username):
-        log.info("→  exists  Admin (username=%s)", username)
+    existing = user_repo.first([{"attribute": "username", "value": username, "condition": "eq"}])
+    if existing is not None:
+        if existing.role != "owner" and not _exists_owner(existing.farm_name):
+            # Seeded before owners existed as the managing role: without one, nobody could appoint
+            # an admin again. Promoted once; the farm's owner may then reassign as they see fit.
+            user_repo.update(existing.id, {"role": "owner", "is_superuser": True})
+            log.info("✓  promoted %s to owner of %s (the farm had none)", username, existing.farm_name)
+        else:
+            log.info("→  exists  Owner (username=%s)", username)
         return
     password = os.environ.get("ADMIN_PASSWORD")
     if not password:
@@ -113,7 +132,7 @@ def seed_admin():
     bootstrap_admin(
         username, password, farm_name=FARM_NAME, email=os.environ.get("ADMIN_EMAIL"), performed_by=PERFORMED_BY
     )
-    log.info("✓  created Admin (username=%s, farm=%s)", username, FARM_NAME)
+    log.info("✓  created Owner (username=%s, farm=%s)", username, FARM_NAME)
 
 
 def seed_simulator_user():

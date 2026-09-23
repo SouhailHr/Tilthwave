@@ -65,13 +65,22 @@ tests/                        pytest, SQLite
   for the farm table, `.via_zone()`, `.via_sensor()`; `repositories/tenancy.py`), one object that
   both filters every read and binds every write, so a scope kind cannot exist on one side only
   (a farm-scoped caller cannot create a row, including a farm, under another farm). There is no role-based
-  bypass: an authenticated caller with no farm gets empty results on scoped repositories, and
-  non-HTTP callers (flow runner, streamer, scripts) run unscoped. `without_tenant()` is the
-  explicit escape hatch, used only for the caller's own account (profile, password), where the
-  row is the caller's by construction and a farm-less bootstrap admin must still reach it.
+  bypass, and non-HTTP callers (flow runner, streamer, scripts) run unscoped. `without_tenant()`
+  is the explicit escape hatch, used only for the caller's own account (profile, password),
+  where the row is the caller's by construction.
 - **Authorization.** `RBACMiddleware` checks role × method × resource before the endpoint runs
   (`common/constants.py`). Workers and engineers do not see `/users`: the staff list is for admins
-  and owners; everyone's own profile is `/account`.
+  and owners; everyone's own profile is `/account`. Within `/users` the use case applies the
+  hierarchy: only an **owner** creates an admin or owner, gives or takes one of those roles, or
+  changes, deactivates, deletes or sets the password of one (403 otherwise); an admin manages
+  workers and engineers. Nobody changes their own role or status through `/users` or deletes
+  themselves (422), and the last active owner of a farm cannot be demoted, deactivated or deleted.
+  The first account (`create_admin.py`, the seed) is the farm's owner, and every account belongs
+  to a farm: one without cannot sign in.
+- **Audit.** The `audit` logger writes one `event=...` line per login attempt (success, failure,
+  locked), logout, password change, forgot and reset, session revocation, user creation, role
+  change, activation, deactivation, deletion and email change, with actor, target and address,
+  under the request id of the request that caused it.
 - **Errors.** Domain exceptions (`common/exceptions.py`) become HTTP responses in one place,
   `interfaces/api/helpers/errors.py`; endpoints never build error bodies.
 - **Flow runner safety.** Commands are published before task state is persisted, and two limits
@@ -125,6 +134,9 @@ time does not reveal whether the account exists.
 Interactive docs at `/docs` when `API_DOCS_ENABLED=true` (on in the local compose override, off in
 the production file and by default).
 
+Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
+`Cache-Control: no-store`.
+
 Errors use one envelope, `{"detail", "error_code", "request_id"}`: the message is for people, the
 code (`not_found`, `conflict`, `invalid_filter`, `unprocessable`, `validation_error`,
 `bad_request`, `broker_unavailable`, `unauthenticated`, `csrf`, `forbidden`, `rate_limited`,
@@ -142,7 +154,7 @@ URL shape is part of the contract: collections end with a slash (`/zones/`), ite
 | Prefix | Notes |
 |---|---|
 | `/auth` | `login`, `logout`, `me`, `password/forgot`, `password/reset` |
-| `/account` | `GET/PATCH profile`, `POST password` (own account, current password required), `GET/DELETE sessions[/{id}]` |
+| `/account` | `GET/PATCH profile` (a new email needs `current_password`), `POST password` (current password required), `GET/DELETE sessions[/{id}]` |
 | `/dashboard` | `GET summary/`: counts for the dashboard cards, computed in SQL |
 | `/farms`, `/zones`, `/trees`, `/sensors`, `/water-sources`, `/water-switchers`, `/irrigation-tasks`, `/users` | CRUD, paginated lists, tenant-scoped |
 | `/zone-sensors`, `/sensor-records` | links and raw readings |

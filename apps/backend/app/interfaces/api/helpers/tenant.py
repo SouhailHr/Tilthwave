@@ -2,7 +2,7 @@
 
 Takes the credential from the Authorization header (API clients) or, failing that, from the
 httpOnly session cookie (the web app), decodes it once, loads the user row and the session row
-(`jti`) it names and stores {username, farm_name, role, is_superuser} in a ContextVar the repository
+(`jti`) it names and stores {user_id, username, farm_name, role, is_superuser} in a ContextVar the repository
 layer reads to enforce per-farm isolation. Role and farm come from the database, not the token, and a missing or
 deactivated user is rejected: deactivating or demoting someone takes effect on their next request
 instead of when their token expires. Being a plain ASGI middleware (not BaseHTTPMiddleware), it
@@ -50,7 +50,9 @@ class TenantContextMiddleware:
         use_cases = api_use_cases()
         # No tenant context is set yet, so this lookup is unscoped: the row itself tells the farm.
         user = use_cases.users.get(user_id)
-        if user is None or not user.is_active:
+        # No farm, no access: a user whose farm was deleted (ON DELETE SET NULL) is signed out here,
+        # and login refuses such an account outright (endpoints/auth.py).
+        if user is None or not user.is_active or not user.farm_name:
             return None, None
         session = use_cases.sessions.resolve(claims.get("jti"))
         if session is None or session.user_id != user.id:
@@ -105,6 +107,7 @@ class TenantContextMiddleware:
                     state[CLAIMS_STATE_KEY] = claims
                     state[AUTH_VIA_STATE_KEY] = via
                     ctx = {
+                        "user_id": user.id,
                         "username": user.username,
                         "farm_name": user.farm_name,
                         "role": user.role,
