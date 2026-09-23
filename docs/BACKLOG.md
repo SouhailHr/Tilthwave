@@ -54,10 +54,12 @@ Data and migrations
 
 Operations
 
-- **Observability, what is left**: metrics and JSON logs exist (2026-09-23); nothing scrapes or
-  ships them yet. Pick the sink (a Prometheus + Loki pair on the host, or a hosted one), wire the
-  four alerts listed in `deploy/README.md`, and decide on an autoheal sidecar (docker socket =
-  root on the host) versus external health monitoring; healthchecks alone restart nothing.
+- **Observability, what is left**: Grafana Cloud through Alloy is wired (2026-09-23, opt-in
+  profile; rules and dashboard in `deploy/grafana/`). Still open: the account and the
+  `push.sh` run are yours; `db-backup` health is not a metric (a docker-health exporter would
+  make it alertable); the autoheal sidecar decision (docker socket = root on the host) versus
+  relying on the "process down" alert; longer metric history needs a paid tier or a Prometheus on
+  the host behind the same Grafana.
 - **[A] `mail.py` logs and continues after the 202**; the user never learns the reset mail
   failed. Acceptable, but it is the one true log-and-continue in the backend.
 - **[A] Every command does `produce()` + `flush(5)` synchronously** (`zone.py`): a tick that

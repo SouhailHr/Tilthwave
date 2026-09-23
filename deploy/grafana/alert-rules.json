@@ -1,0 +1,110 @@
+[
+  {
+    "title": "Flow runner silent",
+    "ruleGroup": "tilthwave",
+    "for": "5m",
+    "noDataState": "Alerting",
+    "execErrState": "Error",
+    "condition": "C",
+    "annotations": {
+      "summary": "No successful control-loop tick for 5 minutes on {{ $labels.site }}",
+      "description": "The flow runner has not completed a tick without failures. Irrigation is not being evaluated; an open valve would not be closed by the loop. Check `docker ps` (healthcheck) and the flow-runner logs."
+    },
+    "labels": { "severity": "critical", "component": "flow-runner" },
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "grafanacloud-prom",
+        "relativeTimeRange": { "from": 600, "to": 0 },
+        "model": {
+          "refId": "A",
+          "expr": "(time() - max by (site) (tilthwave_flow_runner_last_successful_tick_timestamp_seconds)) > 300 or absent(tilthwave_flow_runner_last_successful_tick_timestamp_seconds)",
+          "instant": true
+        }
+      },
+      {
+        "refId": "C",
+        "datasourceUid": "__expr__",
+        "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }] }
+      }
+    ]
+  },
+  {
+    "title": "Streamer re-consuming (database unavailable)",
+    "ruleGroup": "tilthwave",
+    "for": "0s",
+    "noDataState": "OK",
+    "execErrState": "Error",
+    "condition": "C",
+    "annotations": {
+      "summary": "Sensor readings are being nacked on {{ $labels.site }}",
+      "description": "The streamer could not write readings to Postgres and is retrying the same message. Nothing is lost while it retries, but no new readings arrive and the flow runner goes blind after FLOW_RUNNER_MAX_READING_AGE_MINUTES. Check the database (health/ready on the API)."
+    },
+    "labels": { "severity": "warning", "component": "streamer" },
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "grafanacloud-prom",
+        "relativeTimeRange": { "from": 600, "to": 0 },
+        "model": { "refId": "A", "expr": "sum by (site) (increase(tilthwave_streamer_events_total{outcome=\"nacked\"}[10m]))", "instant": true }
+      },
+      {
+        "refId": "C",
+        "datasourceUid": "__expr__",
+        "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }] }
+      }
+    ]
+  },
+  {
+    "title": "Field command failed",
+    "ruleGroup": "tilthwave",
+    "for": "0s",
+    "noDataState": "OK",
+    "execErrState": "Error",
+    "condition": "C",
+    "annotations": {
+      "summary": "A command to the field did not reach the broker on {{ $labels.site }}",
+      "description": "The flow runner could not publish an On/Off command. The task state was not changed (publish-then-persist), so the loop retries next tick; if this repeats, the broker is down and a valve that is open stays open until it is back."
+    },
+    "labels": { "severity": "critical", "component": "broker" },
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "grafanacloud-prom",
+        "relativeTimeRange": { "from": 600, "to": 0 },
+        "model": { "refId": "A", "expr": "sum by (site) (increase(tilthwave_broker_commands_total{outcome=\"failed\"}[10m]))", "instant": true }
+      },
+      {
+        "refId": "C",
+        "datasourceUid": "__expr__",
+        "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }] }
+      }
+    ]
+  },
+  {
+    "title": "A backend process is down",
+    "ruleGroup": "tilthwave",
+    "for": "3m",
+    "noDataState": "Alerting",
+    "execErrState": "Error",
+    "condition": "C",
+    "annotations": {
+      "summary": "{{ $labels.job }} is not answering its /metrics on {{ $labels.site }}",
+      "description": "Alloy could not scrape the process for 3 minutes: it is down, restarting in a loop, or (for the API) API_METRICS_TOKEN no longer matches. `restart: unless-stopped` does not restart an unhealthy container that is still running."
+    },
+    "labels": { "severity": "critical", "component": "host" },
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "grafanacloud-prom",
+        "relativeTimeRange": { "from": 600, "to": 0 },
+        "model": { "refId": "A", "expr": "up{job=~\"api|streamer|flow-runner\"} == 0 or absent(up{job=\"api\"}) or absent(up{job=\"streamer\"}) or absent(up{job=\"flow-runner\"})", "instant": true }
+      },
+      {
+        "refId": "C",
+        "datasourceUid": "__expr__",
+        "model": { "refId": "C", "type": "threshold", "expression": "A", "conditions": [{ "evaluator": { "type": "gt", "params": [-1] } }] }
+      }
+    ]
+  }
+]
