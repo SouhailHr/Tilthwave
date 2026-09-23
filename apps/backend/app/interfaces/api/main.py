@@ -14,6 +14,7 @@ from interfaces.api.endpoints import (
     farm,
     health,
     irrigation_task,
+    metrics,
     sensor,
     sensor_record,
     tree,
@@ -25,11 +26,12 @@ from interfaces.api.endpoints import (
 )
 from interfaces.api.helpers.auth import require_credential
 from interfaces.api.helpers.errors import register_exception_handlers
+from interfaces.api.helpers.metrics import MetricsMiddleware
 from interfaces.api.helpers.permission import RBACMiddleware
 from interfaces.api.helpers.request_id import RequestIdMiddleware
 from interfaces.api.helpers.tenant import TenantContextMiddleware
 
-configure_logging(settings.LOG_LEVEL)
+configure_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
 
 # Interactive docs only when API_DOCS_ENABLED=true: they map the whole attack surface.
 # redirect_slashes=False: a path with the wrong trailing slash is a 404, not a 307. The redirect
@@ -59,6 +61,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 app.add_middleware(TenantContextMiddleware)
+app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestIdMiddleware)
 
 if settings.API.COOKIE_SECURE and not settings.API.TRUSTED_PROXIES:
@@ -108,6 +111,7 @@ api_router.include_router(account.router)
 # Public routes
 app.include_router(auth.router)
 app.include_router(health.router)
+app.include_router(metrics.router)
 
 app.include_router(api_router)
 

@@ -32,14 +32,19 @@ services:
     build: *backend-build
     environment:
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}  # /docs for development; the production file defaults to off
+      LOG_FORMAT: ${LOG_FORMAT:-text}
     ports:
       - "${BIND_ADDR:-127.0.0.1}:${API_PORT:-8080}:8080"
   seed:
     build: *backend-build
   streamer:
     build: *backend-build
+    environment:
+      LOG_FORMAT: ${LOG_FORMAT:-text}
   flow-runner:
     build: *backend-build
+    environment:
+      LOG_FORMAT: ${LOG_FORMAT:-text}
 
   sim-actuators:
     build: *simulator-build

@@ -68,4 +68,4 @@ _OBSERVE = {
 RESOURCES_FOR_ROLES = {"admin": _MANAGE, "owner": _MANAGE, "worker": _OBSERVE, "engineer": _OBSERVE}
 
 # Excluded paths from permission
-EXCLUDED_PATHS = ["auth", "docs", "openapi.json", "health"]
+EXCLUDED_PATHS = ["auth", "docs", "openapi.json", "health", "metrics"]

@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from common.exceptions import BrokerError, ConflictError, InvalidFilterError, NotFoundError
+from common.metrics import BROKER_COMMANDS
 from common.tenant_context import get_current_tenant
 from infrastructure.exceptions import DBReposException
 
@@ -373,6 +374,14 @@ class BaseBrokerRepo:
                 delivery_errors.append(error)
 
         logger.info("Pushing event %s.%s on broker %s", key, topic, self.random_broker)
+        try:
+            self._publish(topic, key, event_json, on_delivery, delivery_errors)
+        except BrokerError:
+            BROKER_COMMANDS.labels(topic, "failed").inc()
+            raise
+        BROKER_COMMANDS.labels(topic, "sent").inc()
+
+    def _publish(self, topic, key, event_json, on_delivery, delivery_errors):
         try:
             self.producer.produce(topic, key=key, value=event_json.encode("utf-8"), on_delivery=on_delivery)
             remaining = self.producer.flush(BROKER_DELIVERY_TIMEOUT_SECONDS)
