@@ -102,6 +102,9 @@ def test_database_outage_nacks_the_message_instead_of_skipping_it(monkeypatch):
         run_streamer.sensors_streamer({"event_type": "data_record", "sensor_serial_number": "MSN1"})
 
 
-def test_a_bad_payload_is_rejected_not_retried():
+def test_a_bad_payload_is_rejected_not_retried(monkeypatch):
+    parked = []
+    monkeypatch.setattr(run_streamer, "dead_letter", lambda event, error: parked.append(event))
     with pytest.raises(UseCaseException):
         run_streamer.sensors_streamer({"event_type": "bogus"})
+    assert parked == [{"event_type": "bogus"}]  # skipped, but not lost

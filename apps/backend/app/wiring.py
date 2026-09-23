@@ -100,10 +100,16 @@ def build_noop_broker_repositories() -> BrokerRepositories:
     return BrokerRepositories(water_source=NoopBrokerRepo(), water_switcher=NoopBrokerRepo())
 
 
+def producer_config(broker: str) -> dict:
+    return {"bootstrap.servers": broker, "enable.idempotence": True}
+
+
 def build_kafka_broker_repositories() -> BrokerRepositories:
     """Broker gateways publishing to Kafka: only the flow runner may actuate the field."""
     broker = random.choice(settings.STREAMER.BROKER_HOSTS)
-    producer = Producer({"bootstrap.servers": broker})
+    # Idempotent (implies acks=all): a produce librdkafka retries after a lost ack is written once,
+    # so a flaky link cannot turn one On/Off command into two.
+    producer = Producer(producer_config(broker))
     return BrokerRepositories(
         water_source=WaterSourceBrokerRepository(producer=producer, random_broker=broker),
         water_switcher=WaterSwitcherBrokerRepository(producer=producer, random_broker=broker),

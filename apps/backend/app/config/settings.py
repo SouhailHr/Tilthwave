@@ -42,6 +42,11 @@ class DatabaseSettings(BaseSettings):
     DB: str
     PORT: str = "5432"
     URI: str | None = None
+    # Every connection the app opens gives up after CONNECT_TIMEOUT_SECONDS, and every statement
+    # after STATEMENT_TIMEOUT_MS: one stuck query must not hold an API worker or a control-loop
+    # tick forever. Migrations use their own engine (alembic env.py) and are not limited.
+    CONNECT_TIMEOUT_SECONDS: int = 5
+    STATEMENT_TIMEOUT_MS: int = 15000
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="POSTGRES_", case_sensitive=True, extra="ignore")
 
     @field_validator("URI", mode="before")
@@ -117,6 +122,8 @@ class StreamerSettings(BaseSettings):
     # Consumer group of the backend streamer; explicit so offsets survive restarts and
     # the group is never shared with the simulator's consumers.
     GROUP_ID: str = "tilthwave-backend-streamer"
+    # Where an event the streamer cannot process goes, with the error; blank = SENSORS_TOPIC + ".dlq".
+    DLQ_TOPIC: str = ""
     LOG_LEVEL: str = "INFO"
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="STREAMER_", case_sensitive=True, extra="ignore")
 

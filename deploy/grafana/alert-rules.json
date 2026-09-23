@@ -198,5 +198,55 @@
         }
       }
     ]
+  },
+  {
+    "title": "Sensor events dead-lettered",
+    "ruleGroup": "tilthwave",
+    "for": "0s",
+    "noDataState": "OK",
+    "execErrState": "Error",
+    "condition": "C",
+    "annotations": {
+      "summary": "The streamer rejected sensor events on {{ $labels.site }}",
+      "description": "Events the streamer could not process were parked on the dead-letter topic. Readings from that sensor are missing until the cause is fixed; then replay them with infrastructure/scripts/replay_dlq.py --apply."
+    },
+    "labels": {
+      "severity": "warning",
+      "component": "streamer"
+    },
+    "data": [
+      {
+        "refId": "A",
+        "datasourceUid": "grafanacloud-prom",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "model": {
+          "refId": "A",
+          "expr": "sum by (site) (increase(tilthwave_streamer_events_total{outcome=\"rejected\"}[10m])) > 0",
+          "instant": true
+        }
+      },
+      {
+        "refId": "C",
+        "datasourceUid": "__expr__",
+        "model": {
+          "refId": "C",
+          "type": "threshold",
+          "expression": "A",
+          "conditions": [
+            {
+              "evaluator": {
+                "type": "gt",
+                "params": [
+                  0
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
   }
 ]
