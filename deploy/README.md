@@ -52,13 +52,39 @@ Every backend process exports a Prometheus registry (`apps/backend/app/common/me
 
 Requests by route template and status class with latency histograms, streamer events by outcome
 (processed / nacked / rejected), flow-runner ticks by outcome with the last successful tick as a
-timestamp and the consecutive-failure count, and broker commands by topic and outcome. A
-Prometheus on the compose network scrapes the three; from outside only the API, with
-`authorization: credentials: <API_METRICS_TOKEN>` in the scrape config. Alerts worth having first:
-`time() - tilthwave_flow_runner_last_successful_tick_timestamp_seconds > 300`,
-`increase(tilthwave_streamer_events_total{outcome="nacked"}[10m]) > 0`,
-`increase(tilthwave_broker_commands_total{outcome="failed"}[10m]) > 0`, and the `db-backup`
-container unhealthy.
+timestamp and the consecutive-failure count, and broker commands by topic and outcome.
+
+### Grafana Cloud
+
+The sink is Grafana Cloud (free tier: 14-day retention, no time limit on the account) with one
+agent on the host, Grafana Alloy (`alloy` service, `profiles: [observability]`,
+`deploy/alloy/config.alloy`). It scrapes the three `/metrics` on the compose network (the API's
+with `API_METRICS_TOKEN`) and tails every container's log through the docker socket (read-only;
+the socket is root on the host, which is why the service is opt-in), turning the backend's JSON
+lines into a `level` label and `logger` / `request_id` structured metadata. Every series and line
+carries `site=SITE_NAME`, so several hosts fit in one Grafana.
+
+1. Create a Grafana Cloud stack. From its Prometheus and Loki details copy the two push URLs and
+   user ids, and create one access-policy token with `metrics:write` and `logs:write`. Put them in
+   the environment (`deploy/.env` or Coolify) as `GRAFANA_CLOUD_PROM_URL`, `GRAFANA_CLOUD_PROM_USER`,
+   `GRAFANA_CLOUD_LOKI_URL`, `GRAFANA_CLOUD_LOKI_USER`, `GRAFANA_CLOUD_TOKEN`, with `SITE_NAME` and
+   `API_METRICS_TOKEN` set. Add `COMPOSE_PROFILES=observability` (Coolify: an environment variable)
+   and redeploy; `docker ps` shows `tilthwave-alloy` healthy.
+2. Create a service account in Grafana (Administration > Service accounts, role Editor) with a
+   token, then from this checkout:
+   ```bash
+   GRAFANA_URL=https://<stack>.grafana.net GRAFANA_TOKEN=<token> ALERT_EMAIL=you@example.com \
+     deploy/grafana/push.sh
+   ```
+   This creates the Tilthwave folder, the four alert rules (`deploy/grafana/alert-rules.json`:
+   flow runner silent for 5 min, streamer re-consuming, field command failed, a backend process
+   down) and the operations dashboard (`deploy/grafana/dashboard.json`), and with `ALERT_EMAIL`
+   an email contact point as the default route. Re-run after editing either file; rules are
+   matched by title, the dashboard by uid, and both stay editable in the UI.
+
+The alerts assume the Grafana Cloud data source uids `grafanacloud-prom` and `grafanacloud-logs`;
+on a self-hosted Grafana, rename them in the two JSON files. The `db-backup` healthcheck is not a
+metric yet: watch it with `docker ps` or add a docker-health exporter when it matters.
 
 Logs are one JSON object per line in production (`LOG_FORMAT=json`, the compose default: `ts`,
 `level`, `logger`, `request_id`, `message`, `exc`), so a shipper reading the docker log driver can
