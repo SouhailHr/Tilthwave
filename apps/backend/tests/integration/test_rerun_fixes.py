@@ -12,6 +12,8 @@ from adapters.sensor_record import SensorRecordAdaptor
 from adapters.water_source import WaterSourceAdaptor
 from adapters.water_switcher import WaterSwitcherAdaptor
 from common.dates import utc_now
+from common.tenant_context import reset_tenant, set_tenant
+from infrastructure.database.tables.sensor_record import SensorRecord
 from infrastructure.exceptions import DBReposException
 from infrastructure.repositories.base import BaseDBRepo
 from interfaces.api.main import app
@@ -144,8 +146,6 @@ def test_dashboard_summary_stays_within_its_statement_budget(repos, use_cases, m
     make_zone("Zone A")
     for i in range(3):
         _sensor(repos, f"S{i}", "moisture_sensor")
-    from common.tenant_context import reset_tenant, set_tenant  # noqa: PLC0415
-
     token = set_tenant({"username": "a", "farm_name": FARM_A, "role": "admin", "is_superuser": True})
     try:
         with count_statements as counted:
@@ -164,8 +164,6 @@ def test_latest_per_sensor_ignores_records_older_than_since(repos, make_farm):
     old = repos.sensor_record.create(
         SensorRecordAdaptor.dict_to_entity({"sensor_serial_number": "M-1", "data": {"value": 1}, "performed_by": "t"})
     )
-    from infrastructure.database.tables.sensor_record import SensorRecord  # noqa: PLC0415
-
     with repos.sensor_record.Session() as session:
         session.get(SensorRecord, old.id).created_date = utc_now() - timedelta(minutes=90)
         session.commit()
