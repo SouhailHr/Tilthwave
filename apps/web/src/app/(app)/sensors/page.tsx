@@ -1,6 +1,6 @@
 "use client";
 
-import { z } from "zod";
+import * as z from "zod";
 
 import { useCreateSensor, useUpdateSensor } from "@/api/sensors";
 import { EntityCrudPage } from "@/components/entity-crud-page";

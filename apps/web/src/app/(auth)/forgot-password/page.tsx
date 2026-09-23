@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
+import * as z from "zod";
 
 import { useForgotPassword } from "@/api/auth";
 import { toApiError } from "@/api/errors";

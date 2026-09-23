@@ -1,4 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   entityChildKey,
@@ -36,64 +39,6 @@ describe("Generic Repository key helpers", () => {
     expect(entityChildKey("farms", "stats", "Sunny").slice(0, 1)).toEqual(
       entityRootKey("farms"),
     );
-  });
-});
-
-type Handlers = {
-  handlers: { fulfilled: (cfg: unknown) => unknown; rejected: (err: unknown) => unknown }[];
-};
-
-describe("client interceptors", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    document.cookie = "tw_csrf=; Max-Age=0; Path=/";
-  });
-
-  it("emits auth:expired on a 401 (and nothing else clears: the cookie is the server's)", async () => {
-    const events: { type: string }[] = [];
-    vi.doMock("@/lib/eventBus", () => ({
-      emit: (e: { type: string }) => events.push(e),
-      subscribe: () => () => {},
-    }));
-
-    const { api } = await import("./client");
-    const rejected = (api.interceptors.response as unknown as Handlers).handlers[0]?.rejected;
-    expect(rejected).toBeTypeOf("function");
-
-    await expect(
-      rejected({ response: { status: 401 }, config: { url: "/zones/" }, isAxiosError: true }),
-    ).rejects.toBeDefined();
-    expect(events.some((e) => e.type === "auth:expired")).toBe(true);
-  });
-
-  it("does not emit auth:expired for a 401 from the /auth/me probe (nobody signed in is not an expiry)", async () => {
-    const events: { type: string }[] = [];
-    vi.doMock("@/lib/eventBus", () => ({
-      emit: (e: { type: string }) => events.push(e),
-      subscribe: () => () => {},
-    }));
-
-    const { api } = await import("./client");
-    const rejected = (api.interceptors.response as unknown as Handlers).handlers[0]?.rejected;
-
-    await expect(
-      rejected({ response: { status: 401 }, config: { url: "/auth/me" }, isAxiosError: true }),
-    ).rejects.toBeDefined();
-    expect(events).toEqual([]);
-  });
-
-  it("sends the CSRF cookie back as a header on mutations only, and sends credentials", async () => {
-    document.cookie = "tw_csrf=abc123; Path=/";
-    const { api, CSRF_HEADER } = await import("./client");
-    expect(api.defaults.withCredentials).toBe(true);
-    const fulfilled = (api.interceptors.request as unknown as Handlers).handlers[0]?.fulfilled;
-
-    const post = fulfilled({ method: "post", headers: {} }) as { headers: Record<string, string> };
-    expect(post.headers[CSRF_HEADER]).toBe("abc123");
-    const del = fulfilled({ method: "delete", headers: {} }) as { headers: Record<string, string> };
-    expect(del.headers[CSRF_HEADER]).toBe("abc123");
-    const get = fulfilled({ method: "get", headers: {} }) as { headers: Record<string, string> };
-    expect(get.headers[CSRF_HEADER]).toBeUndefined();
   });
 });
 
@@ -140,5 +85,39 @@ describe("entity fetchers", () => {
 
     const { fetchEntity } = await import("./entity-queries");
     await expect(fetchEntity("zones", 1)).rejects.toMatchObject({ status: 500, message: "Database error" });
+  });
+});
+
+describe("mutation hooks", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  function wrapperFor(client: QueryClient) {
+    function Wrapper({ children }: { children: ReactNode }) {
+      return createElement(QueryClientProvider, { client }, children);
+    }
+    return Wrapper;
+  }
+
+  it("useCreateEntity invalidates every query of the resource", async () => {
+    vi.doMock("@/api/client", () => ({ api: { post: vi.fn().mockResolvedValue({ data: { id: 9 } }) } }));
+    const { useCreateEntity } = await import("./entity-queries");
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useCreateEntity<{ id: number }, { zone_name: string }>("zones"), { wrapper: wrapperFor(client) });
+    await result.current.mutateAsync({ zone_name: "Zone A" });
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["zones"] }));
+  });
+
+  it("useUpdateEntity invalidates the resource and the row it changed", async () => {
+    vi.doMock("@/api/client", () => ({ api: { patch: vi.fn().mockResolvedValue({ data: { id: 7 } }) } }));
+    const { useUpdateEntity } = await import("./entity-queries");
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useUpdateEntity<{ id: number }, { size: number }>("zones"), { wrapper: wrapperFor(client) });
+    await result.current.mutateAsync({ id: 7, input: { size: 2 } });
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["zones", "detail", 7] }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["zones"] });
   });
 });

@@ -17,20 +17,16 @@ is removed from this file, not struck through; git history has the rest.
   `request_id` to send along.
 - **Reliability knobs.** No mutation retry policy or backoff, no optimistic updates, no offline
   detection.
-- **[A] Bundle.** Every route, including login, ships ≥ 189 KB gz of JS. Not the quick win it
-  looked like: the sign-in, forgot and reset pages use react-query (their mutations) and zod (their
-  forms) themselves, so `QueryProvider` cannot leave the root layout and the shared chunk is their
-  own dependency. What remains is `zod/mini` in the form schemas (a schema-syntax migration) and
-  auditing base-ui's share; measure with `next build` before starting.
+- **[A] Bundle.** The login route's first load is 851 KB uncompressed / 264 KB gz after the zod
+  namespace import (2026-09-23; was 1 137 KB / 317 KB). The sign-in, forgot and reset pages use
+  react-query and zod themselves, so `QueryProvider` cannot leave the root layout. Next: audit
+  base-ui's share; `zod/mini` would be a schema-syntax migration for a smaller gain.
 - **Dashboard shell.** `(app)/page.tsx` is a ~230-line client component. **[A]** Already one
   query plus pure helpers; the RSC split buys little. Low priority.
 - **Env.** `NEXT_PUBLIC_API_BASE_URL` is not validated at build time (the release workflow
   refuses to build without it; `next build` itself does not).
-- **[A] Tests: pages are untested.** `entity-form.tsx` and `entity-table.tsx` have their first
-  tests; still none for `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the
-  `useCreateEntity` / `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts`
-  (two simultaneous 401s must emit `auth:expired` once). `entity-queries.test.ts` reaches into
-  `api.interceptors.response.handlers[0]`; drive it through `api.get()` with a mocked adapter.
+- **Tests: still untested** after the page tests (2026-09-23): the app shell, the dashboard and
+  the resource pages' column and field configs, `SensorCrudHelper` beyond the covered paths.
 
 ## Backend (`apps/backend`)
 
@@ -77,8 +73,6 @@ Operations
 
 Tests (behavioural, run on SQLite and on Postgres in CI, with coverage reported; gaps only)
 
-- **Web page tests**: none for `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the
-  `useCreateEntity` / `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts`.
 - **No coverage threshold**: collection only; set a floor once the numbers have been read a few
   times.
 
@@ -101,10 +95,6 @@ Decisions recorded (not work items)
 
 Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fix/re-run-findings`)
 
-- **Seven template route files** (`endpoints/{farm,tree,zone,water_source,water_switcher,
-  irrigation_task,zone_sensors}.py`, ~380 lines differing only in names): a `crud_router(prefix,
-  tag, helper, Create, Update, patch=True)` factory in `endpoints/base.py` makes each an eight-line
-  file and any cross-cutting endpoint change a single edit.
 - **Simulators in the production compose without a profile** (`seed`, `sim-actuators`,
   `sim-sensors`; `flow-runner` waits on `seed`). Coolify runs the demo today, so this is a
   decision: `profiles: [demo]` on the three plus `COMPOSE_PROFILES=demo` in Coolify's env, so a
@@ -113,23 +103,20 @@ Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fi
   commands need the broker's ack, so the task stays in progress and the hard stop cannot reach
   the field either; the loop retries every tick and exits after ten failures. A real actuator
   needs its own watchdog (auto-close without a keep-alive); only the simulator answers today.
-- **zod ships its 63 locales on every route** (~40 KB gz of the login page's 317 KB): `import { z }`
-  keeps the namespace, so nothing tree-shakes. Named imports or `zod/mini` in the form schemas;
-  measure with `.next/diagnostics/route-bundle-stats.json` before and after.
-- **Dependabot may not be running**: no PRs while several packages sit behind versions the
-  lockfiles already allow (SQLAlchemy 2.0.43 → .54, `next` 16.3.6, `vite` 8, `jsdom` 29). Check
-  Settings → Code security; `ghcr.io/astral-sh/uv` in the Dockerfiles is by tag and outside
-  Dependabot's parser, so bump it by hand.
+- **Dependabot is running** (checked 2026-09-23): weekly, all five ecosystems, 13 PRs on
+  2026-09-20. It does not re-propose a version set whose grouped PR was closed unmerged (#8 for
+  the backend), which is why those versions sat still; they were bumped by hand in the
+  2026-09-23 debt bundle. Left to do in GitHub settings: enable automated security fixes (off
+  today); `ghcr.io/astral-sh/uv` in the Dockerfiles is by tag and outside Dependabot's parser,
+  so bump it by hand.
 - **`c3d4e5f6a7b8`-style `SET NOT NULL`** holds ACCESS EXCLUSIVE with a full scan; on a large
   table use `ADD CONSTRAINT … CHECK (… IS NOT NULL) NOT VALID`, `VALIDATE`, then `SET NOT NULL`.
   Noted for the next revision of that shape.
 - **Unit of work**: the repository opens a session per call, so a multi-step write
   (`start_irrigation`, sensor + link) spans sessions with no transaction. Publish-then-persist
   bounds the blast radius; revisit when a second multi-write use case lands.
-- **Web coverage is 31% over `src/`** (the CI number now says so): the CRUD page shell, the app
-  shell and the auth pages are untested; `entity-queries.test.ts` still reaches into axios
-  internals. Also `SensorCrudHelper` create/update handlers beyond the covered paths, and the SMTP
-  send path in `mail.py`.
+- **Coverage gaps**: `SensorCrudHelper` create/update handlers beyond the covered paths, the SMTP
+  send path in `mail.py`, the web app shell and dashboard.
 - **Generic error codes**: "Not authenticated" and "Invalid or expired token" both map to
   `unauthenticated`; login failure and an invalid reset token share `bad_request`.
 - **MFA**: TOTP for admin and owner, decided for a later PR (2026-09-23).
@@ -158,9 +145,9 @@ Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fi
   `postgres:16-alpine`, Redpanda, console). Dependabot covers the docker ecosystem, so digests
   would stay maintained. **[A]** `apps/web/Dockerfile.dev` runs `npm install` (not `ci`) at
   start, so it can rewrite the lockfile from inside the container.
-- **[A] Upgradeable without blockers**: `vite` 7 → 8, `jsdom` 25 → 29 (dev-only), SQLAlchemy
-  2.0.43 → 2.0.54, stale transitives (`uv lock --upgrade`; `uv lock --check` does not catch
-  drift). Still blocked upstream: ESLint 10 (Next's plugin peers, not eslint-config-next itself),
-  TypeScript 7 (`typescript-eslint` peers).
+- **[A] Upgradeable without blockers**: `vite` 7 → 8, `jsdom` 25 → 29 (dev-only majors). Python
+  pins and transitives were refreshed on 2026-09-23 (`uv lock --upgrade`; `uv lock --check` does
+  not catch drift). Still blocked upstream: ESLint 10 (Next's plugin peers, not eslint-config-next
+  itself), TypeScript 7 (`typescript-eslint` peers).
 - **Kafka broker TLS / auth.** Deliberately not planned (the broker is not published outside the
   compose network). Listed so it is not forgotten.

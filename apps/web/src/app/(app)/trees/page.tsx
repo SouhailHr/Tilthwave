@@ -1,6 +1,6 @@
 "use client";
 
-import { z } from "zod";
+import * as z from "zod";
 
 
 import { useCreateTree, useUpdateTree } from "@/api/trees";

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * The API's rule, stated once for every form that sets a password: at least 8 characters, and at

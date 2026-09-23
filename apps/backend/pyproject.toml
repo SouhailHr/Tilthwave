@@ -14,7 +14,7 @@ dependencies = [
     "bcrypt==5.0.0",           # used directly (core/security/password.py); passlib is gone
     # Database
     "psycopg2-binary==2.9.13",   # wheels for py3.12; no libpq/compiler needed
-    "SQLAlchemy==2.0.43",
+    "SQLAlchemy==2.0.54",
     "alembic==1.20.0",
     # API
     "fastapi==0.141.1",
@@ -29,8 +29,8 @@ dependencies = [
     # Upgrading needs a code change (deferred to the faststream migration follow-up), not a
     # version bump alone.
     # Flow runner
-    "APScheduler==3.11.0",
-    "prometheus-client==0.24.1",
+    "APScheduler==3.11.3",
+    "prometheus-client==0.26.0",
 ]
 
 [dependency-groups]

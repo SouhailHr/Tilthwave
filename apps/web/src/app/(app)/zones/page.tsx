@@ -1,6 +1,6 @@
 "use client";
 
-import { z } from "zod";
+import * as z from "zod";
 
 import { useCreateZone, useUpdateZone } from "@/api/zones";
 import { EntityCrudPage } from "@/components/entity-crud-page";
