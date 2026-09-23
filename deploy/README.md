@@ -88,8 +88,9 @@ carries `site=SITE_NAME`, so several hosts fit in one Grafana.
    an email contact point as the default route. Re-run after editing either file; rules are
    matched by title, the dashboard by uid, and both stay editable in the UI.
 
-The alerts assume the Grafana Cloud data source uids `grafanacloud-prom` and `grafanacloud-logs`;
-on a self-hosted Grafana, rename them in the two JSON files. The `db-backup` healthcheck is not a
+The two JSON files name the data sources `grafanacloud-prom` and `grafanacloud-logs`; `push.sh`
+looks up the real Prometheus and Loki uids in the target Grafana and substitutes them, so a
+renamed or self-hosted data source needs no edit. The `db-backup` healthcheck is not a
 metric yet: watch it with `docker ps` or add a docker-health exporter when it matters.
 
 Logs are one JSON object per line in production (`LOG_FORMAT=json`, the compose default: `ts`,

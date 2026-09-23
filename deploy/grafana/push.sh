@@ -36,12 +36,23 @@ if [ -n "${ALERT_EMAIL:-}" ]; then
   echo "default notification policy -> tilthwave-email"
 fi
 
+# The rule and dashboard files name the data sources by the uids a Grafana Cloud stack ships with
+# (grafanacloud-prom, grafanacloud-logs). Resolve the real ones from this Grafana and substitute,
+# so a renamed or self-hosted data source works too.
+datasources=$(api GET /api/datasources)
+prom_uid=$(python3 -c 'import sys,json;d=[x for x in json.load(sys.stdin) if x["type"]=="prometheus"];d.sort(key=lambda x:(not x["name"].startswith("grafanacloud-"), not x.get("isDefault",False)));print(d[0]["uid"] if d else "")' <<<"$datasources")
+loki_uid=$(python3 -c 'import sys,json;d=[x for x in json.load(sys.stdin) if x["type"]=="loki"];d.sort(key=lambda x:not x["name"].startswith("grafanacloud-"));print(d[0]["uid"] if d else "")' <<<"$datasources")
+: "${prom_uid:?no Prometheus data source found in this Grafana}"
+: "${loki_uid:?no Loki data source found in this Grafana}"
+echo "data sources: prometheus=$prom_uid loki=$loki_uid"
+
 existing=$(api GET /api/v1/provisioning/alert-rules)
-python3 - "$folder_uid" "$existing" "$here/alert-rules.json" <<'PY' | while IFS=$'\t' read -r method path body; do api "$method" "$path" "$body" >/dev/null; echo "$method $path"; done
+python3 - "$folder_uid" "$existing" "$here/alert-rules.json" "$prom_uid" "$loki_uid" <<'PY' | while IFS=$'\t' read -r method path body; do api "$method" "$path" "$body" >/dev/null; echo "$method $path"; done
 import json, sys
-folder, existing, rules_path = sys.argv[1], json.loads(sys.argv[2]), sys.argv[3]
+folder, existing, rules_path, prom_uid, loki_uid = sys.argv[1], json.loads(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
 by_title = {r["title"]: r["uid"] for r in existing}
-for rule in json.load(open(rules_path)):
+raw = open(rules_path).read().replace("grafanacloud-prom", prom_uid).replace("grafanacloud-logs", loki_uid)
+for rule in json.loads(raw):
     rule = {**rule, "folderUID": folder, "orgID": 1}
     uid = by_title.get(rule["title"])
     if uid:
@@ -50,5 +61,5 @@ for rule in json.load(open(rules_path)):
         print("POST", "/api/v1/provisioning/alert-rules", json.dumps(rule), sep="\t")
 PY
 
-dashboard=$(python3 -c 'import json,sys;print(json.dumps({"dashboard": json.load(open(sys.argv[1])), "folderUid": sys.argv[2], "overwrite": True}))' "$here/dashboard.json" "$folder_uid")
+dashboard=$(python3 -c 'import json,sys;raw=open(sys.argv[1]).read().replace("grafanacloud-prom", sys.argv[3]).replace("grafanacloud-logs", sys.argv[4]);print(json.dumps({"dashboard": json.loads(raw), "folderUid": sys.argv[2], "overwrite": True}))' "$here/dashboard.json" "$folder_uid" "$prom_uid" "$loki_uid")
 api POST /api/dashboards/db "$dashboard" | python3 -c 'import sys,json;d=json.load(sys.stdin);print("dashboard", d.get("status"), d.get("url"))'
