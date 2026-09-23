@@ -11,7 +11,8 @@ Consumer settings are explicit so behaviour does not depend on library defaults:
 
 /health answers 204 while the broker connection responds to a ping and 500 otherwise; it is the
 container healthcheck in deploy/docker-compose.yml, served by uvicorn on the --host/--port that
-docker/streamer/entrypoint.sh passes to `faststream run`.
+docker/streamer/entrypoint.sh passes to `faststream run`. /metrics on the same port is the
+process's Prometheus registry (common/metrics.py); the port stays inside the compose network.
 """
 
 import logging
@@ -22,11 +23,12 @@ from faststream.confluent import KafkaBroker
 from faststream.exceptions import NackMessage
 
 from common.logging import configure_logging
+from common.metrics import STREAMER_EVENTS, metrics_asgi
 from config.settings import settings
 from infrastructure.exceptions import DBReposException
 from interfaces.streamer.event_handler import EventHandler
 
-configure_logging(settings.STREAMER.LOG_LEVEL)
+configure_logging(settings.STREAMER.LOG_LEVEL, settings.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 logger.info("Starting Streamer ...")
@@ -41,7 +43,7 @@ broker = KafkaBroker(bootstrap_servers=settings.STREAMER.BROKER_HOSTS, logger=lo
 # FastStream
 fast_stream = AsgiFastStream(
     broker,
-    asgi_routes=[("/health", make_ping_asgi(broker, timeout=5.0))],
+    asgi_routes=[("/health", make_ping_asgi(broker, timeout=5.0)), ("/metrics", metrics_asgi)],
     logger=logger,
 )
 
@@ -74,9 +76,12 @@ def sensors_streamer(event: dict):
     try:
         event_handler.process(event=event)
     except DBReposException:
+        STREAMER_EVENTS.labels("nacked").inc()
         logger.exception("Database unavailable; re-consuming the event in %ss", DB_RETRY_SECONDS)
         time.sleep(DB_RETRY_SECONDS)
         raise NackMessage() from None
     except Exception:
+        STREAMER_EVENTS.labels("rejected").inc()
         logger.exception("Failed to process event %s; skipping it", event)
         raise
+    STREAMER_EVENTS.labels("processed").inc()

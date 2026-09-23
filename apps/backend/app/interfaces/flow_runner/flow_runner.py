@@ -18,10 +18,12 @@ import sys
 
 from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.blocking import BlockingScheduler
+from prometheus_client import start_http_server
 
 import common.constants as global_constants
 from common.dates import minutes_since
 from common.logging import configure_logging
+from common.metrics import FLOW_RUNNER_CONSECUTIVE_FAILURES, FLOW_RUNNER_LAST_OK, FLOW_RUNNER_TICKS, now
 from config.settings import settings
 from wiring import worker_use_cases
 
@@ -219,9 +221,14 @@ class ZoneAutomaticIrrigationHelper:
     def _record_tick(cls, failures: int) -> None:
         if failures == 0:
             cls.consecutive_failures = 0
+            FLOW_RUNNER_CONSECUTIVE_FAILURES.set(0)
+            FLOW_RUNNER_TICKS.labels("ok").inc()
+            FLOW_RUNNER_LAST_OK.set(now())
             HEARTBEAT_FILE.touch()
             return
         cls.consecutive_failures += 1
+        FLOW_RUNNER_CONSECUTIVE_FAILURES.set(cls.consecutive_failures)
+        FLOW_RUNNER_TICKS.labels("failed").inc()
         if cls.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
             raise ControlLoopFailed(f"{cls.consecutive_failures} consecutive failing ticks")
 
@@ -266,8 +273,11 @@ class ControlLoop:
 
 
 def run():
-    configure_logging(settings.LOG_LEVEL)
+    configure_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
     ZoneAutomaticIrrigationHelper.configure(worker_use_cases())
+    if settings.FLOW_RUNNER.METRICS_PORT:
+        # A daemon thread serving common/metrics.py; the port is not published outside compose.
+        start_http_server(settings.FLOW_RUNNER.METRICS_PORT)
     logger.info("................ Starting Flow Runner (every %s min) .........", settings.FLOW_RUNNER.MINUTES)
     loop = ControlLoop()
 

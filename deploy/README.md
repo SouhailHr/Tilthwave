@@ -19,9 +19,17 @@ make db-dump # ad-hoc pg_dump into deploy/dumps/ (gitignored) — run it before 
 
 ## Backups
 
-`db-backup` runs `pg_dump` into the `pgbackups` volume every `BACKUP_INTERVAL_HOURS` (24) and
-deletes dumps older than `BACKUP_KEEP_DAYS` (14). The volume lives on the host; copy it off the
-machine if the machine itself is the risk. Restore into a running stack:
+`db-backup` runs `pg_dump` into the `pgbackups` volume every `BACKUP_INTERVAL_HOURS` (24), checks
+that gunzip can read the file back, touches `/backups/LAST_OK` and deletes dumps older than
+`BACKUP_KEEP_DAYS` (14). The service's healthcheck is the age of `LAST_OK`: a dump that fails or
+does not verify leaves it alone, so a silent failure shows as an unhealthy container within one
+interval plus an hour (`docker ps`, or whatever watches container health). The volume lives on
+the host; copy it off the machine if the machine itself is the risk.
+
+`make db-backup-now` takes a backup outside the schedule; `make db-restore-drill` restores the
+newest dump into a scratch database, prints its row counts and migration revision, and drops it.
+Run the drill after every schema change and before trusting a new host. Restore for real into a
+running stack:
 
 ```bash
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec db-backup ls -1 /backups
@@ -31,6 +39,35 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec db-backu
 
 `.env.example` documents each variable. Outgoing mail (`SMTP_*`) is optional: left blank, the API
 logs password-reset links instead of sending them.
+
+## Metrics and logs
+
+Every backend process exports a Prometheus registry (`apps/backend/app/common/metrics.py`):
+
+| Process | Endpoint | Reach |
+|---|---|---|
+| API | `GET /metrics`, bearer `API_METRICS_TOKEN` (unset: 404) | through the proxy, like the rest of the API |
+| streamer | `http://streamer:8081/metrics` | compose network only |
+| flow runner | `http://flow-runner:8082/metrics` (`FLOW_RUNNER_METRICS_PORT`, 0 disables) | compose network only |
+
+Requests by route template and status class with latency histograms, streamer events by outcome
+(processed / nacked / rejected), flow-runner ticks by outcome with the last successful tick as a
+timestamp and the consecutive-failure count, and broker commands by topic and outcome. A
+Prometheus on the compose network scrapes the three; from outside only the API, with
+`authorization: credentials: <API_METRICS_TOKEN>` in the scrape config. Alerts worth having first:
+`time() - tilthwave_flow_runner_last_successful_tick_timestamp_seconds > 300`,
+`increase(tilthwave_streamer_events_total{outcome="nacked"}[10m]) > 0`,
+`increase(tilthwave_broker_commands_total{outcome="failed"}[10m]) > 0`, and the `db-backup`
+container unhealthy.
+
+Logs are one JSON object per line in production (`LOG_FORMAT=json`, the compose default: `ts`,
+`level`, `logger`, `request_id`, `message`, `exc`), so a shipper reading the docker log driver can
+filter on `level` and join on `request_id`; the local override uses `text`. uvicorn's own lines
+(startup, access) go through the same formatter; the access line is written after the request
+context is gone, so its `request_id` is `-` while every line the app wrote during the request has
+the id. Container healthchecks do not restart anything (`restart: unless-stopped` acts on exit
+only): watch container health from outside, or add an autoheal sidecar if unattended restarts
+are wanted (it needs the docker socket, which is root on the host; a deliberate choice).
 
 ## Releases
 

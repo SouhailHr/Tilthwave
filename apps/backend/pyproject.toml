@@ -30,6 +30,7 @@ dependencies = [
     # version bump alone.
     # Flow runner
     "APScheduler==3.11.0",
+    "prometheus-client==0.24.1",
 ]
 
 [dependency-groups]

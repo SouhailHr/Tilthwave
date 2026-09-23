@@ -88,13 +88,15 @@ class APISettings(BaseSettings):
     COOKIE_DOMAIN: str | None = None
     # The web app's public URL, for the links in password-reset emails.
     WEB_BASE_URL: str = "http://localhost:3000"
+    # GET /metrics answers only a request bearing this token; unset, the endpoint is a 404.
+    METRICS_TOKEN: str | None = None
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="API_", case_sensitive=True, extra="ignore")
 
     @field_validator("SECRET_KEY")
     def secret_key_is_real(cls, value: str) -> str:
         return reject_placeholder("API_SECRET_KEY", value, MIN_SECRET_KEY_LENGTH)
 
-    @field_validator("COOKIE_DOMAIN", mode="before")
+    @field_validator("COOKIE_DOMAIN", "METRICS_TOKEN", mode="before")
     def blank_domain_is_none(cls, value):
         # compose passes "" when the variable is unset; an empty Domain attribute makes browsers
         # reject the cookie outright, so treat blank as "not set".
@@ -121,6 +123,8 @@ class FlowRunnerSettings(BaseSettings):
     # stop if running) so a dead sensor feed can never leave a valve open.
     MAX_IRRIGATION_MINUTES: int = 60
     MAX_READING_AGE_MINUTES: int = 30
+    # Prometheus metrics on this port (inside the compose network); 0 disables the server.
+    METRICS_PORT: int = 8082
     model_config = SettingsConfigDict(env_file=env_file, env_prefix="FLOW_RUNNER_", case_sensitive=True, extra="ignore")
 
 
@@ -149,6 +153,9 @@ class MailSettings(BaseSettings):
 
 class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
+    # "text" (one line per record, for a terminal) or "json" (one object per line, for a log
+    # shipper): common/logging.py.
+    LOG_FORMAT: str = "text"
     DATABASE: DatabaseSettings = DatabaseSettings()
     API: APISettings = APISettings()
     STREAMER: StreamerSettings = StreamerSettings()

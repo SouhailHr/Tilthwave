@@ -159,6 +159,7 @@ URL shape is part of the contract: collections end with a slash (`/zones/`), ite
 | `/farms`, `/zones`, `/trees`, `/sensors`, `/water-sources`, `/water-switchers`, `/irrigation-tasks`, `/users` | CRUD, paginated lists, tenant-scoped |
 | `/zone-sensors`, `/sensor-records` | links and raw readings |
 | `/health`, `/health/ready` | liveness (process up; the container healthcheck) and readiness (`SELECT 1`, 503 when the database is unreachable); unauthenticated |
+| `/metrics` | the Prometheus registry (`common/metrics.py`), bearer `API_METRICS_TOKEN`; the streamer and flow runner serve theirs on their own ports (see `deploy/README.md`) |
 
 `POST /auth/password/forgot` always returns 202. When the identifier matches a user, a reset link
 (`API_WEB_BASE_URL/reset-password?token=...`) is emailed via SMTP; with no `SMTP_HOST` configured
@@ -189,6 +190,7 @@ SQLAlchemy URI (tests use `sqlite:///`).
 | `COOKIE_SECURE` | `false` | `Secure` flag on session cookies; `true` behind TLS |
 | `COOKIE_DOMAIN` | unset | host-only by default; `.example.com` when web and API are on different subdomains |
 | `WEB_BASE_URL` | `http://localhost:3000` | where password-reset links point |
+| `METRICS_TOKEN` | unset | bearer token for `GET /metrics`; unset, the endpoint is a 404 |
 
 **Mail** (`SMTP_`): `HOST` (unset = log instead of send), `PORT=587`, `USER`, `PASSWORD`,
 `FROM_ADDRESS=tilthwave@localhost`, `USE_TLS=true` (STARTTLS), `TIMEOUT_SECONDS=10` (settings only;
@@ -199,7 +201,9 @@ field would collide with the shell's `$MAIL`.
 `WATER_CONTROL_TOPIC`, `GROUP_ID=tilthwave-backend-streamer`, `LOG_LEVEL=INFO`.
 
 **Flow runner** (`FLOW_RUNNER_`): `MINUTES` (tick interval, required), `MAX_IRRIGATION_MINUTES=60`,
-`MAX_READING_AGE_MINUTES=30`.
+`MAX_READING_AGE_MINUTES=30`, `METRICS_PORT=8082` (0 disables the metrics server).
+
+**Process** (no prefix): `LOG_LEVEL=INFO`, `LOG_FORMAT=text|json` (`common/logging.py`).
 
 ## Related
 

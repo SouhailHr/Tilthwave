@@ -58,10 +58,10 @@ Data and migrations
 
 Operations
 
-- **[A] Observability is level 2 at best**: request ids on every response and log line, but
-  plain-text logs via `basicConfig`, no metrics, and healthchecks cannot trigger restarts
-  (`restart: unless-stopped` fires on exit only; a failing check only shows in `docker ps`).
-  Either monitor health externally or run an autoheal sidecar.
+- **Observability, what is left**: metrics and JSON logs exist (2026-09-23); nothing scrapes or
+  ships them yet. Pick the sink (a Prometheus + Loki pair on the host, or a hosted one), wire the
+  four alerts listed in `deploy/README.md`, and decide on an autoheal sidecar (docker socket =
+  root on the host) versus external health monitoring; healthchecks alone restart nothing.
 - **[A] `mail.py` logs and continues after the 202**; the user never learns the reset mail
   failed. Acceptable, but it is the one true log-and-continue in the backend.
 - **[A] Every command does `produce()` + `flush(5)` synchronously** (`zone.py`): a tick that
@@ -105,11 +105,6 @@ Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fi
   irrigation_task,zone_sensors}.py`, ~380 lines differing only in names): a `crud_router(prefix,
   tag, helper, Create, Update, patch=True)` factory in `endpoints/base.py` makes each an eight-line
   file and any cross-cutting endpoint change a single edit.
-- **No metrics** (level 2 → 3): `prometheus-fastapi-instrumentator` on the API, counters in the
-  streamer (processed / nacked / skipped) and the runner (failed ticks, commands), a JSON log
-  formatter so `level` and `request_id` are fields; alert on CRITICAL/ERROR from the log driver.
-- **Backups fail silently**: `db-backup` echoes `backup FAILED` and loops. Touch `/backups/LAST_OK`
-  on success and give the service a healthcheck on that file's age; run one restore drill.
 - **Simulators in the production compose without a profile** (`seed`, `sim-actuators`,
   `sim-sensors`; `flow-runner` waits on `seed`). Coolify runs the demo today, so this is a
   decision: `profiles: [demo]` on the three plus `COMPOSE_PROFILES=demo` in Coolify's env, so a
