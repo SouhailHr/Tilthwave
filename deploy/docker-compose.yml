@@ -387,6 +387,9 @@ services:
         exec alloy run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     environment:
       SITE_NAME: ${SITE_NAME:-tilthwave}
+      # The compose project whose containers' logs to ship: Coolify names the project after the
+      # resource uuid (COOLIFY_RESOURCE_UUID in its deploy environment); `make up` uses "tilthwave".
+      COMPOSE_PROJECT: ${COOLIFY_RESOURCE_UUID:-${COMPOSE_PROJECT_NAME:-tilthwave}}
       # Defaults are blank rather than required: compose evaluates `:?` even for a profile that is
       # not active, which would break `make up` for everyone; the entrypoint above checks instead.
       API_METRICS_TOKEN: ${API_METRICS_TOKEN:-}
@@ -464,12 +467,14 @@ configs:
 
       // ---- logs -----------------------------------------------------------------------------------------
 
+      // Only this stack's containers. The compose project name is "tilthwave" locally and the
+      // resource uuid on Coolify, so it comes in through COMPOSE_PROJECT (set on the service).
       discovery.docker "compose" {
         host = "unix:///var/run/docker.sock"
 
         filter {
           name   = "label"
-          values = ["com.docker.compose.project=tilthwave"]
+          values = ["com.docker.compose.project=" + sys.env("COMPOSE_PROJECT")]
         }
       }
 
