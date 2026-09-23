@@ -97,7 +97,6 @@ def build_noop_broker_repositories() -> BrokerRepositories:
 
 def build_kafka_broker_repositories() -> BrokerRepositories:
     """Broker gateways publishing to Kafka: only the flow runner may actuate the field."""
-
     broker = random.choice(settings.STREAMER.BROKER_HOSTS)
     producer = Producer({"bootstrap.servers": broker})
     return BrokerRepositories(
@@ -118,7 +117,7 @@ def build_use_cases(repos: Repositories, broker: BrokerRepositories) -> UseCases
     irrigation_tasks = IrrigationTaskUseCase(repo=repos.irrigation_task)
     water_sources = WaterSourceUseCase(repo=repos.water_source, sensors=sensors, broker_repo=broker.water_source)
     water_switchers = WaterSwitcherUseCase(
-        repo=repos.water_switcher, sensors=sensors, broker_repo=broker.water_switcher
+        repo=repos.water_switcher, sensors=sensors, water_sources=water_sources, broker_repo=broker.water_switcher
     )
     zone_sensors = ZoneSensorsUseCase(repo=repos.zone_sensors, sensors=sensors)
     zones = ZoneUseCase(

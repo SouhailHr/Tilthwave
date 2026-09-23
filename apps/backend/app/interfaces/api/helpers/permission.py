@@ -14,15 +14,12 @@ from interfaces.api.helpers.tenant import AUTH_VIA_STATE_KEY, TOKEN_INVALID_STAT
 logger = logging.getLogger(__name__)
 
 
-# Define role-based access control (RBAC) structure
-
-
 def translate_method_to_action(method: str) -> str:
     """
     The function is designed to map HTTP methods to corresponding
     permissions for resource access control.
     @param method: a string representing an HTTP method.
-    @return: HTTP method if not found it returns by default "read"
+    @return: the permission name; an unknown method maps to "deny", never to "read"
     """
     # A Mapper for HTTP methods
     method_permission_mapping = {

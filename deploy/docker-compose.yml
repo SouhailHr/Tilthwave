@@ -60,7 +60,7 @@ x-backend: &backend
     API_ACCESS_TOKEN_EXPIRE: ${API_ACCESS_TOKEN_EXPIRE:-120}
     API_CORS_ORIGINS: ${API_CORS_ORIGINS:-["http://localhost:3000"]}
     API_TRUSTED_PROXIES: ${API_TRUSTED_PROXIES:-[]}
-    API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
+    API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}  # docker-compose.local.yml turns them on for development
     API_COOKIE_SECURE: ${API_COOKIE_SECURE:-false}
     API_COOKIE_DOMAIN: ${API_COOKIE_DOMAIN:-}
     API_WEB_BASE_URL: ${API_WEB_BASE_URL:-http://localhost:3000}
@@ -283,9 +283,10 @@ services:
         condition: service_completed_successfully
       seed:
         condition: service_completed_successfully
-    # The loop touches this file after every successful tick (FLOW_RUNNER_MINUTES apart).
+    # The loop touches this file after every successful tick (FLOW_RUNNER_MINUTES apart); the
+    # window must stay above that interval or the container is permanently unhealthy.
     healthcheck:
-      test: ["CMD-SHELL", "find /tmp/flow-runner.heartbeat -mmin -2 | grep -q ."]
+      test: ["CMD-SHELL", "find /tmp/flow-runner.heartbeat -mmin -${FLOW_RUNNER_HEARTBEAT_MAX_MINUTES:-2} | grep -q ."]
       interval: 30s
       timeout: 5s
       retries: 3

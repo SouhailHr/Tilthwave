@@ -317,7 +317,7 @@ function FkSelect({
           type="search"
           value={filterInput}
           disabled={disabled}
-          placeholder={`Type to narrow ${total} ${resource.replace("-", " ")}`}
+          placeholder={`Type to narrow ${total} ${resource.replaceAll("-", " ")}`}
           aria-label={`Filter ${resource}`}
           onChange={(e) => setFilterInput(e.target.value)}
         />

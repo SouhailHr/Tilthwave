@@ -29,7 +29,7 @@ is removed from this file, not struck through; git history has the rest.
 - **[A] Tests: pages are untested.** `entity-form.tsx` and `entity-table.tsx` have their first
   tests; still none for `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the
   `useCreateEntity` / `useUpdateEntity` invalidation, and the `isRedirecting` guard in `client.ts`
-  (two simultaneous 401s must emit `auth:expired` once). `_entity.test.ts` reaches into
+  (two simultaneous 401s must emit `auth:expired` once). `entity-queries.test.ts` reaches into
   `api.interceptors.response.handlers[0]`; drive it through `api.get()` with a mocked adapter.
 
 ## Backend (`apps/backend`)
@@ -62,8 +62,6 @@ Operations
   plain-text logs via `basicConfig`, no metrics, and healthchecks cannot trigger restarts
   (`restart: unless-stopped` fires on exit only; a failing check only shows in `docker ps`).
   Either monitor health externally or run an autoheal sidecar.
-- **[A] `UVICORN_WORKERS` falls back to `2` in `docker/api/entrypoint.sh`** but `1` in compose;
-  a non-compose run doubles the login rate limit.
 - **[A] `mail.py` logs and continues after the 202**; the user never learns the reset mail
   failed. Acceptable, but it is the one true log-and-continue in the backend.
 - **[A] Every command does `produce()` + `flush(5)` synchronously** (`zone.py`): a tick that
@@ -101,6 +99,45 @@ Decisions recorded (not work items)
   task row can claim a valve is open; an outbox would record the intent first. The compensating
   action for a publish that succeeded without its persist is the next tick's
   `close_all_water_sources`.
+
+Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fix/re-run-findings`)
+
+- **Seven template route files** (`endpoints/{farm,tree,zone,water_source,water_switcher,
+  irrigation_task,zone_sensors}.py`, ~380 lines differing only in names): a `crud_router(prefix,
+  tag, helper, Create, Update, patch=True)` factory in `endpoints/base.py` makes each an eight-line
+  file and any cross-cutting endpoint change a single edit.
+- **No metrics** (level 2 → 3): `prometheus-fastapi-instrumentator` on the API, counters in the
+  streamer (processed / nacked / skipped) and the runner (failed ticks, commands), a JSON log
+  formatter so `level` and `request_id` are fields; alert on CRITICAL/ERROR from the log driver.
+- **Backups fail silently**: `db-backup` echoes `backup FAILED` and loops. Touch `/backups/LAST_OK`
+  on success and give the service a healthcheck on that file's age; run one restore drill.
+- **Simulators in the production compose without a profile** (`seed`, `sim-actuators`,
+  `sim-sensors`; `flow-runner` waits on `seed`). Coolify runs the demo today, so this is a
+  decision: `profiles: [demo]` on the three plus `COMPOSE_PROFILES=demo` in Coolify's env, so a
+  real farm cannot start with fake confirmations feeding the loop.
+- **Broker down mid-irrigation leaves a valve open** (accepted physical-safety dependency): stop
+  commands need the broker's ack, so the task stays in progress and the hard stop cannot reach
+  the field either; the loop retries every tick and exits after ten failures. A real actuator
+  needs its own watchdog (auto-close without a keep-alive); only the simulator answers today.
+- **zod ships its 63 locales on every route** (~40 KB gz of the login page's 317 KB): `import { z }`
+  keeps the namespace, so nothing tree-shakes. Named imports or `zod/mini` in the form schemas;
+  measure with `.next/diagnostics/route-bundle-stats.json` before and after.
+- **Dependabot may not be running**: no PRs while several packages sit behind versions the
+  lockfiles already allow (SQLAlchemy 2.0.43 → .54, `next` 16.3.6, `vite` 8, `jsdom` 29). Check
+  Settings → Code security; `ghcr.io/astral-sh/uv` in the Dockerfiles is by tag and outside
+  Dependabot's parser, so bump it by hand.
+- **`c3d4e5f6a7b8`-style `SET NOT NULL`** holds ACCESS EXCLUSIVE with a full scan; on a large
+  table use `ADD CONSTRAINT … CHECK (… IS NOT NULL) NOT VALID`, `VALIDATE`, then `SET NOT NULL`.
+  Noted for the next revision of that shape.
+- **Unit of work**: the repository opens a session per call, so a multi-step write
+  (`start_irrigation`, sensor + link) spans sessions with no transaction. Publish-then-persist
+  bounds the blast radius; revisit when a second multi-write use case lands.
+- **Web coverage is 31% over `src/`** (the CI number now says so): the CRUD page shell, the app
+  shell and the auth pages are untested; `entity-queries.test.ts` still reaches into axios
+  internals. Also `SensorCrudHelper` create/update handlers beyond the covered paths, and the SMTP
+  send path in `mail.py`.
+- **Generic error codes**: "Not authenticated" and "Invalid or expired token" both map to
+  `unauthenticated`; login failure and an invalid reset token share `bad_request`.
 
 ## Simulator (`apps/simulator`)
 

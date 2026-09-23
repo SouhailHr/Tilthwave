@@ -44,8 +44,13 @@ class FarmApiClient:
                     return
                 if resp.status_code != 400 and resp.status_code < 500:
                     resp.raise_for_status()  # 401/403/404...: a real client error, no point retrying
-                # 400 = the seeded admin does not exist yet; 5xx = the API is still starting
-                reason = f"HTTP {resp.status_code}"
+                # 400 = the seeded admin does not exist yet, or SIM_PASSWORD is wrong: the API's
+                # message tells the two apart, so it goes in the log; 5xx = the API is still starting
+                try:
+                    detail = resp.json().get("detail", "")
+                except ValueError:
+                    detail = ""
+                reason = f"HTTP {resp.status_code}" + (f": {detail}" if detail else "")
             logger.warning(
                 "Login attempt %d/%d failed (%s); retrying in %.0fs",
                 attempt,

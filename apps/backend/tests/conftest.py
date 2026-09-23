@@ -46,6 +46,7 @@ os.environ.update(
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 
 from adapters.farm import FarmAdaptor
 from adapters.users import UserAdaptor
@@ -250,3 +251,25 @@ def backdate(repo, model, row_id: int, minutes: int) -> None:
     with repo.Session() as session:
         session.get(model, row_id).created_date = utc_now() - timedelta(minutes=minutes)
         session.commit()
+
+
+@pytest.fixture
+def count_statements(repos):
+    """Number of SQL statements executed inside the `with` block, on the engine the repos use."""
+    engine = repos.sensor_record.engine
+
+    class Counter:
+        n = 0
+
+        def __enter__(self):
+            self.n = 0
+            event.listen(engine, "before_cursor_execute", self._hit)
+            return self
+
+        def __exit__(self, *_exc):
+            event.remove(engine, "before_cursor_execute", self._hit)
+
+        def _hit(self, *_args):
+            self.n += 1
+
+    return Counter()

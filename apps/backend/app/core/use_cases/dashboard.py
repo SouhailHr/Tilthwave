@@ -35,23 +35,17 @@ class DashboardUseCase:
         self.zone_repo = zone_repo
         self.farm_use_case = farm_use_case
 
-    @staticmethod
-    def _count_where(repo, attribute, value) -> int:
-        return repo.count([{"attribute": attribute, "value": value, "condition": "eq"}])
-
-    def _count_by(self, repo, attribute, values) -> dict:
-        return {value: self._count_where(repo, attribute, value) for value in values}
-
     def _sensors(self) -> dict:
-        total = self.sensor_repo.count([])
-        active = self._count_where(self.sensor_repo, "is_active", True)
-        inactive = self._count_where(self.sensor_repo, "is_active", False)
-        # is_active is NOT NULL, so this is 0 today; kept so the contract stays honest if that
-        # ever changes rather than the two buckets silently not adding up to the total.
-        return {"total": total, "active": active, "inactive": inactive, "unknown": total - active - inactive}
+        counts = self.sensor_repo.count_by("is_active")
+        active, inactive = counts.get(True, 0), counts.get(False, 0)
+        # is_active is NOT NULL, so unknown is 0 today; kept so the buckets always add up to the total.
+        return {"total": sum(counts.values()), "active": active, "inactive": inactive, "unknown": counts.get(None, 0)}
 
-    def _by_status(self, repo, statuses) -> dict:
-        return {"total": repo.count([]), **self._count_by(repo, "status", statuses)}
+    @staticmethod
+    def _by_status(repo, statuses) -> dict:
+        """One GROUP BY per table instead of one COUNT per status value."""
+        counts = repo.count_by("status")
+        return {"total": sum(counts.values()), **{s: counts.get(s, 0) for s in statuses}}
 
     def _primary_farm(self) -> dict | None:
         """The caller's farm (the tenant filter leaves exactly theirs), with the same stats

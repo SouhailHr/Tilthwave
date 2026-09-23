@@ -10,7 +10,7 @@ export interface ApiError {
 }
 
 interface ApiErrorResponseBody {
-  detail?: string | { msg?: string; loc?: (string | number)[] }[];
+  detail?: string;
   error_code?: string;
   request_id?: string;
   // Request-validation failures carry the messages per field (the API's one 422 shape).
@@ -52,15 +52,6 @@ export function toApiError(err: unknown, fallback = "Something went wrong"): Api
     }
     if (typeof body.detail === "string") {
       message = body.detail;
-    } else if (Array.isArray(body.detail)) {
-      // FastAPI validation errors
-      fieldErrors = {};
-      for (const item of body.detail) {
-        const field = item.loc?.[item.loc.length - 1]?.toString() ?? "_";
-        const msg = item.msg ?? fallback;
-        (fieldErrors[field] ??= []).push(msg);
-      }
-      message = body.detail[0]?.msg ?? fallback;
     } else if (body.message) {
       message = body.message;
     }

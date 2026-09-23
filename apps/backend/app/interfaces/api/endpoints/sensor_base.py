@@ -3,6 +3,7 @@ import logging
 from fastapi.responses import JSONResponse
 from starlette import status
 
+import common.constants as global_constants
 from adapters.sensor import SensorAdaptor
 from adapters.zone_sensors import ZoneSensorsAdaptor
 from common.exceptions import NotFoundError
@@ -47,6 +48,24 @@ class SensorCrudHelper(BaseCrud):
         """
         if value is None or use_case.first([{"attribute": attribute, "value": value, "condition": "eq"}]) is None:
             raise NotFoundError(f"{label} not found")
+
+    # What each relation accepts; checked from the request before any write, so a mismatch is a
+    # 422 with nothing persisted rather than a sensor row left behind by a failed link (whose
+    # corrected retry then hit the unique serial and answered 409).
+    ALLOWED_TYPES = {
+        "zone": tuple(global_constants.ZONE_SENSORS),
+        "water_switcher": (global_constants.SWITCHER_SENSOR,),
+        "water_source": (global_constants.SOURCE_SENSOR,),
+    }
+
+    @classmethod
+    def _require_type_for(cls, assigned_to_type, sensor_type):
+        allowed = cls.ALLOWED_TYPES.get(assigned_to_type)
+        if allowed and sensor_type not in allowed:
+            owner = assigned_to_type.replace("_", " ")
+            raise UseCaseException(
+                class_name=cls.__name__, message=f"{owner} can only have a sensor of type {', '.join(allowed)}"
+            )
 
     @classmethod
     def _check_assignment(cls, assigned_to_type, zone_name, water_switcher, water_source):
@@ -133,9 +152,10 @@ class SensorCrudHelper(BaseCrud):
         handler = handler_mapping.get(data.assigned_to_type)
         if not handler:
             raise cls._invalid_assignment()
+        cls._require_type_for(data.assigned_to_type, data.type)
         cls._check_assignment(data.assigned_to_type, data.zone_name, data.water_switcher, data.water_source)
         result = handler(data=data, performed_by=performed_by)
-        return JSONResponse(status_code=status.HTTP_201_CREATED, content=result.to_public_dict())
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=cls._enrich_items([result])[0])
 
     # ---- update -----------------------------------------------------------------------------
 
@@ -147,9 +167,21 @@ class SensorCrudHelper(BaseCrud):
         return cls.USE_CASE_INSTANCE.update(id=id, data=sensor_data)
 
     @classmethod
+    def _detach(cls, serial_number):
+        """
+        A sensor is attached to exactly one thing. Moving it detaches it everywhere first (its
+        zone link, the switcher or source that holds it), then the new target takes it: no stale
+        link left behind, and no unique-constraint clash when the new holder is of the same kind.
+        """
+        use_cases.zone_sensors.detach(serial_number)
+        use_cases.water_switcher.update_by_sensor_serial_number(serial_number, {"sensor_serial_number": None})
+        use_cases.water_source.update_by_sensor_serial_number(serial_number, {"sensor_serial_number": None})
+
+    @classmethod
     def _update_zone(cls, id, data, performed_by):
         result = cls._update_sensor(id, data, performed_by)
         if result:
+            cls._detach(result.serial_number)
             use_cases.zone_sensors.update_by_sensor_serial_number(
                 sensor_serial_number=result.serial_number,
                 data={
@@ -164,6 +196,7 @@ class SensorCrudHelper(BaseCrud):
     def _update_water_switcher(cls, id, data, performed_by):
         result = cls._update_sensor(id, data, performed_by)
         if result:
+            cls._detach(result.serial_number)
             use_cases.water_switcher.update_by_serial_number(
                 serial_number=data.get("water_switcher"),
                 data={"sensor_serial_number": result.serial_number, "performed_by": performed_by},
@@ -174,6 +207,7 @@ class SensorCrudHelper(BaseCrud):
     def _update_water_source(cls, id, data, performed_by):
         result = cls._update_sensor(id, data, performed_by)
         if result:
+            cls._detach(result.serial_number)
             use_cases.water_source.update_by_serial_number(
                 serial_number=data.get("water_source"),
                 data={"sensor_serial_number": result.serial_number, "performed_by": performed_by},
@@ -198,13 +232,16 @@ class SensorCrudHelper(BaseCrud):
         handler = handler_mapping.get(data.get("assigned_to_type"), None)
         if handler is None:
             raise cls._invalid_assignment()
+        if data.get("assigned_to_type"):
+            sensor_type = data.get("type") or getattr(cls.USE_CASE_INSTANCE.get(id), "type", None)
+            cls._require_type_for(data["assigned_to_type"], sensor_type)
         cls._check_assignment(
             data.get("assigned_to_type"), data.get("zone_name"), data.get("water_switcher"), data.get("water_source")
         )
         result = handler(id=id, data=data, performed_by=performed_by)
         if not result:
             raise cls._not_found()
-        return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
+        return JSONResponse(status_code=status.HTTP_200_OK, content=cls._enrich_items([result])[0])
 
     # ---- list -------------------------------------------------------------------------------
 

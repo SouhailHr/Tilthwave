@@ -8,7 +8,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-
 import { useResetPassword } from "@/api/auth";
 import { toApiError } from "@/api/errors";
 import { AuthCardHeader, AuthPage } from "@/components/auth-page";

@@ -10,6 +10,8 @@ export interface IrrigationTask {
   id: number;
   zone_name: string;
   status: IrrigationTaskStatus;
+  /** Minutes the task ran; set when it completes. */
+  duration?: number | null;
   created_date?: string;
   updated_date?: string;
   performed_by?: string;
@@ -20,4 +22,4 @@ export interface CreateIrrigationTaskInput {
   status: IrrigationTaskStatus;
 }
 
-export type UpdateIrrigationTaskInput = Partial<CreateIrrigationTaskInput>;
+export type UpdateIrrigationTaskInput = Partial<CreateIrrigationTaskInput> & { duration?: number | null };

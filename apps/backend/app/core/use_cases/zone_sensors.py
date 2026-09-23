@@ -28,6 +28,13 @@ class ZoneSensorsUseCase(BaseUseCase):
             self.sensors.require_type(data["sensor_serial_number"], tuple(global_constants.ZONE_SENSORS), owner="zone")
         return self.repo.update(id, data)
 
+    def detach(self, sensor_serial_number: str) -> None:
+        """Remove the sensor's zone link, if it has one."""
+        for link in self.repo.filter(
+            [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
+        ):
+            self.repo.delete(id=link.id)
+
     def update_by_sensor_serial_number(self, sensor_serial_number, data: dict):
         """
         The link of `sensor_serial_number`: updated when `data` names a zone, deleted when it

@@ -1,3 +1,6 @@
+import type { VariantProps } from "class-variance-authority";
+
+import { badgeVariants } from "@/components/ui/badge";
 import type { IrrigationTaskStatus } from "@/types/irrigation-task";
 import type { DeviceStatus } from "@/types/water-source";
 
@@ -6,7 +9,7 @@ import type { DeviceStatus } from "@/types/water-source";
  * water source, a water switcher, the irrigation-tasks page and the dashboard's activity card
  * cannot drift apart.
  */
-export type BadgeVariant = "default" | "secondary" | "outline" | "destructive";
+export type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 
 export const DEVICE_STATUS_OPTIONS: { value: DeviceStatus; label: string }[] = [
   { value: "On", label: "On" },

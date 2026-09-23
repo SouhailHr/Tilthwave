@@ -40,23 +40,21 @@ class ActuatorUseCase(BaseUseCase):
         Update the actuator with this serial; when there is none, detach the sensor named in
         `data` from whichever actuator currently holds it.
         """
-        rows = self.repo.filter([{"attribute": "serial_number", "value": serial_number, "condition": "eq"}])
-        if rows:
-            return self.repo.update(rows[0].id, data)
-        holder = self.repo.filter(
+        row = self.repo.first([{"attribute": "serial_number", "value": serial_number, "condition": "eq"}])
+        if row is not None:
+            return self.repo.update(row.id, data)
+        holder = self.repo.first(
             [{"attribute": "sensor_serial_number", "value": data["sensor_serial_number"], "condition": "eq"}]
         )
-        if holder:
-            return self.repo.update(holder[0].id, {"sensor_serial_number": None})
+        if holder is not None:
+            return self.repo.update(holder.id, {"sensor_serial_number": None})
 
     def update_by_sensor_serial_number(self, sensor_serial_number, data: dict):
         """Update the actuator whose sensor is `sensor_serial_number`, if any."""
-        rows = self.repo.filter(
-            [{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}]
-        )
-        if rows:
-            return self.repo.update(rows[0].id, data)
-        logger.info("no %s found assigned to the sensor %s", self.NOUN, sensor_serial_number)
+        row = self.repo.first([{"attribute": "sensor_serial_number", "value": sensor_serial_number, "condition": "eq"}])
+        if row is not None:
+            return self.repo.update(row.id, data)
+        return None
 
     def send_event(self, topic, key, payload):
         return self.broker_repo.send_event(topic=topic, key=key, payload=payload)

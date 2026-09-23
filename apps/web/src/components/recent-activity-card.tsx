@@ -13,7 +13,6 @@ import { irrigationTaskStatusVariant } from "@/lib/status-ui";
 import type { IrrigationTask, } from "@/types/irrigation-task";
 import { formatRelative } from "@/utils/dates";
 
-
 interface RecentActivityCardProps {
   tasks: IrrigationTask[];
   isPending: boolean;

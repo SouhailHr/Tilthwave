@@ -90,19 +90,12 @@ class BaseCrud:
         return JSONResponse(status_code=status.HTTP_200_OK, content=result.to_public_dict())
 
     @classmethod
-    def _enrich_item(cls, entity) -> dict:
-        """
-        Hook: the public dict of one listed entity. Override to add computed fields.
-        """
-        return entity.to_public_dict()
-
-    @classmethod
     def _enrich_items(cls, entities) -> list[dict]:
         """
-        Hook: the public dicts of one page. Override when the computed fields need a lookup, so
-        it is done once for the page rather than once per row (see SensorCrudHelper).
+        Hook: the public dicts of one page, also used for one item, so an entity reads the same
+        alone and in a page. Override when computed fields need a lookup (see SensorCrudHelper).
         """
-        return [cls._enrich_item(entity) for entity in entities]
+        return [entity.to_public_dict() for entity in entities]
 
     @classmethod
     def filters_doc(cls) -> str:
@@ -170,14 +163,13 @@ class BaseCrud:
         @return: A list of dictionaries, each containing the keys 'attribute', 'value', and 'condition'.
                  Each dictionary represents a filter parsed from the input string.
                  If the input string is None or empty, an empty list is returned.
-        @rtype: tuple
 
         """
         if not filters_dict:
             return []
         # 1- Check what type of filter we have
         filters = []
-        if "search" in filters_dict.keys():
+        if "search" in filters_dict:
             # Generic Search
             filters.append({"attribute": cls.IDENTIFIER, "value": filters_dict["search"], "condition": "icontains"})
         else:

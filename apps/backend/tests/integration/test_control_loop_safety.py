@@ -92,7 +92,6 @@ def test_flow_runner_gives_up_after_consecutive_failures(monkeypatch, tmp_path):
 
 
 def test_database_outage_nacks_the_message_instead_of_skipping_it(monkeypatch):
-
     def database_down(event):
         raise DBReposException("connection refused")
 
@@ -104,6 +103,5 @@ def test_database_outage_nacks_the_message_instead_of_skipping_it(monkeypatch):
 
 
 def test_a_bad_payload_is_rejected_not_retried():
-
     with pytest.raises(UseCaseException):
         run_streamer.sensors_streamer({"event_type": "bogus"})

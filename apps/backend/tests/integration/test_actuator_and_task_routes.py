@@ -113,3 +113,28 @@ def test_zone_sensor_links_crud_and_attach_rule(client, auth_headers, two_farms)
         client.post("/zone-sensors/", json={**link, "sensor_serial_number": "MSN-B"}, headers=headers).status_code
         == 422
     )
+
+
+def test_a_switcher_cannot_be_fed_from_another_farms_source(client, auth_headers, two_farms):
+    """The FK only checks the source exists; ownership is the use case's job, or an owner could
+    have the flow runner open another farm's pump."""
+    headers_a = auth_headers(farm_name=FARM_A)
+    headers_b = auth_headers(username="b", farm_name=FARM_B)
+    client.post("/water-sources/", json=_source(), headers=headers_a)
+    client.post("/water-sources/", json=_source("WS-B", FARM_B, "SRC-B"), headers=headers_b)
+    switcher = {
+        "serial_number": "SW-A",
+        "status": "Off",
+        "water_source_serial_number": "WS-B",
+        "zone_name": "Zone A",
+        "sensor_serial_number": "SWA-A",
+    }
+    assert client.post("/water-switchers/", json=switcher, headers=headers_a).status_code == 404
+    created = client.post(
+        "/water-switchers/", json={**switcher, "water_source_serial_number": "WS-A"}, headers=headers_a
+    )
+    assert created.status_code == 201
+    moved = client.patch(
+        f"/water-switchers/{created.json()['id']}", json={"water_source_serial_number": "WS-B"}, headers=headers_a
+    )
+    assert moved.status_code == 404

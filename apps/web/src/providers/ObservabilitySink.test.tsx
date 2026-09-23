@@ -6,7 +6,6 @@ import { emit } from "@/lib/eventBus";
 
 import { ObservabilitySink } from "./ObservabilitySink";
 
-
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
   toast: { error: (...args: unknown[]) => toastError(...args) },
