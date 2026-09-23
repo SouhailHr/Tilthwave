@@ -41,7 +41,9 @@ fi
 # so a renamed or self-hosted data source works too.
 datasources=$(api GET /api/datasources)
 prom_uid=$(python3 -c 'import sys,json;d=[x for x in json.load(sys.stdin) if x["type"]=="prometheus"];d.sort(key=lambda x:(not x["name"].startswith("grafanacloud-"), not x.get("isDefault",False)));print(d[0]["uid"] if d else "")' <<<"$datasources")
-loki_uid=$(python3 -c 'import sys,json;d=[x for x in json.load(sys.stdin) if x["type"]=="loki"];d.sort(key=lambda x:not x["name"].startswith("grafanacloud-"));print(d[0]["uid"] if d else "")' <<<"$datasources")
+# Cloud stacks carry a second Loki source, grafanacloud-alert-state-history (Grafana's own alert
+# history), which must never be picked: the logs source is grafanacloud-logs, named *-logs.
+loki_uid=$(python3 -c 'import sys,json;d=[x for x in json.load(sys.stdin) if x["type"]=="loki" and "alert-state-history" not in x["uid"] and "alert-state-history" not in x["name"]];d.sort(key=lambda x:(x["uid"]!="grafanacloud-logs", not x["name"].endswith("-logs"), not x["name"].startswith("grafanacloud-")));print(d[0]["uid"] if d else "")' <<<"$datasources")
 : "${prom_uid:?no Prometheus data source found in this Grafana}"
 : "${loki_uid:?no Loki data source found in this Grafana}"
 echo "data sources: prometheus=$prom_uid loki=$loki_uid"
