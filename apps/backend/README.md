@@ -189,7 +189,7 @@ SQLAlchemy URI (tests use `sqlite:///`).
 | `LOGIN_FAILURES_PER_ACCOUNT` | `5` | wrong passwords per account before a 429, in `LOGIN_FAILURE_WINDOW_MINUTES` (`15`) |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | JSON list; credentials are allowed for these origins |
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | login attempts per client IP, per worker |
-| `TRUSTED_PROXIES` | `[]` | proxies whose `X-Forwarded-For` is believed; behind a TLS proxy this must name it, or every client shares one rate-limit bucket (the API warns at startup) |
+| `TRUSTED_PROXIES` | `[]` | proxies whose `X-Forwarded-For` is believed, as addresses or networks (`["10.0.1.0/24"]`); behind a TLS proxy this must name it, or every client shares one rate-limit bucket (the API warns at startup) |
 | `DOCS_ENABLED` | `false` | serve `/docs` and `/openapi.json` (the local compose override turns them on; the production file leaves them off) |
 | `COOKIE_SECURE` | `false` | `Secure` flag on session cookies; `true` behind TLS |
 | `COOKIE_DOMAIN` | unset | host-only by default; `.example.com` when web and API are on different subdomains |

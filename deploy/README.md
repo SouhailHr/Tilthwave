@@ -171,7 +171,7 @@ proxy config is not in this repo yet. In `.env`:
 | `API_CORS_ORIGINS` | the web app's public origin only |
 | `NEXT_PUBLIC_API_BASE_URL` | the API's public URL (baked into the web image at build time) |
 | `API_WEB_BASE_URL` | the web app's public URL (password-reset links) |
-| `FORWARDED_ALLOW_IPS`, `API_TRUSTED_PROXIES` | the proxy's address, so client IPs and the login rate limit are right |
+| `FORWARDED_ALLOW_IPS`, `API_TRUSTED_PROXIES` | the proxy's address or, better, the docker network it shares with the app in CIDR notation (`10.0.1.0/24` and `["10.0.1.0/24"]`): a container's address changes when it restarts, the network does not |
 | `API_COOKIE_SECURE` | `true` (session cookies only over TLS) |
 | `API_COOKIE_DOMAIN` | set only when web and API are on different subdomains |
 | `API_DOCS_ENABLED` | `false` |
