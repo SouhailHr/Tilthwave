@@ -30,12 +30,14 @@ def test_profile_is_the_callers_own_row_for_every_role(client, auth_headers, mak
         assert "password" not in body
 
 
-def test_a_farm_less_account_can_still_see_itself(client, auth_headers, make_user):
-    # An authenticated caller with no farm sees no tenant rows; their own row must be the exception.
+def test_a_farm_less_account_cannot_sign_in_or_use_a_session(client, auth_headers, make_user):
+    # Every row the API serves belongs to a farm: an account outside one has nothing to reach, so
+    # login refuses it with a clear message and an existing session (farm deleted meanwhile) ends.
     make_user("bootstrap", farm_name=None)
+    login = client.post("/auth/login", json={"username": "bootstrap", "password": PASSWORD})
+    assert login.status_code == 400 and "farm" in login.json()["detail"]
     response = client.get("/account/profile", headers=auth_headers(username="bootstrap", farm_name=None))
-    assert response.status_code == 200
-    assert response.json()["username"] == "bootstrap" and response.json()["farm_name"] is None
+    assert response.status_code == 401
 
 
 def test_profile_patch_updates_contact_details_only(client, auth_headers, make_farm, repos):

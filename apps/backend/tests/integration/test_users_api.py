@@ -46,18 +46,19 @@ def test_list_and_get_never_expose_the_hash(client, auth_headers, make_farm, mak
 def test_patch_role_derives_superuser_and_rejects_unknown_fields(client, auth_headers, make_farm, make_user):
     make_farm()
     user = make_user("jo", role="worker")
-    ok = client.patch(f"/users/{user.id}", json={"role": "owner"}, headers=auth_headers())
+    owner = auth_headers(username="boss", role="owner")  # appointing an owner is an owner's act
+    ok = client.patch(f"/users/{user.id}", json={"role": "owner"}, headers=owner)
     assert ok.status_code == 200 and ok.json()["is_superuser"] is True
     # identifiers echoed by edit forms are accepted and ignored: the farm never changes through PATCH
-    moved = client.patch(f"/users/{user.id}", json={"farm_name": "Other Farm"}, headers=auth_headers())
+    moved = client.patch(f"/users/{user.id}", json={"farm_name": "Other Farm"}, headers=owner)
     assert moved.status_code == 200 and moved.json()["farm_name"] == FARM_A
-    hashed = client.patch(f"/users/{user.id}", json={"password": "$2b$fake"}, headers=auth_headers())
+    hashed = client.patch(f"/users/{user.id}", json={"password": "$2b$fake"}, headers=owner)
     assert hashed.status_code == 422
 
 
 def test_patch_text_password_changes_the_login_password(client, auth_headers, make_farm, make_user):
     make_farm()
-    user = make_user("jo", password="Old-Passw0rd!")
+    user = make_user("jo", role="worker", password="Old-Passw0rd!")
     response = client.patch(f"/users/{user.id}", json={"text_password": "New-Passw0rd!"}, headers=auth_headers())
     assert response.status_code == 200 and "password" not in response.json()
     assert client.post("/auth/login", json={"username": "jo", "password": "Old-Passw0rd!"}).status_code == 400

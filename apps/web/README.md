@@ -59,6 +59,8 @@ The session is an httpOnly cookie set by the API; the browser never sees the tok
   query and redirects to `/login?redirect=...`.
 - `RequireAuth` asks `/auth/me` (`useSession`) and renders nothing until it has an answer; it
   redirects only on a confirmed `null` session, so a refresh never bounces a logged-in user.
+- The reset page reads its token from the link once and removes it from the URL (history,
+  Referer). Changing the email in Settings asks for the current password.
 - `middleware.ts` only checks that the cookie exists, to skip rendering protected pages for
   anonymous visitors; the server-backed check above is the real gate.
 - Settings (`/settings`) lists the signed-in sessions (`/account/sessions`, with sign-out per

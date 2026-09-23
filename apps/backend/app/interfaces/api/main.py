@@ -71,13 +71,18 @@ if settings.API.COOKIE_SECURE and not settings.API.TRUSTED_PROXIES:
 
 
 @app.middleware("http")
-async def strict_transport_security(request, call_next):
+async def security_headers(request, call_next):
     """
-    HSTS, keyed on the same setting as the cookie Secure flag: COOKIE_SECURE=true means the API
-    is served over TLS, and then browsers must not fall back to http for the session cookie's
-    host. Off (the default, and the local stack) the header would be ignored anyway.
+    Every response: no sniffing, no Referer leaving with a URL (reset links carry a token), and
+    no caching of what are all private, per-session JSON bodies. HSTS is keyed on the same
+    setting as the cookie Secure flag: COOKIE_SECURE=true means the API is served over TLS, and
+    then browsers must not fall back to http for the session cookie's host. Off (the default,
+    and the local stack) the header would be ignored anyway.
     """
     response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers.setdefault("Cache-Control", "no-store")
     if settings.API.COOKIE_SECURE:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response

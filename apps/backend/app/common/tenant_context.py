@@ -14,6 +14,7 @@ from typing import TypedDict
 
 
 class TenantContext(TypedDict, total=False):
+    user_id: int | None
     username: str | None
     farm_name: str | None
     role: str | None
@@ -41,9 +42,8 @@ def without_tenant():
     Run the block with no tenant bound, so the repositories are unscoped for its duration.
 
     For a caller acting on its OWN user row, identified by the verified user_id from the
-    session: the farm filter has nothing to add there, and it would wrongly hide a farm-less
-    account (a bootstrap admin) from itself, since an authenticated caller with no farm sees no
-    tenant rows at all. Never use it to read anything the caller did not already own.
+    session: the farm filter has nothing to add there. Never use it to read anything the caller
+    did not already own.
     """
     token = set_tenant(None)
     try:

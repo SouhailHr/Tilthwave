@@ -27,5 +27,9 @@ class InvalidFilterError(TilthwaveBaseException):
     """A Filter DSL entry references an unknown attribute or an unsupported condition."""
 
 
+class ForbiddenError(TilthwaveBaseException):
+    """The caller is known and the object exists, but their role may not do this to it."""
+
+
 class BrokerError(TilthwaveBaseException):
     """Publishing a command to the broker failed; the physical state may not have changed."""

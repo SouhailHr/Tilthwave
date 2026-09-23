@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { useSession } from "@/api/auth";
 import { useCreateUser, useUpdateUser } from "@/api/users";
 import { EntityCrudPage } from "@/components/entity-crud-page";
 import type { EntityFormField } from "@/components/entity-form";
@@ -22,6 +23,10 @@ const roleOptions: { value: UserRole; label: string }[] = [
   { value: "engineer", label: "Engineer" },
   { value: "worker", label: "Worker" },
 ];
+// Only an owner appoints admins and owners, or changes, deactivates or deletes one; an admin
+// manages engineers and workers. The API enforces this (403); the page just does not offer it.
+const MANAGING_ROLES: readonly UserRole[] = ["admin", "owner"];
+const isManaging = (role: string | undefined) => MANAGING_ROLES.includes(role as UserRole);
 
 const baseUserShape = {
   email: z.email("Invalid email"),
@@ -65,12 +70,10 @@ const contactFields: EntityFormField<CommonUserValues>[] = [
   { name: "last_name", label: "Last name", autoComplete: "family-name" },
 ];
 
-const roleField: EntityFormField<CommonUserValues> = {
-  name: "role",
-  label: "Role",
-  type: "select",
-  options: roleOptions,
-};
+function roleFieldFor(callerRole: string | undefined): EntityFormField<CommonUserValues> {
+  const options = callerRole === "owner" ? roleOptions : roleOptions.filter((o) => !isManaging(o.value));
+  return { name: "role", label: "Role", type: "select", options };
+}
 const activeField: EntityFormField<CommonUserValues> = { name: "is_active", label: "Active", type: "boolean" };
 const farmField: EntityFormField<CreateUserValues> = {
   name: "farm_name",
@@ -82,27 +85,31 @@ const farmField: EntityFormField<CreateUserValues> = {
   placeholder: "Select a farm",
 };
 
-const createFields: EntityFormField<CreateUserValues>[] = [
-  { name: "username", label: "Username", autoComplete: "username" },
-  ...(contactFields as EntityFormField<CreateUserValues>[]),
-  {
-    name: "text_password",
-    label: "Password",
-    type: "password",
-    autoComplete: "new-password",
-    description: "At least 8 characters. They can change it later from Settings.",
-  },
-  roleField as EntityFormField<CreateUserValues>,
-  farmField,
-  activeField as EntityFormField<CreateUserValues>,
-];
+function createFieldsFor(callerRole: string | undefined): EntityFormField<CreateUserValues>[] {
+  return [
+    { name: "username", label: "Username", autoComplete: "username" },
+    ...(contactFields as EntityFormField<CreateUserValues>[]),
+    {
+      name: "text_password",
+      label: "Password",
+      type: "password",
+      autoComplete: "new-password",
+      description: "At least 8 characters. They can change it later from Settings.",
+    },
+    roleFieldFor(callerRole) as EntityFormField<CreateUserValues>,
+    farmField,
+    activeField as EntityFormField<CreateUserValues>,
+  ];
+}
 
-const editFields: EntityFormField<UpdateUserValues>[] = [
-  { name: "username", label: "Username", autoComplete: "username", disabled: true },
-  ...(contactFields as EntityFormField<UpdateUserValues>[]),
-  roleField as EntityFormField<UpdateUserValues>,
-  activeField as EntityFormField<UpdateUserValues>,
-];
+function editFieldsFor(callerRole: string | undefined): EntityFormField<UpdateUserValues>[] {
+  return [
+    { name: "username", label: "Username", autoComplete: "username", disabled: true },
+    ...(contactFields as EntityFormField<UpdateUserValues>[]),
+    roleFieldFor(callerRole) as EntityFormField<UpdateUserValues>,
+    activeField as EntityFormField<UpdateUserValues>,
+  ];
+}
 
 const roleBadgeVariant: Record<UserRole, "default" | "secondary" | "outline"> = {
   admin: "default",
@@ -172,6 +179,12 @@ function toUpdateInput(values: UpdateUserValues): UpdateUserInput {
 }
 
 export default function UsersPage() {
+  const session = useSession().data;
+  const callerRole = session?.role;
+  const callerId = session?.user_id;
+  // Your own role, status and password are not yours to edit here (an owner's, or Settings), and
+  // an admin may not touch an admin or owner at all.
+  const mayManage = (user: User) => user.id !== callerId && (callerRole === "owner" || !isManaging(user.role));
   return (
     <EntityCrudPage<
       User,
@@ -187,8 +200,10 @@ export default function UsersPage() {
       columns={userColumns}
       createSchema={createUserSchema}
       editSchema={updateUserSchema}
-      createFields={createFields}
-      editFields={editFields}
+      createFields={createFieldsFor(callerRole)}
+      editFields={editFieldsFor(callerRole)}
+      canEdit={mayManage}
+      canDelete={mayManage}
       createDefaults={{
         username: "",
         email: "",

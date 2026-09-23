@@ -1,7 +1,9 @@
 import logging
 
 from common import constants as global_constants
-from common.tenant_context import without_tenant
+from common.audit import audit
+from common.exceptions import ForbiddenError
+from common.tenant_context import get_current_tenant, without_tenant
 from core.entities.users import Users as UserEntity
 from core.security.password import PasswordHasher
 from core.use_cases.base import BaseUseCase
@@ -13,8 +15,24 @@ logger = logging.getLogger(__name__)
 # either way and response time does not reveal which usernames are taken.
 _UNKNOWN_USER_HASH = PasswordHasher.hash("not-a-real-password")
 
+# What a user may not do to their own row through /users: those go through an owner (role,
+# status) or through /account (password), where the current password is required.
+_OWN_ROW_FIELDS = ("role", "is_active", "password")
+
 
 class UserUseCase(BaseUseCase):
+    """
+    Users of a farm, and the rules on who may change whom (the actor is the request's tenant
+    context; scripts and the seed have none and are unrestricted):
+
+    - only an owner may create an admin or owner, give or take one of those roles, or change,
+      deactivate, delete or set the password of a user holding one; an admin manages workers and
+      engineers;
+    - nobody changes their own role, status or password through /users, nor deletes themselves;
+    - the last active owner of a farm cannot be demoted, deactivated or deleted: without an owner
+      nobody could appoint an admin again.
+    """
+
     ENTITY = UserEntity
 
     def __init__(self, repo, sessions):
@@ -41,12 +59,54 @@ class UserUseCase(BaseUseCase):
         """The one rule deriving the superuser flag from a role."""
         return role in global_constants.SUPERUSER_ROLES
 
+    # ---- who may do what -------------------------------------------------------------------
+
+    @staticmethod
+    def _actor():
+        """The caller, or None outside a request (scripts, seed): then nothing is restricted."""
+        return get_current_tenant()
+
+    @staticmethod
+    def _require_owner_for(actor, role: str, what: str) -> None:
+        if (
+            actor is not None
+            and role in global_constants.SUPERUSER_ROLES
+            and actor.get("role") != global_constants.OWNER_ROLE
+        ):
+            raise ForbiddenError(f"Only an owner can {what} an admin or owner")
+
+    def _active_owners(self, farm_name: str) -> int:
+        return self.repo.count(
+            [
+                {"attribute": "farm_name", "value": farm_name, "condition": "eq"},
+                {"attribute": "role", "value": global_constants.OWNER_ROLE, "condition": "eq"},
+                {"attribute": "is_active", "value": True, "condition": "eq"},
+            ]
+        )
+
+    def _guard_last_owner(self, target, what: str) -> None:
+        if (
+            target.role == global_constants.OWNER_ROLE
+            and target.is_active
+            and self._active_owners(target.farm_name) <= 1
+        ):
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"{target.username} is the last active owner of {target.farm_name} and cannot be {what}",
+            )
+
+    # ---- CRUD --------------------------------------------------------------------------------
+
     def create(self, entity: ENTITY):
         """
         Create a user; is_superuser is always derived from the role, never taken from the caller.
         """
+        actor = self._actor()
+        self._require_owner_for(actor, entity.role, "create")
         entity.is_superuser = self.is_superuser_role(entity.role)
-        return self.repo.create(entity)
+        created = self.repo.create(entity)
+        audit("user.create", actor=actor and actor.get("username"), user=created.username, role=created.role)
+        return created
 
     def authenticate_user(self, username: str, password: str):
         """
@@ -56,12 +116,7 @@ class UserUseCase(BaseUseCase):
         @param password: The password provided for authentication.
         @return: The User entity if authentication is successful, None otherwise.
         """
-        filters = [{"attribute": "username", "value": username, "condition": "eq"}]
-        users = self.repo.filter(filters)
-
-        # Assuming the filter returns a list of users, we take the first one if it exists
-        user = users[0] if users else None
-
+        user = self.repo.first([{"attribute": "username", "value": username, "condition": "eq"}])
         if user is None:
             self.verify_password(password, _UNKNOWN_USER_HASH)  # same cost as a real check
             return None
@@ -71,32 +126,47 @@ class UserUseCase(BaseUseCase):
 
     def update(self, id: int, data: dict):
         """
-        Update an entity by ID using the repository.
-        1- check if role is in the data and it is a valid role
-        2- if yes put conditions to update is_superuser
-        3- if user role is in admin or owner set the is_superuser to true
+        Update a user, under the rules in the class docstring. A role change re-derives
+        is_superuser; a deactivation or a password set by an admin ends the user's sessions.
 
-        @param id: ID of the entity to update.
-        @param data: Dictionary of data to update.
-        @return: The updated entity.
+        @return: The updated entity, or None when the row is missing or outside the caller's farm.
         """
-        # Check if 'role' is provided in the data
         role = data.get("role")
-
-        if role:
-            # Validate the provided role
-            if role not in global_constants.USER_ROLES_LIST:
+        if role and role not in global_constants.USER_ROLES_LIST:
+            raise UseCaseException(
+                class_name=self.__class__.__name__,
+                message=f"user role must be one of the following {global_constants.USER_ROLES_LIST}",
+            )
+        target = self.repo.get(id)
+        if target is None:
+            return None
+        actor = self._actor()
+        if actor is not None and actor.get("user_id") == target.id:
+            own = [field for field in _OWN_ROW_FIELDS if field in data]
+            if own:
                 raise UseCaseException(
                     class_name=self.__class__.__name__,
-                    message=f"user role must be one of the following {global_constants.USER_ROLES_LIST}",
+                    message="Your own role and status are an owner's to change; your password changes in Settings",
                 )
-
-            # Set 'is_superuser' based on whether the role is a superuser role
+        self._require_owner_for(actor, target.role, "change")
+        if role and role != target.role:
+            self._require_owner_for(actor, role, "appoint")
+        if (role and role != target.role) or data.get("is_active") is False:
+            self._guard_last_owner(target, "demoted or deactivated")
+        if role:
             data["is_superuser"] = self.is_superuser_role(role)
 
-        # Proceed with the update, whether 'role' was included or not
         updated = self.repo.update(id, data)
-        if updated is not None and (data.get("is_active") is False or "password" in data):
+        if updated is None:
+            return None
+        who = actor and actor.get("username")
+        if role and role != target.role:
+            audit("user.role_change", actor=who, user=target.username, old=target.role, new=role)
+        if "is_active" in data and data["is_active"] != target.is_active:
+            audit("user.activate" if data["is_active"] else "user.deactivate", actor=who, user=target.username)
+        if "password" in data:
+            audit("user.password_set", actor=who, user=target.username)
+        if data.get("is_active") is False or "password" in data:
             # A deactivated account is refused on its next request anyway (the middleware reloads the
             # row); ending the sessions makes the sessions list say so too. A password set by an
             # admin signs the user out everywhere, as their own change would.
@@ -104,8 +174,19 @@ class UserUseCase(BaseUseCase):
         return updated
 
     def delete(self, id: int):
+        target = self.repo.get(id)
+        if target is None:
+            return False
+        actor = self._actor()
+        if actor is not None and actor.get("user_id") == target.id:
+            raise UseCaseException(class_name=self.__class__.__name__, message="You cannot delete your own account")
+        self._require_owner_for(actor, target.role, "delete")
+        self._guard_last_owner(target, "deleted")
         self.sessions.revoke_all(id)
-        return self.repo.delete(id)
+        deleted = self.repo.delete(id)
+        if deleted:
+            audit("user.delete", actor=actor and actor.get("username"), user=target.username, role=target.role)
+        return deleted
 
     def find_by_identifier(self, identifier: str):
         """The user whose username or email is exactly `identifier`, or None."""
@@ -117,14 +198,28 @@ class UserUseCase(BaseUseCase):
 
     # ---- the caller's own account ---------------------------------------------------------
     # These take the user_id straight from the verified session and run outside the farm
-    # filter (see common.tenant_context.without_tenant): the row is the caller's by
-    # construction, and a farm-less bootstrap admin must still be able to see and edit itself.
+    # filter (see common.tenant_context.without_tenant): the row is the caller's by construction.
 
     def get_own(self, user_id: int):
         with without_tenant():
             return self.repo.get(user_id)
 
-    def update_own_profile(self, user_id: int, data: dict):
+    def update_own_profile(self, user_id: int, data: dict, current_password: str | None = None):
+        """
+        Contact details. Changing the email re-authenticates: it is where reset links go, so a
+        hijacked session must not be able to point it elsewhere.
+        @raises UseCaseException: the email changes and the current password is missing or wrong
+        """
+        user = self.get_own(user_id)
+        if user is None:
+            return None
+        new_email = data.get("email")
+        if new_email is not None and new_email != user.email:
+            if not current_password or not self.verify_password(current_password, user.password):
+                raise UseCaseException(
+                    class_name=self.__class__.__name__, message="Current password is required to change the email"
+                )
+            audit("account.email_change", user=user.username, old=user.email, new=new_email)
         with without_tenant():
             return self.repo.update(user_id, data)
 

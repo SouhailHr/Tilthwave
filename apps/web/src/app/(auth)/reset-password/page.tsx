@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -35,7 +35,15 @@ type Values = z.infer<typeof newPasswordSchema>;
 
 function ResetPasswordForm() {
   const router = useRouter();
-  const token = useSearchParams().get("token");
+  // The token is read once and then removed from the URL: it stays out of the browser history,
+  // out of anything that copies the address, and off any Referer this page could send.
+  const fromUrl = useSearchParams().get("token");
+  const [token] = useState(fromUrl);
+  useEffect(() => {
+    if (fromUrl && typeof window !== "undefined") {
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  }, [fromUrl]);
   const reset = useResetPassword();
   const form = useForm<Values>({
     resolver: zodResolver(newPasswordSchema),

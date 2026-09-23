@@ -19,7 +19,10 @@ SENSOR_TYPES = _pattern(SENSOR_TYPE_LIST)
 
 # USER CONSTANTS
 USER_ROLES_LIST = ["admin", "owner", "worker", "engineer"]
+# The managing roles. Only an owner may create, promote, demote, deactivate, delete or set the
+# password of an admin or owner (core/use_cases/users.py); an admin manages workers and engineers.
 SUPERUSER_ROLES = ["admin", "owner"]
+OWNER_ROLE = "owner"
 USER_ROLES = _pattern(USER_ROLES_LIST)
 
 # Irrigation Task Constants

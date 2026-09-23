@@ -90,14 +90,10 @@ Decisions recorded (not work items)
 - **No refresh token.** Sessions are server-side (`user_sessions`, `jti` in the token, 60 min
   idle / 12 h absolute, decided 2026-09-23): every request already loads the user row, so a short
   stateless access token plus a refresh dance would add moving parts and no security.
-- **Auth hardening, PR 2 (decided 2026-09-23, not yet built)**: owner is the only role that may
-  create or remove admins; no self-demotion, self-deactivation or self-deletion through `/users`
-  and a last-admin guard; current password required to change the email; `is_superuser` out of
-  the create schema; a farm mandatory at login and in `create_admin`; an `auth` audit logger
-  (login attempts, logout, password change/reset, role change, deactivation, deletion, with
-  actor, address and request id); the reset page scrubs the token from the URL;
-  `Referrer-Policy`, `Cache-Control: no-store` on auth routes, `nosniff`; length limits on the
-  login body. MFA (TOTP for admin/owner) deferred to a later PR.
+- **Owner over admin** (2026-09-23): only an owner appoints or removes admins and owners; the
+  first account is the farm's owner; every account belongs to a farm. The audit trail is plain
+  `key=value` lines on the `audit` logger until the JSON formatter and a sink exist
+  (observability item above).
 - **Publish-then-persist instead of an outbox.** The flow runner needs the broker's ack before a
   task row can claim a valve is open; an outbox would record the intent first. The compensating
   action for a publish that succeeded without its persist is the next tick's
@@ -141,6 +137,7 @@ Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fi
   send path in `mail.py`.
 - **Generic error codes**: "Not authenticated" and "Invalid or expired token" both map to
   `unauthenticated`; login failure and an invalid reset token share `bad_request`.
+- **MFA**: TOTP for admin and owner, decided for a later PR (2026-09-23).
 
 ## Simulator (`apps/simulator`)
 
