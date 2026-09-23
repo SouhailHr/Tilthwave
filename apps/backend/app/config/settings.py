@@ -80,7 +80,8 @@ class APISettings(BaseSettings):
     # the account is refused for the rest of the window; a successful login clears the count.
     LOGIN_FAILURES_PER_ACCOUNT: int = 5
     LOGIN_FAILURE_WINDOW_MINUTES: int = 15
-    # Reverse proxies whose X-Forwarded-For may be believed (none by default: the TCP peer is the client).
+    # Reverse proxies whose X-Forwarded-For may be believed (none by default: the TCP peer is the
+    # client): addresses or networks in CIDR notation (helpers/rate_limit.is_trusted_proxy).
     TRUSTED_PROXIES: list[str] = []
     # Interactive docs (/docs, /openapi.json) map the whole attack surface; off unless explicitly enabled.
     DOCS_ENABLED: bool = False

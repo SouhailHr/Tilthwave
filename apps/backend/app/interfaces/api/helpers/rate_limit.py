@@ -17,6 +17,7 @@ Good enough for the current single-host deployment; a multi-replica deployment s
 reverse proxy or move the counters to Redis.
 """
 
+import ipaddress
 import threading
 import time
 from collections import defaultdict, deque
@@ -115,6 +116,24 @@ class FailureLockout:
 login_rate_limiter = SlidingWindowRateLimiter(limit=settings.API.LOGIN_RATE_LIMIT_PER_MINUTE)
 
 
+def is_trusted_proxy(address: str, trusted: list[str] | None = None) -> bool:
+    """
+    Whether `address` is one of API_TRUSTED_PROXIES. An entry may be an address (10.0.1.2), a
+    network (10.0.1.0/24: a docker proxy's address changes when its container restarts, the
+    network it sits on does not) or, for test clients, any other string matched exactly.
+    """
+    entries = settings.API.TRUSTED_PROXIES if trusted is None else trusted
+    for entry in entries:
+        if entry == address:
+            return True
+        try:
+            if ipaddress.ip_address(address) in ipaddress.ip_network(entry, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def client_ip(request: Request) -> str:
     """
     The caller's address for the rate-limit key: the TCP peer, or, when the peer is a trusted
@@ -123,12 +142,11 @@ def client_ip(request: Request) -> str:
     request by prepending a random address.
     """
     peer = request.client.host if request.client else "unknown"
-    trusted = set(settings.API.TRUSTED_PROXIES)
-    if peer not in trusted:
+    if not is_trusted_proxy(peer):
         return peer
     hops = [hop.strip() for hop in request.headers.get("x-forwarded-for", "").split(",") if hop.strip()]
     for hop in reversed(hops):
-        if hop not in trusted:
+        if not is_trusted_proxy(hop):
             return hop
     return hops[0] if hops else peer
 
