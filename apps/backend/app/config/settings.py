@@ -1,6 +1,7 @@
 import logging
 import os
 import pathlib
+from urllib.parse import quote
 
 from pydantic import PostgresDsn, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -47,10 +48,13 @@ class DatabaseSettings(BaseSettings):
     def assemble_db_uri(cls, field_value, info: ValidationInfo) -> str:
         if isinstance(field_value, str):
             return field_value
+        # Quoted: a password with "/", "@", ":" or a space would otherwise change the URL's shape
+        # (PostgresDsn.build does not escape it), and a generated one may contain any of them.
+        password = info.data.get("PASSWORD")
         return PostgresDsn.build(
             scheme="postgresql",
             username=info.data.get("USER"),
-            password=info.data.get("PASSWORD"),
+            password=quote(password, safe="") if password is not None else None,
             host=info.data.get("HOST"),
             path=info.data.get("DB"),
             port=int(info.data.get("PORT")),

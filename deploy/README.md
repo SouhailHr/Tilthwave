@@ -17,6 +17,12 @@ make up      # build + start (both files); make logs / make ps / make down / mak
 make db-dump # ad-hoc pg_dump into deploy/dumps/ (gitignored) — run it before `make migrate` on real data
 ```
 
+The four generated secrets (`POSTGRES_PASSWORD`, `API_SECRET_KEY`, `ADMIN_PASSWORD`,
+`SIM_PASSWORD`) must be set explicitly in Coolify's environment. The compose file cannot mark
+them required: Coolify takes the message of a `${VAR:?message}` guard as the variable's default
+value, which is how a sentence once became the production database password. Left blank, each
+fails on its own (postgres will not start, the API refuses a short key, the seed exits).
+
 ## Backups
 
 `db-backup` runs `pg_dump` into the `pgbackups` volume every `BACKUP_INTERVAL_HOURS` (24), checks
