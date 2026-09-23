@@ -89,7 +89,7 @@ export function WaterConsumptionChart({
       <div className="flex items-baseline justify-between gap-4 text-sm">
         <span className="text-muted-foreground">Monthly total, {unit}</span>
         <span className="font-medium tabular-nums">
-          {total.toLocaleString()} {unit} <span className="text-muted-foreground">this year</span>
+          {total.toLocaleString("en")} {unit} <span className="text-muted-foreground">this year</span>
         </span>
       </div>
       <div className="h-72 w-full">
@@ -125,7 +125,7 @@ export function WaterConsumptionChart({
                       {point.current ? " (so far)" : ""}
                     </div>
                     <div className="text-muted-foreground">
-                      <span className="tabular-nums text-foreground">{point.value.toLocaleString()}</span> {unit}
+                      <span className="tabular-nums text-foreground">{point.value.toLocaleString("en")}</span> {unit}
                     </div>
                   </div>
                 );
@@ -135,7 +135,8 @@ export function WaterConsumptionChart({
               {series.map((point) => (
                 <Cell
                   key={point.month}
-                  fill={point.current ? "var(--color-shoot)" : "var(--color-furrow)"}
+                  fill="var(--color-furrow)"
+                  fillOpacity={point.current ? 1 : 0.55}
                 />
               ))}
             </Bar>

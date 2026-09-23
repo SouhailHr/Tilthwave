@@ -19,6 +19,18 @@ describe("safeRedirect", () => {
     expect(safeRedirect("/foo\\bar")).toBe("/");
   });
 
+  it("blocks paths the URL parser turns into another origin (tab, newline, encoded forms)", () => {
+    expect(safeRedirect("/\t/evil.com")).toBe("/");
+    expect(safeRedirect("/\n/evil.com")).toBe("/");
+    expect(safeRedirect("/\r\n//evil.com")).toBe("/");
+    expect(safeRedirect(decodeURIComponent("/%09/evil.com"))).toBe("/");
+    expect(safeRedirect("/%2F/evil.com")).toBe("/%2F/evil.com"); // stays a same-origin path
+  });
+
+  it("keeps the query and hash of an internal path", () => {
+    expect(safeRedirect("/zones?page=2#top")).toBe("/zones?page=2#top");
+  });
+
   it("blocks anything not starting with /", () => {
     expect(safeRedirect("evil.com")).toBe("/");
     expect(safeRedirect("javascript:alert(1)")).toBe("/");

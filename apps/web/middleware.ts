@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const SESSION_COOKIE = "tw_access";
 
 const PROTECTED_MATCHER =
-  /^\/(?!login|forgot-password|reset-password|api\/health|_next|brand|favicon\.ico|.*\.(?:svg|png|jpg|jpeg|webp|ico|js|css|map|json|webmanifest|txt)$)/;
+  /^\/(?!login|forgot-password|reset-password|api\/health|_next|brand|favicon\.ico|manifest\.json$|.*\.(?:svg|png|jpg|jpeg|webp|ico|js|css|map)$)/;
 
 const API_ORIGIN = (() => {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -37,8 +37,8 @@ function buildCsp(nonce: string): string {
     "default-src 'self'",
     `script-src ${scriptSrc}`,
     // shadcn primitives + tailwind 4 use inline styles via style attributes.
-    "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-    "font-src 'self' fonts.gstatic.com data:",
+    "style-src 'self' 'unsafe-inline'", // fonts are self-hosted by next/font
+    "font-src 'self' data:",
     "img-src 'self' data: blob:",
     `connect-src 'self'${API_ORIGIN ? ` ${API_ORIGIN}` : ""}`,
     "frame-ancestors 'none'",

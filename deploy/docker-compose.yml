@@ -387,7 +387,7 @@ services:
         # The Loki push endpoint is the stack's logs URL plus /loki/api/v1/push; the grafana.com page
         # shows the bare host, and a bare host answers 405 to every batch. Append it when missing.
         case "$$GRAFANA_CLOUD_LOKI_URL" in */loki/api/v1/push) ;; *) export GRAFANA_CLOUD_LOKI_URL="$${GRAFANA_CLOUD_LOKI_URL%/}/loki/api/v1/push" ;; esac
-        exec alloy run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+        exec alloy run --server.http.listen-addr=127.0.0.1:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     environment:
       SITE_NAME: ${SITE_NAME:-tilthwave}
       # The compose project whose containers' logs to ship: Coolify names the project after the

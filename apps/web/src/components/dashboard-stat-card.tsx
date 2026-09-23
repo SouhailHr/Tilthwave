@@ -18,7 +18,7 @@ const toneClasses: Record<NonNullable<DashboardStatCardProps["tone"]>, string> =
   {
     default: "text-foreground",
     pulse: "text-furrow",
-    harvest: "text-amber",
+    harvest: "text-destructive", // amber text is 2.2:1 on white: the alert count uses the alert red
     loam: "text-loam",
   };
 

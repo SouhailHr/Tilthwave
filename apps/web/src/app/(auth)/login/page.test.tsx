@@ -31,7 +31,7 @@ describe("LoginPage", () => {
     mutateAsync.mockResolvedValue({});
     render(<LoginPage />);
     signIn();
-    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ username: "admin", password: "Passw0rd-Test!", remember: true }));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ username: "admin", password: "Passw0rd-Test!", remember: false }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
   });
 
@@ -66,12 +66,14 @@ describe("LoginPage", () => {
     expect(mutateAsync).not.toHaveBeenCalled();
   });
 
-  it("sends remember: false when Keep me signed in is unticked", async () => {
+  it("leaves Keep me signed in unticked by default and sends remember: true once ticked", async () => {
     mutateAsync.mockResolvedValue({});
     render(<LoginPage />);
-    fireEvent.click(screen.getByLabelText("Keep me signed in"));
+    const box = screen.getByLabelText("Keep me signed in") as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    fireEvent.click(box);
     signIn();
-    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ remember: false })));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ remember: true })));
   });
 
   it("shows the brand, the slogan and no dead sign-up link", () => {

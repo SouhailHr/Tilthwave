@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 
 from fastapi import APIRouter, Depends, FastAPI
@@ -63,6 +64,24 @@ app.add_middleware(
 app.add_middleware(TenantContextMiddleware)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestIdMiddleware)
+
+for _entry in settings.API.TRUSTED_PROXIES:
+    # A trusted range must hold the proxy only: a client inside it can pick its own rate-limit key
+    # through X-Forwarded-For. Flag entries that are unusable or suspiciously broad.
+    try:
+        _network = ipaddress.ip_network(_entry, strict=False)
+    except ValueError:
+        if _entry != "testclient":
+            logging.getLogger(__name__).warning(
+                "API_TRUSTED_PROXIES entry %r is not an address or a network; ignored", _entry
+            )
+        continue
+    if _network.prefixlen < (24 if _network.version == 4 else 64):
+        logging.getLogger(__name__).warning(
+            "API_TRUSTED_PROXIES entry %s is broader than a /24: every client inside it can choose its own "
+            "login rate-limit key. Name the proxy's address or a network that holds only the proxy.",
+            _entry,
+        )
 
 if settings.API.COOKIE_SECURE and not settings.API.TRUSTED_PROXIES:
     # Behind a TLS proxy every request's TCP peer is the proxy: one rate-limit bucket for everyone,

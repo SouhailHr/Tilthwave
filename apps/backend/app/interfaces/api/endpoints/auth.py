@@ -60,7 +60,7 @@ def login(data: AuthLogin, request: Request):
         audit("login.failure", username=account, ip=ip, reason="no_farm")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This account is not assigned to a farm")
     channel = "cookie" if data.use_cookie else "header"
-    access_token = AuthHelper.open_session(user, channel, request)
+    access_token = AuthHelper.open_session(user, channel, request, remember=data.remember)
     audit("login.success", username=user.username, role=user.role, channel=channel, ip=ip)
     # One response shape for both channels: token is null when the session travels as a cookie.
     expires_in = AuthHelper.session_lifetime_seconds()

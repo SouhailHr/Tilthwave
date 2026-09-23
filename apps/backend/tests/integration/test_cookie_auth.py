@@ -167,3 +167,17 @@ def test_keep_me_signed_in_controls_whether_the_cookies_outlive_the_browser(clie
     cookies = [c for c in _set_cookie_headers(session_only) if c.startswith(("tw_access=", "tw_csrf="))]
     assert len(cookies) == 2 and not any("Max-Age=" in c or "expires=" in c.lower() for c in cookies)
     assert client.get("/auth/me").status_code == 200  # a browser-session cookie is still a session
+
+
+def test_a_password_change_keeps_an_unremembered_session_a_browser_session(client, make_farm, make_user):
+    make_farm(FARM_A)
+    make_user("pat")
+    client.post("/auth/login", json={"username": "pat", "password": PASSWORD, "use_cookie": True, "remember": False})
+    response = client.post(
+        "/account/password",
+        json={"current_password": PASSWORD, "new_password": "Another-Passw0rd"},
+        headers={"X-CSRF-Token": client.cookies.get("tw_csrf")},
+    )
+    assert response.status_code == 200
+    cookies = [c for c in _set_cookie_headers(response) if c.startswith(("tw_access=", "tw_csrf="))]
+    assert len(cookies) == 2 and not any("Max-Age=" in c for c in cookies)

@@ -79,7 +79,8 @@
   --destructive: #b8452a;
   --border: #d9dfcd;
   --input: #d9dfcd;
-  --ring: var(--tw-shoot);
+  /* furrow, not shoot: shoot is under 2:1 on white and sage, too faint for a focus ring */
+  --ring: var(--tw-furrow);
   --chart-1: var(--tw-furrow);
   --chart-2: var(--tw-shoot);
   --chart-3: var(--tw-amber);
@@ -93,7 +94,7 @@
   --sidebar-accent: #dcebc9;
   --sidebar-accent-foreground: var(--tw-loam);
   --sidebar-border: #d9dfcd;
-  --sidebar-ring: var(--tw-shoot);
+  --sidebar-ring: var(--tw-furrow);
 }
 
 .dark {
@@ -145,7 +146,7 @@
   }
   /* Keyboard focus is visible everywhere: the shoot border plus a soft 3 px halo (brand rule). */
   :focus-visible {
-    outline: 2px solid var(--tw-shoot);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
