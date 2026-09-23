@@ -63,12 +63,19 @@ class APISettings(BaseSettings):
     """
 
     SECRET_KEY: str
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE: int = 120  # (by minute)
+    # Sessions (core/use_cases/user_session.py): a session ends after SESSION_IDLE_MINUTES without a
+    # request, and SESSION_MAX_HOURS after login whatever the activity. The JWT algorithm is not a
+    # setting: HS256 is pinned in interfaces/api/helpers/auth.py.
+    SESSION_IDLE_MINUTES: int = 60
+    SESSION_MAX_HOURS: int = 12
     # Browser origins allowed to call the API (the web dashboard). Never "*" with credentials.
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     # Failed-or-not login attempts allowed per client IP per minute.
     LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
+    # Failed login attempts allowed per account (any address) in LOGIN_FAILURE_WINDOW_MINUTES before
+    # the account is refused for the rest of the window; a successful login clears the count.
+    LOGIN_FAILURES_PER_ACCOUNT: int = 5
+    LOGIN_FAILURE_WINDOW_MINUTES: int = 15
     # Reverse proxies whose X-Forwarded-For may be believed (none by default: the TCP peer is the client).
     TRUSTED_PROXIES: list[str] = []
     # Interactive docs (/docs, /openapi.json) map the whole attack surface; off unless explicitly enabled.

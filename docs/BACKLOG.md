@@ -75,11 +75,6 @@ Operations
   subscriber kwarg; the nack-on-database-error handling in `run_streamer.py` must be re-verified
   on 0.7.
 
-Security (accepted risk)
-
-- **[A] No server-side revocation**: a captured JWT stays valid up to 120 min after logout; only a
-  password change or deactivation kills it. Accepted for the stateless design.
-
 Tests (behavioural, run on SQLite and on Postgres in CI, with coverage reported; gaps only)
 
 - **Web page tests**: none for `entity-crud-page.tsx`, the login/forgot/reset/settings pages, the
@@ -92,9 +87,17 @@ Decisions recorded (not work items)
 - **`Float`, not `NUMERIC`**, for farm size, tree dimensions, water pressure/volume and the
   consumption readings: they are measurements, not money. If consumption ever feeds billing, the
   sum in `SensorRecordDBRepository.monthly_consumption` and the columns move to `NUMERIC`.
-- **No refresh token.** One 120-minute httpOnly session, invalidated by the password
-  fingerprint; re-login after that. Shorter sessions plus rotated refresh tokens would be the
-  next step if the dashboard is ever used all day on shared machines.
+- **No refresh token.** Sessions are server-side (`user_sessions`, `jti` in the token, 60 min
+  idle / 12 h absolute, decided 2026-09-23): every request already loads the user row, so a short
+  stateless access token plus a refresh dance would add moving parts and no security.
+- **Auth hardening, PR 2 (decided 2026-09-23, not yet built)**: owner is the only role that may
+  create or remove admins; no self-demotion, self-deactivation or self-deletion through `/users`
+  and a last-admin guard; current password required to change the email; `is_superuser` out of
+  the create schema; a farm mandatory at login and in `create_admin`; an `auth` audit logger
+  (login attempts, logout, password change/reset, role change, deactivation, deletion, with
+  actor, address and request id); the reset page scrubs the token from the URL;
+  `Referrer-Policy`, `Cache-Control: no-store` on auth routes, `nosniff`; length limits on the
+  login body. MFA (TOTP for admin/owner) deferred to a later PR.
 - **Publish-then-persist instead of an outbox.** The flow runner needs the broker's ack before a
   task row can claim a valve is open; an outbox would record the intent first. The compensating
   action for a publish that succeeded without its persist is the next tick's

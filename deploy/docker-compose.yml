@@ -56,8 +56,8 @@ x-backend: &backend
     POSTGRES_USER: ${POSTGRES_USER:-postgres}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run `make env` to generate deploy/.env}
     API_SECRET_KEY: ${API_SECRET_KEY:?run `make env` to generate deploy/.env}
-    API_ALGORITHM: ${API_ALGORITHM:-HS256}
-    API_ACCESS_TOKEN_EXPIRE: ${API_ACCESS_TOKEN_EXPIRE:-120}
+    API_SESSION_IDLE_MINUTES: ${API_SESSION_IDLE_MINUTES:-60}
+    API_SESSION_MAX_HOURS: ${API_SESSION_MAX_HOURS:-12}
     API_CORS_ORIGINS: ${API_CORS_ORIGINS:-["http://localhost:3000"]}
     API_TRUSTED_PROXIES: ${API_TRUSTED_PROXIES:-[]}
     API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}  # docker-compose.local.yml turns them on for development

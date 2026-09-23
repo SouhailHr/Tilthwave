@@ -61,7 +61,8 @@ The session is an httpOnly cookie set by the API; the browser never sees the tok
   redirects only on a confirmed `null` session, so a refresh never bounces a logged-in user.
 - `middleware.ts` only checks that the cookie exists, to skip rendering protected pages for
   anonymous visitors; the server-backed check above is the real gate.
-- Settings (`/settings`) changes the password through `/account/password`; forgot/reset password
+- Settings (`/settings`) lists the signed-in sessions (`/account/sessions`, with sign-out per
+  device and everywhere else) and changes the password through `/account/password`; forgot/reset password
   go through `/auth/password/forgot` and `/auth/password/reset`. Any password change invalidates
   every other session for that user (the API fingerprints the hash into the token).
 

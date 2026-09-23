@@ -43,7 +43,7 @@ future index on `sensor_records` goes in an `autocommit_block()` with `postgresq
 app/
   config/settings.py          pydantic-settings, one class per env prefix
   common/                     exceptions, tenant ContextVar, shared helpers
-  core/                       domain: entities, use cases, security (passwords, fingerprints)
+  core/                       domain: entities, use cases, security (passwords, fingerprints), sessions
   adapters/                   SQLAlchemy model <-> domain entity mappers, one per resource
   infrastructure/             SQLAlchemy tables, repositories, Kafka gateway, mailer
   interfaces/api/             FastAPI app, endpoints, middleware, helpers
@@ -88,7 +88,15 @@ tests/                        pytest, SQLite
 
 ## Authentication
 
-Two ways to present the same JWT; the API accepts either on every request.
+Two ways to present the same JWT; the API accepts either on every request. The JWT is only half
+of a session: every login opens a row in `user_sessions` and the token names it in `jti`
+(`core/use_cases/user_session.py`). A request is refused, whatever the signature says, when that
+row is missing, revoked, idle for more than `API_SESSION_IDLE_MINUTES` (60) or older than
+`API_SESSION_MAX_HOURS` (12). So `POST /auth/logout` ends the session at once, a password change
+or reset and a deactivation end every session of the user, and `/account/sessions` lists the live
+ones (`DELETE /account/sessions/{id}` ends one, `DELETE /account/sessions` ends all but the
+current). There is no refresh token: every request already loads the user row, so a short
+stateless token would buy nothing. The algorithm is pinned to HS256 with a fixed issuer.
 
 - **Bearer** (`Authorization: Bearer ...`) for API clients and the simulator: `POST /auth/login`
   with a JSON body `{"username", "password"}` returns `{"token", "token_type": "bearer",
@@ -99,14 +107,15 @@ Two ways to present the same JWT; the API accepts either on every request.
   including `/auth/*`. `POST /auth/logout` clears both. `GET /auth/me` is the session probe the
   web app uses; it returns 401, never a redirect.
 
-The token carries `pfp`, a 16-char fingerprint of the password hash. Changing or resetting a
-password changes `pfp`, which invalidates every existing session for that user at the next
-request. Password-reset tokens are separate JWTs (`purpose=password_reset`, 30 minutes) and are
-refused as session tokens.
+Password-reset tokens are separate JWTs (`purpose=password_reset`, 30 minutes) carrying a
+fingerprint of the current password hash, so a link is single-use; they are refused as session
+tokens.
 
 Login and forgot/reset password are rate-limited per client IP, in separate windows
 (`API_LOGIN_RATE_LIMIT_PER_MINUTE`, in-process per worker; keep `UVICORN_WORKERS=1` or limit at
-the proxy). The client IP is the TCP peer unless it is in `API_TRUSTED_PROXIES`, in which case
+the proxy). An account is also locked after `API_LOGIN_FAILURES_PER_ACCOUNT` (5) wrong passwords
+in `API_LOGIN_FAILURE_WINDOW_MINUTES` (15) from any addresses (429 until the window slides; a
+successful login clears the count). The client IP is the TCP peer unless it is in `API_TRUSTED_PROXIES`, in which case
 the rightmost `X-Forwarded-For` hop that is not a trusted proxy is used (a client cannot pick
 its own bucket by prepending addresses). Unknown usernames are verified against a fixed hash so the response
 time does not reveal whether the account exists.
@@ -133,7 +142,7 @@ URL shape is part of the contract: collections end with a slash (`/zones/`), ite
 | Prefix | Notes |
 |---|---|
 | `/auth` | `login`, `logout`, `me`, `password/forgot`, `password/reset` |
-| `/account` | `GET/PATCH profile`, `POST password` (own account, current password required) |
+| `/account` | `GET/PATCH profile`, `POST password` (own account, current password required), `GET/DELETE sessions[/{id}]` |
 | `/dashboard` | `GET summary/`: counts for the dashboard cards, computed in SQL |
 | `/farms`, `/zones`, `/trees`, `/sensors`, `/water-sources`, `/water-switchers`, `/irrigation-tasks`, `/users` | CRUD, paginated lists, tenant-scoped |
 | `/zone-sensors`, `/sensor-records` | links and raw readings |
@@ -158,10 +167,11 @@ SQLAlchemy URI (tests use `sqlite:///`).
 | Variable | Default | Purpose |
 |---|---|---|
 | `SECRET_KEY` | required | ≥ 32 random chars; placeholders are refused at startup |
-| `ALGORITHM` | `HS256` | JWT algorithm |
-| `ACCESS_TOKEN_EXPIRE` | `120` | session lifetime, minutes (also the cookie `Max-Age`) |
+| `SESSION_IDLE_MINUTES` | `60` | a session ends after this long without a request |
+| `SESSION_MAX_HOURS` | `12` | and this long after login whatever the activity (also the cookie `Max-Age`) |
+| `LOGIN_FAILURES_PER_ACCOUNT` | `5` | wrong passwords per account before a 429, in `LOGIN_FAILURE_WINDOW_MINUTES` (`15`) |
 | `CORS_ORIGINS` | `["http://localhost:3000"]` | JSON list; credentials are allowed for these origins |
-| `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | per client IP, per worker |
+| `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | login attempts per client IP, per worker |
 | `TRUSTED_PROXIES` | `[]` | proxies whose `X-Forwarded-For` is believed; behind a TLS proxy this must name it, or every client shares one rate-limit bucket (the API warns at startup) |
 | `DOCS_ENABLED` | `false` | serve `/docs` and `/openapi.json` (the local compose override turns them on; the production file leaves them off) |
 | `COOKIE_SECURE` | `false` | `Secure` flag on session cookies; `true` behind TLS |

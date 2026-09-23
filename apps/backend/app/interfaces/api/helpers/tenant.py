@@ -1,9 +1,9 @@
 """Pure-ASGI middleware that binds the caller's tenant (farm) for the request.
 
 Takes the credential from the Authorization header (API clients) or, failing that, from the
-httpOnly session cookie (the web app), decodes it once, loads the user row it names and stores
-{username, farm_name, role, is_superuser} in a ContextVar the repository layer reads to enforce
-per-farm isolation. Role and farm come from the database, not the token, and a missing or
+httpOnly session cookie (the web app), decodes it once, loads the user row and the session row
+(`jti`) it names and stores {username, farm_name, role, is_superuser} in a ContextVar the repository
+layer reads to enforce per-farm isolation. Role and farm come from the database, not the token, and a missing or
 deactivated user is rejected: deactivating or demoting someone takes effect on their next request
 instead of when their token expires. Being a plain ASGI middleware (not BaseHTTPMiddleware), it
 sets the ContextVar in the same context that runs the endpoint, so the value is visible to sync
@@ -23,7 +23,6 @@ from starlette.concurrency import run_in_threadpool
 
 from common import constants as global_constants
 from common.tenant_context import reset_tenant, set_tenant
-from core.security.password import PasswordHasher
 from interfaces.api.helpers.auth import CLAIMS_STATE_KEY, AuthHelper
 from interfaces.api.helpers.cookies import ACCESS_COOKIE
 from wiring import api_use_cases
@@ -39,13 +38,24 @@ class TenantContextMiddleware:
         self.app = app
 
     @staticmethod
-    def _active_user(user_id):
-        """The active user row a token names, or None (unknown id or deactivated account)."""
-        if user_id is None:
-            return None
+    def _active_session(claims: dict):
+        """
+        (user, session) behind a decoded token, or (None, None): the user row must exist and be
+        active, and the session row named by `jti` must be live and belong to that user. A token
+        with a `purpose` (password reset) is never a session, however valid its signature.
+        """
+        user_id = claims.get("user_id")
+        if user_id is None or claims.get("purpose") is not None:
+            return None, None
+        use_cases = api_use_cases()
         # No tenant context is set yet, so this lookup is unscoped: the row itself tells the farm.
-        user = api_use_cases().users.get(user_id)
-        return user if user is not None and user.is_active else None
+        user = use_cases.users.get(user_id)
+        if user is None or not user.is_active:
+            return None, None
+        session = use_cases.sessions.resolve(claims.get("jti"))
+        if session is None or session.user_id != user.id:
+            return None, None
+        return user, session
 
     @staticmethod
     def _credential(headers: dict) -> tuple[str | None, str | None]:
@@ -80,17 +90,18 @@ class TenantContextMiddleware:
             except InvalidTokenError:
                 state[TOKEN_INVALID_STATE_KEY] = True
             else:
-                # The repositories are synchronous; keep the event loop free while the row loads.
-                user = await run_in_threadpool(self._active_user, claims.get("user_id"))
-                # A token with a `purpose` (password reset) is never a session, however valid its
-                # signature. A `pfp` that no longer matches the row means the password changed
-                # after this token was issued: the session is over. Every token login issues
-                # carries one (AuthHelper.session_claims), so a token without it is not a session.
-                stale = user is not None and claims.get("pfp") != PasswordHasher.fingerprint(user.password)
-                if user is None or claims.get("purpose") is not None or stale:
+                # The repositories are synchronous; keep the event loop free while the rows load.
+                user, session = await run_in_threadpool(self._active_session, claims)
+                if user is None:
                     state[TOKEN_INVALID_STATE_KEY] = True
                 else:
-                    claims = {**claims, "username": user.username, "role": user.role, "farm_name": user.farm_name}
+                    claims = {
+                        **claims,
+                        "username": user.username,
+                        "role": user.role,
+                        "farm_name": user.farm_name,
+                        "session_id": session.id,
+                    }
                     state[CLAIMS_STATE_KEY] = claims
                     state[AUTH_VIA_STATE_KEY] = via
                     ctx = {
