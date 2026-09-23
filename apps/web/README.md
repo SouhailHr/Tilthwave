@@ -77,8 +77,13 @@ second. Use it rather than `new Date(value)` so the naive form is never read as 
 ## Tests
 
 Vitest with jsdom and Testing Library, next to the code (`*.test.ts(x)`). Covered: the auth
-hooks and client, the generic entity layer, error mapping, `RequireAuth`, the observability
-sink, `useDebounced`, dates, and the dropdown menu (regression: a `DropdownMenuLabel` must sit
-inside a `DropdownMenuGroup`, or base-ui throws when the menu opens).
+hooks and the axios client (through a fake adapter: CSRF header, the one-redirect guard on
+simultaneous 401s), the generic entity layer and its invalidation, error mapping, `RequireAuth`,
+the CRUD page shell, the login, forgot and reset pages, Settings (email re-auth, sessions), the
+observability sink, `useDebounced`, dates, and the dropdown menu (regression: a
+`DropdownMenuLabel` must sit inside a `DropdownMenuGroup`, or base-ui throws when the menu opens).
+
+`import * as z from "zod"`, never `import { z }`: the named `z` re-export keeps zod's 63 locales
+in every route's bundle (40 KB gz); the namespace import lets Turbopack drop them.
 
 What is left to do here is in `../../docs/BACKLOG.md`.
