@@ -12,7 +12,7 @@
 #   db            Postgres
 #   db-backup     pg_dump to the pgbackups volume every BACKUP_INTERVAL_HOURS, kept BACKUP_KEEP_DAYS
 #   redpanda      Kafka-compatible broker (+ console)
-#   broker-init   one-shot: creates the two topics
+#   broker-init   one-shot: creates the topics (sensors, its dead-letter topic, water control)
 #   migrate       one-shot: alembic upgrade head — everything below waits for it
 #   api           FastAPI                                        -> http://localhost:8080/docs
 #   seed          one-shot: demo farm, zones, sensors, admin user (idempotent)
@@ -191,7 +191,7 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        for t in "${SENSORS_TOPIC:-tilthwave.sensors.dev}" "${WATER_CONTROL_TOPIC:-tilthwave.water-control.dev}"; do
+        for t in "${SENSORS_TOPIC:-tilthwave.sensors.dev}" "${SENSORS_TOPIC:-tilthwave.sensors.dev}.dlq" "${WATER_CONTROL_TOPIC:-tilthwave.water-control.dev}"; do
           # idempotent: TOPIC_ALREADY_EXISTS is the expected answer after the first run
           rpk topic create "$$t" -p 1 -X brokers=redpanda:29092 || true
         done

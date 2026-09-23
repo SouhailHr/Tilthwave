@@ -34,7 +34,7 @@ HTTP_LATENCY = Histogram(
 STREAMER_EVENTS = Counter(
     "tilthwave_streamer_events_total",
     "Broker events taken off the sensors topic, by outcome: processed, nacked (database "
-    "unavailable, re-consumed), rejected (bad payload, skipped).",
+    "unavailable, re-consumed), rejected (bad payload, sent to the dead-letter topic).",
     ["outcome"],
 )
 
@@ -52,6 +52,16 @@ FLOW_RUNNER_CONSECUTIVE_FAILURES = Gauge(
 )
 
 # ---- broker commands (the flow runner is the only sender) ---------------------------------------
+
+FLOW_RUNNER_BREAKER_TRIPS = Counter(
+    "tilthwave_flow_runner_breaker_trips_total",
+    "Ticks cut short because a field command failed: the remaining zones wait for the next tick "
+    "instead of each waiting out its own broker timeout.",
+)
+STREAMER_RETRY_DELAY = Gauge(
+    "tilthwave_streamer_retry_delay_seconds",
+    "Current wait before re-consuming an event the database could not take (0 when healthy).",
+)
 
 BROKER_COMMANDS = Counter(
     "tilthwave_broker_commands_total",

@@ -9,12 +9,32 @@ from sqlalchemy.orm import sessionmaker
 from common.exceptions import BrokerError, ConflictError, InvalidFilterError, NotFoundError
 from common.metrics import BROKER_COMMANDS
 from common.tenant_context import get_current_tenant
+from config.settings import settings
 from infrastructure.exceptions import DBReposException
 
 logger = logging.getLogger(__name__)
 
 # Seconds to wait for the broker to acknowledge a command before treating it as failed.
 BROKER_DELIVERY_TIMEOUT_SECONDS = 5
+
+
+def engine_options(uri: str) -> dict:
+    """
+    Pool sizing and timeouts for a database URI. Postgres gets a connect timeout and a
+    server-side statement timeout on every connection (settings.DATABASE); SQLite (tests) gets
+    neither, it has no such knobs.
+    """
+    if not uri.startswith("postgresql"):
+        return {}
+    db = settings.DATABASE
+    return {
+        "pool_size": 10,
+        "max_overflow": 20,
+        "connect_args": {
+            "connect_timeout": db.CONNECT_TIMEOUT_SECONDS,
+            "options": f"-c statement_timeout={db.STATEMENT_TIMEOUT_MS}",
+        },
+    }
 
 
 class BaseDBRepo:
@@ -61,8 +81,7 @@ class BaseDBRepo:
             # The API threadpool runs up to 40 sync handlers at once; the default pool (5 + 10)
             # would make a burst above 15 wait up to pool_timeout. pool_recycle drops connections
             # before a proxy or Postgres idle timeout can, pool_pre_ping catches the rest.
-            pool = {"pool_size": 10, "max_overflow": 20} if uri.startswith("postgresql") else {}
-            return create_engine(uri, echo=echo, pool_pre_ping=True, pool_recycle=1800, **pool)
+            return create_engine(uri, echo=echo, pool_pre_ping=True, pool_recycle=1800, **engine_options(uri))
         except Exception as e:
             raise DBReposException(f"Error creating engine: {e}") from e
 

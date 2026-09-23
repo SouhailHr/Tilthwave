@@ -126,22 +126,11 @@ Found by the 2026-09-23 re-run, still open (the rest of that run is fixed in `fi
 Found by the 2026-09-23 practices review (sync/async, fault tolerance, versioning, layering,
 messaging reliability, CI/CD), checked against the code; what already holds is not listed.
 
-- **No database timeouts**: SQLAlchemy has no `connect_timeout` and Postgres no
-  `statement_timeout`, so one stuck query holds an API worker or a flow-runner tick indefinitely.
-  Set `connect_args={"connect_timeout": 5, "options": "-c statement_timeout=15000"}` in
-  `BaseDBRepo.get_engine` (longer for migrations).
-- **Streamer retry has no backoff**: a database outage re-consumes the same message every
-  `DB_RETRY_SECONDS` (5 s) forever. Exponential backoff with jitter and a ceiling (e.g. 5 s to
-  60 s), keeping the nack, and a metric for the current delay.
-- **No circuit breaker on field commands**: with the broker down every command in a tick waits
-  its full 5 s flush, so a tick with many zones runs minutes. Stop sending for the rest of the
-  tick after the first `BrokerError` (the next tick retries), and count it.
-- **Producer idempotence off**: the flow runner's Kafka producer uses defaults; set
-  `enable.idempotence=true` (implies `acks=all`) so a retried produce cannot duplicate a
-  command. Redpanda runs one replica, so an acknowledged command still dies with the volume;
-  accepted for a single host.
-- **No dead-letter topic**: a payload the streamer cannot parse is logged and skipped. Publish
-  it to `tilthwave.sensors.dlq` with the error, alert on its rate, and add a replay script.
+
+
+
+
+
 - **No trace id across the broker**: the API's `request_id` stops at the HTTP boundary; a
   command and the confirmation it causes cannot be joined in Loki. Put a `correlation_id` in
   every command and have the actuator echo it in the confirmation.

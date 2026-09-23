@@ -22,8 +22,15 @@ from prometheus_client import start_http_server
 
 import common.constants as global_constants
 from common.dates import minutes_since
+from common.exceptions import BrokerError
 from common.logging import configure_logging
-from common.metrics import FLOW_RUNNER_CONSECUTIVE_FAILURES, FLOW_RUNNER_LAST_OK, FLOW_RUNNER_TICKS, now
+from common.metrics import (
+    FLOW_RUNNER_BREAKER_TRIPS,
+    FLOW_RUNNER_CONSECUTIVE_FAILURES,
+    FLOW_RUNNER_LAST_OK,
+    FLOW_RUNNER_TICKS,
+    now,
+)
 from config.settings import settings
 from wiring import worker_use_cases
 
@@ -166,8 +173,10 @@ class ZoneAutomaticIrrigationHelper:
         One control-loop tick: for each zone, start or stop irrigation as needed, then close the
         water sources when nothing is irrigating.
 
-        A failure in one zone (e.g. the broker is down) is logged and must not prevent the other
-        zones from being evaluated; the next tick retries.
+        A failure in one zone is logged and does not prevent the other zones from being evaluated;
+        the next tick retries. A failed field command is different: the broker is down, every
+        further command would wait out its own delivery timeout (5 s each), so the tick stops
+        commanding (a breaker for the rest of this tick) and the next tick tries again.
         @return: how many steps of this tick failed
         """
         failures = 0
@@ -182,10 +191,20 @@ class ZoneAutomaticIrrigationHelper:
         for task in open_tasks:
             task_by_zone.setdefault(task.zone_name, task)  # oldest first, as the per-zone query returned
         readings = cls.zone_use_case.latest_zone_readings([zone.zone_name for zone in zones])
-        for zone in zones:
+        for index, zone in enumerate(zones):
             name = zone.zone_name
             try:
                 cls._handle_zone(zone, task_by_zone.get(name), readings.get(name, []))
+            except BrokerError:
+                failures += 1
+                skipped = [z.zone_name for z in zones[index + 1 :]]
+                FLOW_RUNNER_BREAKER_TRIPS.inc()
+                logger.exception(
+                    "Broker unavailable commanding zone %s; not commanding %s this tick",
+                    name,
+                    skipped or "any other zone",
+                )
+                return failures
             except Exception:
                 failures += 1
                 logger.exception("Could not evaluate zone %s", zone.zone_name)

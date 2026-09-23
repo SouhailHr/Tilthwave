@@ -60,6 +60,7 @@ def test_requests_are_counted_by_route_template_not_by_path(client, auth_headers
 
 def test_streamer_counts_each_outcome(monkeypatch):
     monkeypatch.setattr(run_streamer, "DB_RETRY_SECONDS", 0)
+    monkeypatch.setattr(run_streamer, "dead_letter", lambda event, error: None)
     counts = {o: _value("tilthwave_streamer_events_total", outcome=o) for o in ("processed", "nacked", "rejected")}
 
     monkeypatch.setattr(run_streamer.event_handler, "process", lambda event: None)

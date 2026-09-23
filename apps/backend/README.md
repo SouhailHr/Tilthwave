@@ -94,8 +94,14 @@ tests/                        pytest, SQLite
   stop the scheduler and end the process with exit code 1, so the restart policy takes over
   (`ControlLoop` in `flow_runner.py`; a `sys.exit` inside the job would be swallowed by APScheduler).
 - **Streamer acknowledgements.** Offsets are committed only after the handler returned. A database
-  error nacks the message (seek back, retry after `DB_RETRY_SECONDS`) so an outage loses nothing;
-  a bad payload is rejected and skipped. `/health` on port 8081 (inside the container) pings the
+  error nacks the message (seek back, retry with exponential backoff and jitter from 5 s up to
+  60 s) so an outage loses nothing; a bad payload is parked on the dead-letter topic
+  (`<sensors topic>.dlq`, with the error) and skipped; `infrastructure/scripts/replay_dlq.py
+  --apply` republishes them once the cause is fixed.
+- **Timeouts and breakers.** Postgres connections time out after `POSTGRES_CONNECT_TIMEOUT_SECONDS`
+  (5) and statements after `POSTGRES_STATEMENT_TIMEOUT_MS` (15 000; migrations are not limited).
+  The command producer is idempotent. A tick stops commanding after the first failed command
+  (the broker is down; the next tick retries) instead of waiting 5 s per remaining zone. `/health` on port 8081 (inside the container) pings the
   broker and is the compose healthcheck.
 - **Lists** are newest-first by default (`order_by=id desc`), paginated with `page` / `size`.
 
