@@ -74,7 +74,8 @@ carries `site=SITE_NAME`, so several hosts fit in one Grafana.
 1. Create a Grafana Cloud stack. From its Prometheus and Loki details copy the two push URLs and
    user ids, and create one access-policy token with `metrics:write` and `logs:write`. Put them in
    the environment (`deploy/.env` or Coolify) as `GRAFANA_CLOUD_PROM_URL`, `GRAFANA_CLOUD_PROM_USER`,
-   `GRAFANA_CLOUD_LOKI_URL`, `GRAFANA_CLOUD_LOKI_USER`, `GRAFANA_CLOUD_TOKEN`, with `SITE_NAME` and
+   `GRAFANA_CLOUD_LOKI_URL` (the bare logs host is fine, `/loki/api/v1/push` is appended when
+   missing), `GRAFANA_CLOUD_LOKI_USER`, `GRAFANA_CLOUD_TOKEN`, with `SITE_NAME` and
    `API_METRICS_TOKEN` set. Add `COMPOSE_PROFILES=observability` (Coolify: an environment variable)
    and redeploy; `docker ps` shows `tilthwave-alloy` healthy.
 2. Create a service account in Grafana (Administration > Service accounts, role Editor) with a
