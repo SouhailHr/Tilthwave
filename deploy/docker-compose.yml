@@ -384,6 +384,9 @@ services:
         for v in API_METRICS_TOKEN GRAFANA_CLOUD_PROM_URL GRAFANA_CLOUD_PROM_USER GRAFANA_CLOUD_LOKI_URL GRAFANA_CLOUD_LOKI_USER GRAFANA_CLOUD_TOKEN; do
           env | grep -q "^$$v=." || { echo "alloy: $$v is not set (deploy/.env.example, Grafana Cloud)"; exit 1; }
         done
+        # The Loki push endpoint is the stack's logs URL plus /loki/api/v1/push; the grafana.com page
+        # shows the bare host, and a bare host answers 405 to every batch. Append it when missing.
+        case "$$GRAFANA_CLOUD_LOKI_URL" in */loki/api/v1/push) ;; *) export GRAFANA_CLOUD_LOKI_URL="$${GRAFANA_CLOUD_LOKI_URL%/}/loki/api/v1/push" ;; esac
         exec alloy run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
     environment:
       SITE_NAME: ${SITE_NAME:-tilthwave}
