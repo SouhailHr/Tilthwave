@@ -6,7 +6,7 @@ import type { ApiError } from "@/api/errors";
 
 import { EntityForm, type EntityFormField } from "./entity-form";
 
-// The FK picker reads its options through the entity hooks; the text-field tests never reach it.
+// The FK picker reads its options through the entity hooks; the text-furrow tests never reach it.
 const useEntityList = vi.fn();
 vi.mock("@/api/entity-queries", () => ({ useEntityList: (...args: unknown[]) => useEntityList(...args) }));
 

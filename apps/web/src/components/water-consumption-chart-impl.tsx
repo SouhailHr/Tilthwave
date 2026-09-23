@@ -1,15 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { cn } from "@/lib/utils";
 import type { FarmStats } from "@/types/farm";
@@ -47,8 +39,13 @@ const MONTH_SHORT: Record<(typeof MONTH_ORDER)[number], string> = {
 interface ChartPoint {
   month: string;
   fullMonth: string;
-  value: number;
+  /** null for a month that has not started: no bar, rather than a misleading zero. */
+  value: number | null;
+  current: boolean;
 }
+
+// 612 000 -> "612k", 1 250 000 -> "1.3M": the axis stays four characters wide.
+const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 
 interface WaterConsumptionChartProps {
   data: FarmStats["chart_data"] | undefined;
@@ -60,18 +57,22 @@ export function WaterConsumptionChart({
   data,
   unit = "m³",
   className,
-}: WaterConsumptionChartProps) {
+  now = new Date(),
+}: WaterConsumptionChartProps & { now?: Date }) {
+  const thisMonth = now.getMonth();
   const series = useMemo<ChartPoint[]>(() => {
     if (!data) return [];
-    return MONTH_ORDER.map((month) => ({
+    // The API reports the current calendar year: months after this one have not happened yet.
+    return MONTH_ORDER.map((month, index) => ({
       month: MONTH_SHORT[month],
       fullMonth: month,
-      value: data[month]?.Total ?? 0,
+      value: index > thisMonth ? null : (data[month]?.Total ?? 0),
+      current: index === thisMonth,
     }));
-  }, [data]);
+  }, [data, thisMonth]);
 
   const total = useMemo(
-    () => series.reduce((acc, point) => acc + point.value, 0),
+    () => series.reduce((acc, point) => acc + (point.value ?? 0), 0),
     [series],
   );
 
@@ -85,108 +86,60 @@ export function WaterConsumptionChart({
 
   return (
     <div className={cn("grid gap-3", className)}>
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="text-muted-foreground">12-month consumption</span>
+      <div className="flex items-baseline justify-between gap-4 text-sm">
+        <span className="text-muted-foreground">Monthly total, {unit}</span>
         <span className="font-medium tabular-nums">
-          {total.toLocaleString()} {unit}
+          {total.toLocaleString()} {unit} <span className="text-muted-foreground">this year</span>
         </span>
       </div>
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={series}
-            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="water-area" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="0%"
-                  stopColor="var(--color-field)"
-                  stopOpacity={0.35}
-                />
-                <stop
-                  offset="100%"
-                  stopColor="var(--color-field)"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--color-border)"
-              vertical={false}
-            />
+          <BarChart data={series} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barCategoryGap="22%">
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="month"
               tickLine={false}
               axisLine={false}
               tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
               tickMargin={8}
+              interval={0}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-              width={56}
-              label={{
-                value: `Water consumption (${unit})`,
-                angle: -90,
-                position: "insideLeft",
-                offset: 10,
-                style: {
-                  textAnchor: "middle",
-                  fill: "var(--color-muted-foreground)",
-                  fontSize: 11,
-                },
-              }}
+              tickFormatter={(value: number) => compact.format(value)}
+              allowDecimals={false}
+              width={40}
             />
             <Tooltip
-              cursor={{
-                stroke: "var(--color-field)",
-                strokeWidth: 1,
-                strokeDasharray: "3 3",
-              }}
+              cursor={{ fill: "var(--color-muted)", opacity: 0.6 }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const point = payload[0]?.payload as ChartPoint | undefined;
-                if (!point) return null;
+                if (!point || point.value === null) return null;
                 return (
                   <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-md">
                     <div className="font-medium text-foreground">
                       {point.fullMonth}
+                      {point.current ? " (so far)" : ""}
                     </div>
                     <div className="text-muted-foreground">
-                      <span className="tabular-nums text-foreground">
-                        {point.value.toLocaleString()}
-                      </span>{" "}
-                      {unit}
+                      <span className="tabular-nums text-foreground">{point.value.toLocaleString()}</span> {unit}
                     </div>
                   </div>
                 );
               }}
             />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="var(--color-field)"
-              strokeWidth={2.5}
-              fill="url(#water-area)"
-              dot={{
-                r: 3,
-                fill: "var(--color-field)",
-                stroke: "var(--color-bone)",
-                strokeWidth: 1.5,
-              }}
-              activeDot={{
-                r: 5,
-                fill: "var(--color-pulse)",
-                stroke: "var(--color-bone)",
-                strokeWidth: 2,
-              }}
-              isAnimationActive
-              animationDuration={600}
-            />
-          </AreaChart>
+            <Bar dataKey="value" radius={[6, 6, 0, 0]} isAnimationActive animationDuration={500}>
+              {series.map((point) => (
+                <Cell
+                  key={point.month}
+                  fill={point.current ? "var(--color-shoot)" : "var(--color-furrow)"}
+                />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>

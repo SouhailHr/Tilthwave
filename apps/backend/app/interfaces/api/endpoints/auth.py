@@ -66,7 +66,7 @@ def login(data: AuthLogin, request: Request):
     expires_in = AuthHelper.session_lifetime_seconds()
     if data.use_cookie:
         response = JSONResponse(content={"token": None, "token_type": "cookie", "expires_in": expires_in})
-        set_session_cookies(response, access_token, new_csrf_token())
+        set_session_cookies(response, access_token, new_csrf_token(), persistent=data.remember)
         return response
     return JSONResponse(content={"token": access_token, "token_type": "bearer", "expires_in": expires_in})
 

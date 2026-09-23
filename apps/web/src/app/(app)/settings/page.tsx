@@ -428,7 +428,7 @@ export default function SettingsPage() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : profile.isError || !profile.data ? (
-        <div className="rounded-md border border-harvest/40 bg-harvest/10 px-4 py-3 text-sm text-loam">
+        <div className="rounded-md border border-amber/40 bg-amber/10 px-4 py-3 text-sm text-loam">
           <span className="font-medium">Could not load your account.</span>{" "}
           {profile.error?.message}
         </div>

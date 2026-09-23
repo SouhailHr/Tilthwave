@@ -1,302 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900"
-     preserveAspectRatio="xMidYMid slice" role="img" aria-label="Tilthwave animated hero background">
-  <title>Tilthwave — animated hero</title>
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Tilthwave animated hero background" xmlns:c2pa="http://c2pa.org/manifest"><metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo4M2RmZWNkNS1mYzQxLTQ3NTgtYWViZC1iM2MwNjU2ODMxYzkAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaM1JFYnXdMX9lHq+d7HxKWQAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDozZjhmMWMzZi01ZjAyLTQ2MjMtYWMyZS1mNGZkMTA1OTVjZDBscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNo9O9xbwmJvFJjANymbvdfvQAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggmjAfsjfyf6e9pfaQ7naN2KCUozkqcmF1JOeMsEKU5MKkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaNeqxDS/nO1UZfEcncsfVZEAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRNAAAAAAAAAAAAAAAAAGRoYXNoWCCTtqJLzRPRQ4+HUZLAQ5tKn69IxlLQxT/cuPzLWvxRq2RuYW1lbmp1bWJmIG1hbmlmZXN0amV4Y2x1c2lvbnOBomVzdGFydBj4Zmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjgzZGZlY2Q1LWZjNDEtNDc1OC1hZWJkLWIzYzA2NTY4MzFjOS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjcxYzRlMmRkLTI0MDctNDFkMy1iMWY5LTFhYjgxYWUxZWMxZXJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCCaMB+yN/J/p72l9pDudo3YoJSjOSpyYXUk54ywQpTkwqJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgghhpHYlMnqTxUAotkx2jWT+jPuQ5smtKaAn8l05pin02iY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggro9L7BF3VFSj9sn/uKc7RcnX5awkGcSO2/8iRpJwLm10Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQLSK/UpBwgfmK/XpKvHtrA9PA7x/oG2w6PsyZ0IvEB/ofIpc5wuoCUHX9OVHfwauJK17H5zeDwGLjy4Q+O3KDQc=</c2pa:manifest></metadata>
+  <title>Tilthwave animated hero</title>
+  <!-- Dusk over worked soil: furrows drift slowly, amber sensors pulse as the field "speaks". -->
   <defs>
-    <!-- Night-field sky gradient: deep loam at top, fading to a green horizon glow -->
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"  stop-color="#0F1F12"/>
-      <stop offset="55%" stop-color="#152B19"/>
-      <stop offset="85%" stop-color="#1F4A28"/>
-      <stop offset="100%" stop-color="#2A6B36"/>
+      <stop offset="0%" stop-color="#121A11"/>
+      <stop offset="60%" stop-color="#1E2A1C"/>
+      <stop offset="100%" stop-color="#2A4A2C"/>
     </linearGradient>
-
-    <!-- Soft horizon halo -->
-    <radialGradient id="horizonGlow" cx="50%" cy="92%" r="60%">
-      <stop offset="0%"  stop-color="#76D67E" stop-opacity="0.55"/>
-      <stop offset="40%" stop-color="#4A8E3A" stop-opacity="0.20"/>
-      <stop offset="100%" stop-color="#0F1F12" stop-opacity="0"/>
+    <radialGradient id="glow" cx="72%" cy="38%" r="45%">
+      <stop offset="0%" stop-color="#E3A33B" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#E3A33B" stop-opacity="0"/>
     </radialGradient>
-
-    <!-- Giant translucent leaf gradient -->
-    <linearGradient id="bigLeaf" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"  stop-color="#76D67E" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#4A8E3A" stop-opacity="0.04"/>
-    </linearGradient>
-
-    <!-- Data wave gradient -->
-    <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"  stop-color="#76D67E" stop-opacity="0"/>
-      <stop offset="20%" stop-color="#76D67E" stop-opacity="0.85"/>
-      <stop offset="80%" stop-color="#E0A93A" stop-opacity="0.85"/>
-      <stop offset="100%" stop-color="#E0A93A" stop-opacity="0"/>
-    </linearGradient>
-
-    <!-- Sensor pulse gradient -->
-    <radialGradient id="pulse" cx="50%" cy="50%" r="50%">
-      <stop offset="0%"  stop-color="#FAF6EC" stop-opacity="1"/>
-      <stop offset="60%" stop-color="#76D67E" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#76D67E" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Glow filter for the data wave -->
-    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%">
-      <feGaussianBlur stdDeviation="4" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-
-    <!-- Reusable particle (pollen / data mote) -->
-    <radialGradient id="mote" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FAF6EC" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="#FAF6EC" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- Soft contour line style -->
-    <linearGradient id="contour" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#4A8E3A" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#76D67E" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#4A8E3A" stop-opacity="0"/>
-    </linearGradient>
   </defs>
-
-  <!-- ============ LAYER 1: SKY ============ -->
   <rect width="1600" height="900" fill="url(#sky)"/>
-  <rect width="1600" height="900" fill="url(#horizonGlow)"/>
-
-  <!-- Drifting aurora-like light band (slow horizontal drift) -->
-  <g opacity="0.35">
-    <ellipse cx="800" cy="780" rx="900" ry="120" fill="#76D67E" opacity="0.18">
-      <animate attributeName="cx" values="600;1000;600" dur="22s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.10;0.22;0.10" dur="12s" repeatCount="indefinite"/>
-    </ellipse>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M-400 430 C -360 422, -280 422, -240 430 S -120 438, -80 430 C -40 422, 40 422, 80 430 S 200 438, 240 430 C 280 422, 360 422, 400 430 S 520 438, 560 430 C 600 422, 680 422, 720 430 S 840 438, 880 430 C 920 422, 1000 422, 1040 430 S 1160 438, 1200 430 C 1240 422, 1320 422, 1360 430 S 1480 438, 1520 430 C 1560 422, 1640 422, 1680 430 S 1800 438, 1840 430 C 1880 422, 1960 422, 2000 430 S 2120 438, 2160 430" stroke="#8CCB5E" stroke-width="2.0" opacity="0.25">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="320 0" dur="18s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 486 C -360 476, -280 476, -240 486 S -120 496, -80 486 C -40 476, 40 476, 80 486 S 200 496, 240 486 C 280 476, 360 476, 400 486 S 520 496, 560 486 C 600 476, 680 476, 720 486 S 840 496, 880 486 C 920 476, 1000 476, 1040 486 S 1160 496, 1200 486 C 1240 476, 1320 476, 1360 486 S 1480 496, 1520 486 C 1560 476, 1640 476, 1680 486 S 1800 496, 1840 486 C 1880 476, 1960 476, 2000 486 S 2120 496, 2160 486" stroke="#4F9A4A" stroke-width="2.6" opacity="0.31">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="-320 0" dur="21s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 542 C -360 530, -280 530, -240 542 S -120 554, -80 542 C -40 530, 40 530, 80 542 S 200 554, 240 542 C 280 530, 360 530, 400 542 S 520 554, 560 542 C 600 530, 680 530, 720 542 S 840 554, 880 542 C 920 530, 1000 530, 1040 542 S 1160 554, 1200 542 C 1240 530, 1320 530, 1360 542 S 1480 554, 1520 542 C 1560 530, 1640 530, 1680 542 S 1800 554, 1840 542 C 1880 530, 1960 530, 2000 542 S 2120 554, 2160 542" stroke="#2F6B3A" stroke-width="3.2" opacity="0.37">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="320 0" dur="24s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 598 C -360 584, -280 584, -240 598 S -120 612, -80 598 C -40 584, 40 584, 80 598 S 200 612, 240 598 C 280 584, 360 584, 400 598 S 520 612, 560 598 C 600 584, 680 584, 720 598 S 840 612, 880 598 C 920 584, 1000 584, 1040 598 S 1160 612, 1200 598 C 1240 584, 1320 584, 1360 598 S 1480 612, 1520 598 C 1560 584, 1640 584, 1680 598 S 1800 612, 1840 598 C 1880 584, 1960 584, 2000 598 S 2120 612, 2160 598" stroke="#8CCB5E" stroke-width="3.8" opacity="0.43">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="-320 0" dur="27s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 654 C -360 638, -280 638, -240 654 S -120 670, -80 654 C -40 638, 40 638, 80 654 S 200 670, 240 654 C 280 638, 360 638, 400 654 S 520 670, 560 654 C 600 638, 680 638, 720 654 S 840 670, 880 654 C 920 638, 1000 638, 1040 654 S 1160 670, 1200 654 C 1240 638, 1320 638, 1360 654 S 1480 670, 1520 654 C 1560 638, 1640 638, 1680 654 S 1800 670, 1840 654 C 1880 638, 1960 638, 2000 654 S 2120 670, 2160 654" stroke="#4F9A4A" stroke-width="4.4" opacity="0.49">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="320 0" dur="30s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 710 C -360 692, -280 692, -240 710 S -120 728, -80 710 C -40 692, 40 692, 80 710 S 200 728, 240 710 C 280 692, 360 692, 400 710 S 520 728, 560 710 C 600 692, 680 692, 720 710 S 840 728, 880 710 C 920 692, 1000 692, 1040 710 S 1160 728, 1200 710 C 1240 692, 1320 692, 1360 710 S 1480 728, 1520 710 C 1560 692, 1640 692, 1680 710 S 1800 728, 1840 710 C 1880 692, 1960 692, 2000 710 S 2120 728, 2160 710" stroke="#2F6B3A" stroke-width="5.0" opacity="0.55">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="-320 0" dur="33s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 766 C -360 746, -280 746, -240 766 S -120 786, -80 766 C -40 746, 40 746, 80 766 S 200 786, 240 766 C 280 746, 360 746, 400 766 S 520 786, 560 766 C 600 746, 680 746, 720 766 S 840 786, 880 766 C 920 746, 1000 746, 1040 766 S 1160 786, 1200 766 C 1240 746, 1320 746, 1360 766 S 1480 786, 1520 766 C 1560 746, 1640 746, 1680 766 S 1800 786, 1840 766 C 1880 746, 1960 746, 2000 766 S 2120 786, 2160 766" stroke="#8CCB5E" stroke-width="5.6" opacity="0.61">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="320 0" dur="36s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 822 C -360 800, -280 800, -240 822 S -120 844, -80 822 C -40 800, 40 800, 80 822 S 200 844, 240 822 C 280 800, 360 800, 400 822 S 520 844, 560 822 C 600 800, 680 800, 720 822 S 840 844, 880 822 C 920 800, 1000 800, 1040 822 S 1160 844, 1200 822 C 1240 800, 1320 800, 1360 822 S 1480 844, 1520 822 C 1560 800, 1640 800, 1680 822 S 1800 844, 1840 822 C 1880 800, 1960 800, 2000 822 S 2120 844, 2160 822" stroke="#4F9A4A" stroke-width="6.2" opacity="0.67">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="-320 0" dur="39s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 878 C -360 854, -280 854, -240 878 S -120 902, -80 878 C -40 854, 40 854, 80 878 S 200 902, 240 878 C 280 854, 360 854, 400 878 S 520 902, 560 878 C 600 854, 680 854, 720 878 S 840 902, 880 878 C 920 854, 1000 854, 1040 878 S 1160 902, 1200 878 C 1240 854, 1320 854, 1360 878 S 1480 902, 1520 878 C 1560 854, 1640 854, 1680 878 S 1800 902, 1840 878 C 1880 854, 1960 854, 2000 878 S 2120 902, 2160 878" stroke="#2F6B3A" stroke-width="6.8" opacity="0.73">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="320 0" dur="42s" repeatCount="indefinite"/>
+    </path>
+    <path d="M-400 934 C -360 908, -280 908, -240 934 S -120 960, -80 934 C -40 908, 40 908, 80 934 S 200 960, 240 934 C 280 908, 360 908, 400 934 S 520 960, 560 934 C 600 908, 680 908, 720 934 S 840 960, 880 934 C 920 908, 1000 908, 1040 934 S 1160 960, 1200 934 C 1240 908, 1320 908, 1360 934 S 1480 960, 1520 934 C 1560 908, 1640 908, 1680 934 S 1800 960, 1840 934 C 1880 908, 1960 908, 2000 934 S 2120 960, 2160 934" stroke="#8CCB5E" stroke-width="7.4" opacity="0.79">
+      <animateTransform attributeName="transform" type="translate" from="0 0" to="-320 0" dur="45s" repeatCount="indefinite"/>
+    </path>
   </g>
-
-  <!-- ============ LAYER 2: TOPOGRAPHIC CONTOURS (slow parallax) ============ -->
-  <g stroke="url(#contour)" fill="none" stroke-width="1">
-    <path d="M-100 740 Q 300 700 600 730 T 1200 720 T 1700 740"
-          opacity="0.45">
-      <animateTransform attributeName="transform" type="translate"
-                        values="0 0; -40 0; 0 0" dur="28s" repeatCount="indefinite"/>
-    </path>
-    <path d="M-100 780 Q 400 750 700 770 T 1300 760 T 1700 780"
-          opacity="0.35">
-      <animateTransform attributeName="transform" type="translate"
-                        values="0 0; -60 0; 0 0" dur="34s" repeatCount="indefinite"/>
-    </path>
-    <path d="M-100 820 Q 500 790 800 810 T 1400 800 T 1700 820"
-          opacity="0.28">
-      <animateTransform attributeName="transform" type="translate"
-                        values="0 0; -80 0; 0 0" dur="42s" repeatCount="indefinite"/>
-    </path>
-    <path d="M-100 860 Q 350 840 750 850 T 1500 845 T 1700 860"
-          opacity="0.22">
-      <animateTransform attributeName="transform" type="translate"
-                        values="0 0; -100 0; 0 0" dur="50s" repeatCount="indefinite"/>
-    </path>
-  </g>
-
-  <!-- ============ LAYER 3: GIANT TRANSLUCENT LEAF (gentle breathing) ============ -->
-  <g transform="translate(1050,180)" opacity="0.9">
-    <g>
-      <animateTransform attributeName="transform" type="rotate"
-                        values="-2 250 300; 2 250 300; -2 250 300"
-                        dur="14s" repeatCount="indefinite"/>
-      <path d="M250 40
-               C 430 80, 490 220, 460 360
-               C 430 480, 280 530, 160 490
-               C 60 460, 30 340, 70 220
-               C 110 110, 180 60, 250 40 Z"
-            fill="url(#bigLeaf)" stroke="#76D67E" stroke-width="1.5" stroke-opacity="0.35"/>
-      <!-- Vein -->
-      <path d="M120 470 C 170 410, 200 410, 240 350
-               C 280 290, 310 290, 350 230
-               C 390 170, 410 170, 440 110"
-            stroke="#FAF6EC" stroke-width="2" stroke-opacity="0.35" fill="none"
-            stroke-dasharray="4 6">
-        <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="8s" repeatCount="indefinite"/>
-      </path>
+    <g transform="translate(300,560)">
+      <circle r="6" fill="#E3A33B"/>
+      <circle r="6" fill="none" stroke="#E3A33B" stroke-width="2">
+        <animate attributeName="r" values="6;34" dur="3.6s" begin="0s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0" dur="3.6s" begin="0s" repeatCount="indefinite"/>
+      </circle>
     </g>
-  </g>
-
-  <!-- Second smaller leaf, opposite drift -->
-  <g transform="translate(-80,520)" opacity="0.5">
-    <g>
-      <animateTransform attributeName="transform" type="rotate"
-                        values="3 180 200; -3 180 200; 3 180 200"
-                        dur="18s" repeatCount="indefinite"/>
-      <path d="M180 30
-               C 320 60, 360 170, 340 270
-               C 320 360, 200 400, 110 370
-               C 30 345, 10 250, 40 165
-               C 70 90, 130 50, 180 30 Z"
-            fill="url(#bigLeaf)" stroke="#4A8E3A" stroke-width="1.5" stroke-opacity="0.3"/>
+    <g transform="translate(820,640)">
+      <circle r="6" fill="#E3A33B"/>
+      <circle r="6" fill="none" stroke="#E3A33B" stroke-width="2">
+        <animate attributeName="r" values="6;34" dur="3.6s" begin="1.2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0" dur="3.6s" begin="1.2s" repeatCount="indefinite"/>
+      </circle>
     </g>
-  </g>
-
-  <!-- ============ LAYER 4: ANIMATED DATA WAVE (the "wave" half of the brand) ============ -->
-  <g filter="url(#glow)">
-    <!-- Primary wave -->
-    <path stroke="url(#waveGrad)" stroke-width="3" fill="none" stroke-linecap="round">
-      <animate attributeName="d" dur="9s" repeatCount="indefinite"
-        values="
-          M 0 480 Q 200 420 400 480 T 800 480 T 1200 480 T 1600 480;
-          M 0 480 Q 200 540 400 480 T 800 480 T 1200 480 T 1600 480;
-          M 0 480 Q 200 420 400 480 T 800 480 T 1200 480 T 1600 480
-        "/>
-    </path>
-    <!-- Secondary harmonic, faster, thinner -->
-    <path stroke="#76D67E" stroke-width="1.5" stroke-opacity="0.6" fill="none">
-      <animate attributeName="d" dur="6s" repeatCount="indefinite"
-        values="
-          M 0 500 Q 150 460 300 500 T 600 500 T 900 500 T 1200 500 T 1600 500;
-          M 0 500 Q 150 540 300 500 T 600 500 T 900 500 T 1200 500 T 1600 500;
-          M 0 500 Q 150 460 300 500 T 600 500 T 900 500 T 1200 500 T 1600 500
-        "/>
-    </path>
-    <!-- Tertiary, slowest, deepest -->
-    <path stroke="#E0A93A" stroke-width="1" stroke-opacity="0.45" fill="none">
-      <animate attributeName="d" dur="13s" repeatCount="indefinite"
-        values="
-          M 0 460 Q 250 400 500 460 T 1000 460 T 1500 460 T 1600 460;
-          M 0 460 Q 250 520 500 460 T 1000 460 T 1500 460 T 1600 460;
-          M 0 460 Q 250 400 500 460 T 1000 460 T 1500 460 T 1600 460
-        "/>
-    </path>
-  </g>
-
-  <!-- ============ LAYER 5: SENSOR CONSTELLATION (pulsing nodes + connection lines) ============ -->
-  <g>
-    <!-- Connection lines -->
-    <g stroke="#76D67E" stroke-width="1" stroke-opacity="0.25" fill="none">
-      <line x1="220" y1="280" x2="480" y2="200">
-        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="5s" repeatCount="indefinite"/>
-      </line>
-      <line x1="480" y1="200" x2="760" y2="320">
-        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="6s" repeatCount="indefinite"/>
-      </line>
-      <line x1="760" y1="320" x2="1100" y2="240">
-        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="7s" repeatCount="indefinite"/>
-      </line>
-      <line x1="1100" y1="240" x2="1380" y2="360">
-        <animate attributeName="stroke-opacity" values="0.10;0.45;0.10" dur="5.5s" repeatCount="indefinite"/>
-      </line>
-      <line x1="220" y1="280" x2="760" y2="320">
-        <animate attributeName="stroke-opacity" values="0.05;0.25;0.05" dur="9s" repeatCount="indefinite"/>
-      </line>
-      <line x1="480" y1="200" x2="1100" y2="240">
-        <animate attributeName="stroke-opacity" values="0.05;0.25;0.05" dur="11s" repeatCount="indefinite"/>
-      </line>
+    <g transform="translate(1260,520)">
+      <circle r="6" fill="#E3A33B"/>
+      <circle r="6" fill="none" stroke="#E3A33B" stroke-width="2">
+        <animate attributeName="r" values="6;34" dur="3.6s" begin="2.4s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0" dur="3.6s" begin="2.4s" repeatCount="indefinite"/>
+      </circle>
     </g>
-
-    <!-- Sensor nodes with pulsing halos -->
-    <g>
-      <!-- Node 1 -->
-      <circle cx="220" cy="280" r="20" fill="url(#pulse)">
-        <animate attributeName="r" values="14;28;14" dur="3.2s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3.2s" repeatCount="indefinite"/>
+    <g transform="translate(560,760)">
+      <circle r="6" fill="#E3A33B"/>
+      <circle r="6" fill="none" stroke="#E3A33B" stroke-width="2">
+        <animate attributeName="r" values="6;34" dur="3.6s" begin="3.1s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0" dur="3.6s" begin="3.1s" repeatCount="indefinite"/>
       </circle>
-      <circle cx="220" cy="280" r="4" fill="#FAF6EC"/>
-
-      <!-- Node 2 -->
-      <circle cx="480" cy="200" r="20" fill="url(#pulse)">
-        <animate attributeName="r" values="14;28;14" dur="4s" begin="0.6s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="4s" begin="0.6s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="480" cy="200" r="4" fill="#FAF6EC"/>
-
-      <!-- Node 3 (harvest gold accent) -->
-      <circle cx="760" cy="320" r="22" fill="url(#pulse)">
-        <animate attributeName="r" values="16;32;16" dur="3.6s" begin="1.2s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3.6s" begin="1.2s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="760" cy="320" r="5" fill="#E0A93A"/>
-
-      <!-- Node 4 -->
-      <circle cx="1100" cy="240" r="20" fill="url(#pulse)">
-        <animate attributeName="r" values="14;28;14" dur="3.8s" begin="0.3s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3.8s" begin="0.3s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="1100" cy="240" r="4" fill="#FAF6EC"/>
-
-      <!-- Node 5 -->
-      <circle cx="1380" cy="360" r="20" fill="url(#pulse)">
-        <animate attributeName="r" values="14;28;14" dur="4.4s" begin="0.9s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="4.4s" begin="0.9s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="1380" cy="360" r="4" fill="#FAF6EC"/>
     </g>
-
-    <!-- Data packets travelling along the network lines -->
-    <circle r="3" fill="#FAF6EC">
-      <animateMotion dur="4s" repeatCount="indefinite"
-        path="M 220 280 L 480 200"/>
-      <animate attributeName="opacity" values="0;1;1;0" dur="4s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="3" fill="#E0A93A">
-      <animateMotion dur="5s" repeatCount="indefinite" begin="1s"
-        path="M 480 200 L 760 320"/>
-      <animate attributeName="opacity" values="0;1;1;0" dur="5s" begin="1s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="3" fill="#FAF6EC">
-      <animateMotion dur="4.5s" repeatCount="indefinite" begin="0.5s"
-        path="M 760 320 L 1100 240"/>
-      <animate attributeName="opacity" values="0;1;1;0" dur="4.5s" begin="0.5s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="3" fill="#76D67E">
-      <animateMotion dur="4.2s" repeatCount="indefinite" begin="2s"
-        path="M 1100 240 L 1380 360"/>
-      <animate attributeName="opacity" values="0;1;1;0" dur="4.2s" begin="2s" repeatCount="indefinite"/>
-    </circle>
-  </g>
-
-  <!-- ============ LAYER 6: FLOATING POLLEN / DATA MOTES ============ -->
-  <g>
-    <circle r="2.5" fill="url(#mote)">
-      <animate attributeName="cx" values="120;180;120" dur="14s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="700;120;700" dur="14s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.9;0" dur="14s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="3" fill="url(#mote)">
-      <animate attributeName="cx" values="340;380;340" dur="17s" begin="2s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="800;100;800" dur="17s" begin="2s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.85;0" dur="17s" begin="2s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="2" fill="url(#mote)">
-      <animate attributeName="cx" values="560;520;560" dur="12s" begin="1s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="780;80;780" dur="12s" begin="1s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.9;0" dur="12s" begin="1s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="2.5" fill="url(#mote)">
-      <animate attributeName="cx" values="780;840;780" dur="19s" begin="3s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="820;60;820" dur="19s" begin="3s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.8;0" dur="19s" begin="3s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="3" fill="url(#mote)">
-      <animate attributeName="cx" values="980;940;980" dur="15s" begin="0.5s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="760;100;760" dur="15s" begin="0.5s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.9;0" dur="15s" begin="0.5s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="2" fill="url(#mote)">
-      <animate attributeName="cx" values="1180;1240;1180" dur="16s" begin="2.5s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="800;120;800" dur="16s" begin="2.5s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.85;0" dur="16s" begin="2.5s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="2.5" fill="url(#mote)">
-      <animate attributeName="cx" values="1380;1340;1380" dur="13s" begin="1.5s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="780;90;780" dur="13s" begin="1.5s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.9;0" dur="13s" begin="1.5s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="2" fill="url(#mote)">
-      <animate attributeName="cx" values="1520;1480;1520" dur="18s" begin="4s" repeatCount="indefinite"/>
-      <animate attributeName="cy" values="800;80;800" dur="18s" begin="4s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0;0.85;0" dur="18s" begin="4s" repeatCount="indefinite"/>
-    </circle>
-  </g>
-
-  <!-- ============ LAYER 7: SUBTLE GRAIN / VIGNETTE OVERLAY ============ -->
-  <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
-    <stop offset="60%" stop-color="#000" stop-opacity="0"/>
-    <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
-  </radialGradient>
-  <rect width="1600" height="900" fill="url(#vignette)" pointer-events="none"/>
+    <g transform="translate(1100,800)">
+      <circle r="6" fill="#E3A33B"/>
+      <circle r="6" fill="none" stroke="#E3A33B" stroke-width="2">
+        <animate attributeName="r" values="6;34" dur="3.6s" begin="0.6s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.9;0" dur="3.6s" begin="0.6s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+  <style>@media (prefers-reduced-motion: reduce) { animate, animateTransform { display:none; } }</style>
 </svg>

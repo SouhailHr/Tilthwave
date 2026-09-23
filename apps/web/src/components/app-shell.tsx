@@ -60,25 +60,17 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/users", label: "Users", icon: Users, roles: ["admin", "owner"] },
 ];
 
+/** The horizontal lockup (mark + outlined wordmark), never live text: brand/README.md. */
 function BrandLockup({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    <div className={cn("flex items-center", className)}>
       <Image
-        src="/brand/tilthwave-mark.svg"
+        src="/brand/tilthwave-lockup-horizontal.svg"
         alt="tilthwave"
-        width={28}
-        height={28}
+        width={103}
+        height={30}
         priority
       />
-      <div className="flex items-baseline gap-2 leading-none">
-        <span className="font-heading text-base font-semibold tracking-tight text-foreground">
-          tilthwave
-        </span>
-        <span className="hidden text-muted-foreground/70 sm:inline">·</span>
-        <span className="hidden text-xs text-muted-foreground sm:inline">
-          farm watch
-        </span>
-      </div>
     </div>
   );
 }
@@ -120,8 +112,8 @@ function LiveSensorsBadge() {
   return (
     <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-foreground">
       <span className="relative flex size-2">
-        <span className="tilthwave-pulse-dot absolute inline-flex size-full rounded-full bg-pulse" />
-        <span className="relative inline-flex size-2 rounded-full bg-field" />
+        <span className="tilthwave-pulse-dot absolute inline-flex size-full rounded-full bg-shoot" />
+        <span className="relative inline-flex size-2 rounded-full bg-furrow" />
       </span>
       <span>
         {isPending ? "—" : total} sensor{total === 1 ? "" : "s"} live

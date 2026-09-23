@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const SESSION_COOKIE = "tw_access";
 
 const PROTECTED_MATCHER =
-  /^\/(?!login|forgot-password|reset-password|api\/health|_next|brand|favicon\.ico|.*\.(?:svg|png|jpg|jpeg|webp|ico|js|css|map)$)/;
+  /^\/(?!login|forgot-password|reset-password|api\/health|_next|brand|favicon\.ico|.*\.(?:svg|png|jpg|jpeg|webp|ico|js|css|map|json|webmanifest|txt)$)/;
 
 const API_ORIGIN = (() => {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;

@@ -1,0 +1,11 @@
+/* Tilthwave design tokens */
+:root{
+  --tw-loam:#1E2A1C;        /* wordmark, deepest furrow, dark surfaces */
+  --tw-loam-deep:#111A10;   /* page background on dark screens */
+  --tw-furrow:#2F6B3A;      /* secondary green, slogan, links on light */
+  --tw-shoot:#8CCB5E;       /* primary green: buttons, focus rings, accents on dark */
+  --tw-amber:#E3A33B;       /* the field's "signal": alerts, live indicators, tiny accents only */
+  --tw-sage:#EEF2E4;        /* light page background / ink on dark */
+  --tw-font:Manrope,"Helvetica Neue",Arial,system-ui,sans-serif;
+  --tw-radius-sm:12px; --tw-radius-md:16px; --tw-radius-lg:22px;
+}

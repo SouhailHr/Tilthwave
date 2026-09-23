@@ -10,10 +10,9 @@ import * as z from "zod";
 
 import { useLogin } from "@/api/auth";
 import { toApiError } from "@/api/errors";
-import { AuthCardHeader, AuthPage } from "@/components/auth-page";
+import { AuthCard, AuthCardHeader, AuthPage } from "@/components/auth-page";
 import { PasswordInput } from "@/components/password-input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -28,6 +27,7 @@ import { safeRedirect } from "@/utils/safeRedirect";
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required").max(256),
   password: z.string().min(1, "Password is required").max(256),
+  remember: z.boolean(),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -49,7 +49,7 @@ function LoginForm() {
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { username: "", password: "", remember: true },
   });
 
   async function onSubmit(values: LoginValues) {
@@ -66,61 +66,66 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <AuthCardHeader title="Sign in" description="Where farms speak. Fields listen." />
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input autoComplete="username" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input autoComplete="username" placeholder="your username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <PasswordInput autoComplete="current-password" placeholder="••••••••" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="auth-meta flex items-center justify-between gap-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              className="size-4 accent-[var(--tw-shoot)]"
+              {...form.register("remember")}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Password</FormLabel>
-                    <Link
-                      href="/forgot-password"
-                      className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <FormControl>
-                    <PasswordInput autoComplete="current-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+            Keep me signed in
+          </label>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </div>
+        <Button type="submit" disabled={submitting} className="w-full">
+          {submitting ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+    </Form>
   );
 }
 
 export default function LoginPage() {
   return (
     <AuthPage>
-      <Suspense fallback={null}>
-        <LoginForm />
-      </Suspense>
+      <AuthCard>
+        <AuthCardHeader title="Welcome back" description="Sign in to see what your fields are saying." />
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
+        {/* No self-service sign-up: accounts are created by the farm's owner or an admin. */}
+        <p className="auth-foot">
+          New to Tilthwave? <strong>Ask your farm&rsquo;s owner for an account.</strong>
+        </p>
+      </AuthCard>
     </AuthPage>
   );
 }

@@ -10,10 +10,9 @@ import * as z from "zod";
 
 import { useResetPassword } from "@/api/auth";
 import { toApiError } from "@/api/errors";
-import { AuthCardHeader, AuthPage } from "@/components/auth-page";
+import { AuthCard, AuthCardHeader, AuthPage } from "@/components/auth-page";
 import { PasswordInput } from "@/components/password-input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -111,19 +110,19 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <AuthPage>
-      <Card className="w-full max-w-sm">
+      <AuthCard>
         <AuthCardHeader title="Choose a new password" description="The link works once, for 30 minutes." />
-        <CardContent>
+        <div>
           <Suspense fallback={null}>
             <ResetPasswordForm />
           </Suspense>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="auth-foot">
             <Link href="/login" className="underline-offset-4 hover:text-foreground hover:underline">
               Back to sign in
             </Link>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </AuthCard>
     </AuthPage>
   );
 }

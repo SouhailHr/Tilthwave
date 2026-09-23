@@ -152,3 +152,18 @@ def test_bearer_header_wins_over_a_cookie_session_and_needs_no_csrf(client, auth
     _cookie_login(client, make_farm, make_user)  # the jar now carries tw_access, no CSRF header sent below
     response = client.post("/zones/", json=zone_payload(), headers=auth_headers())
     assert response.status_code == 201
+
+
+def test_keep_me_signed_in_controls_whether_the_cookies_outlive_the_browser(client, make_farm, make_user):
+    make_farm(FARM_A)
+    make_user("pat")
+    remembered = client.post("/auth/login", json={"username": "pat", "password": PASSWORD, "use_cookie": True})
+    assert all("Max-Age=" in c for c in _set_cookie_headers(remembered) if c.startswith(("tw_access=", "tw_csrf=")))
+
+    client.cookies.clear()
+    session_only = client.post(
+        "/auth/login", json={"username": "pat", "password": PASSWORD, "use_cookie": True, "remember": False}
+    )
+    cookies = [c for c in _set_cookie_headers(session_only) if c.startswith(("tw_access=", "tw_csrf="))]
+    assert len(cookies) == 2 and not any("Max-Age=" in c or "expires=" in c.lower() for c in cookies)
+    assert client.get("/auth/me").status_code == 200  # a browser-session cookie is still a session

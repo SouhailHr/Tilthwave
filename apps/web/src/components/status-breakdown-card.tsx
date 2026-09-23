@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 export type BreakdownTone = "field" | "pulse" | "harvest" | "loam" | "muted";
 
 const toneClasses: Record<BreakdownTone, { bar: string; dot: string }> = {
-  field: { bar: "bg-field", dot: "bg-field" },
-  pulse: { bar: "bg-pulse", dot: "bg-pulse" },
-  harvest: { bar: "bg-harvest", dot: "bg-harvest" },
+  field: { bar: "bg-furrow", dot: "bg-furrow" },
+  pulse: { bar: "bg-shoot", dot: "bg-shoot" },
+  harvest: { bar: "bg-amber", dot: "bg-amber" },
   loam: { bar: "bg-loam", dot: "bg-loam" },
   muted: { bar: "bg-muted-foreground/30", dot: "bg-muted-foreground/40" },
 };

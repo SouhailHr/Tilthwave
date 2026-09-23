@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tokens.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -7,7 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* next/font sets --font-manrope on <html>; the fallbacks are tokens.css's --tw-font. */
+  --font-sans: var(--font-manrope), "Helvetica Neue", Arial, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -40,12 +42,13 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Tilthwave brand palette — usable directly as bg-loam, text-field, etc. */
-  --color-loam: #1b2e1b;
-  --color-field: #4a8e3a;
-  --color-pulse: #76d67e;
-  --color-harvest: #e0a93a;
-  --color-bone: #faf6ec;
+  /* Tilthwave brand palette (tokens.css) as utilities: bg-loam, text-furrow, bg-shoot, ... */
+  --color-loam: var(--tw-loam);
+  --color-loam-deep: var(--tw-loam-deep);
+  --color-furrow: var(--tw-furrow);
+  --color-shoot: var(--tw-shoot);
+  --color-amber: var(--tw-amber);
+  --color-sage: var(--tw-sage);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -57,74 +60,74 @@
 }
 
 :root {
-  /* Tilthwave: loam grounds, field is the workhorse, pulse highlights live data,
-     harvest is for warnings, bone is the page. */
-  --background: #faf6ec; /* bone */
-  --foreground: #1b2e1b; /* loam */
+  /* Tilthwave: sage is the light page, loam the ink, shoot the primary action, furrow the
+     secondary green (links, slogan on light), amber the signal (alerts, live dots, never fills). */
+  --background: var(--tw-sage);
+  --foreground: var(--tw-loam);
   --card: #ffffff;
-  --card-foreground: #1b2e1b;
+  --card-foreground: var(--tw-loam);
   --popover: #ffffff;
-  --popover-foreground: #1b2e1b;
-  --primary: #1b2e1b; /* loam — buttons, dark surfaces */
-  --primary-foreground: #faf6ec;
-  --secondary: #ecead8;
-  --secondary-foreground: #1b2e1b;
-  --muted: #f1ecdb;
-  --muted-foreground: #5c6e55;
-  --accent: #d8e7cd; /* field-tinted */
-  --accent-foreground: #1b2e1b;
-  --destructive: #c2532e;
-  --border: #e5dfcb;
-  --input: #e5dfcb;
-  --ring: #4a8e3a; /* field */
-  --chart-1: #4a8e3a; /* field */
-  --chart-2: #76d67e; /* pulse */
-  --chart-3: #e0a93a; /* harvest */
-  --chart-4: #1b2e1b; /* loam */
-  --chart-5: #c2532e;
-  --radius: 0.625rem;
-  --sidebar: #f1ecdb;
-  --sidebar-foreground: #1b2e1b;
-  --sidebar-primary: #1b2e1b;
-  --sidebar-primary-foreground: #faf6ec;
-  --sidebar-accent: #d8e7cd;
-  --sidebar-accent-foreground: #1b2e1b;
-  --sidebar-border: #e5dfcb;
-  --sidebar-ring: #4a8e3a;
+  --popover-foreground: var(--tw-loam);
+  --primary: var(--tw-shoot);
+  --primary-foreground: var(--tw-loam-deep);
+  --secondary: #e2e8d6;
+  --secondary-foreground: var(--tw-loam);
+  --muted: #e6ebdc;
+  --muted-foreground: #4f5f4a;
+  --accent: #dcebc9; /* shoot-tinted */
+  --accent-foreground: var(--tw-loam);
+  --destructive: #b8452a;
+  --border: #d9dfcd;
+  --input: #d9dfcd;
+  --ring: var(--tw-shoot);
+  --chart-1: var(--tw-furrow);
+  --chart-2: var(--tw-shoot);
+  --chart-3: var(--tw-amber);
+  --chart-4: var(--tw-loam);
+  --chart-5: #b8452a;
+  --radius: var(--tw-radius-sm);
+  --sidebar: #e6ebdc;
+  --sidebar-foreground: var(--tw-loam);
+  --sidebar-primary: var(--tw-loam);
+  --sidebar-primary-foreground: var(--tw-sage);
+  --sidebar-accent: #dcebc9;
+  --sidebar-accent-foreground: var(--tw-loam);
+  --sidebar-border: #d9dfcd;
+  --sidebar-ring: var(--tw-shoot);
 }
 
 .dark {
-  --background: #1b2e1b;
-  --foreground: #faf6ec;
-  --card: #233a23;
-  --card-foreground: #faf6ec;
-  --popover: #233a23;
-  --popover-foreground: #faf6ec;
-  --primary: #76d67e;
-  --primary-foreground: #1b2e1b;
-  --secondary: #2c4a2c;
-  --secondary-foreground: #faf6ec;
-  --muted: #2c4a2c;
-  --muted-foreground: #b9c4ad;
-  --accent: #4a8e3a;
-  --accent-foreground: #faf6ec;
-  --destructive: #e0a93a;
-  --border: #ffffff1a;
-  --input: #ffffff26;
-  --ring: #76d67e;
-  --chart-1: #76d67e;
-  --chart-2: #4a8e3a;
-  --chart-3: #e0a93a;
-  --chart-4: #faf6ec;
-  --chart-5: #c2532e;
-  --sidebar: #142214;
-  --sidebar-foreground: #faf6ec;
-  --sidebar-primary: #76d67e;
-  --sidebar-primary-foreground: #1b2e1b;
-  --sidebar-accent: #2c4a2c;
-  --sidebar-accent-foreground: #faf6ec;
-  --sidebar-border: #ffffff1a;
-  --sidebar-ring: #76d67e;
+  --background: var(--tw-loam-deep);
+  --foreground: var(--tw-sage);
+  --card: var(--tw-loam);
+  --card-foreground: var(--tw-sage);
+  --popover: var(--tw-loam);
+  --popover-foreground: var(--tw-sage);
+  --primary: var(--tw-shoot);
+  --primary-foreground: var(--tw-loam-deep);
+  --secondary: #2a3a27;
+  --secondary-foreground: var(--tw-sage);
+  --muted: #2a3a27;
+  --muted-foreground: rgba(238, 242, 228, 0.62);
+  --accent: var(--tw-furrow);
+  --accent-foreground: var(--tw-sage);
+  --destructive: var(--tw-amber);
+  --border: rgba(238, 242, 228, 0.14);
+  --input: rgba(238, 242, 228, 0.14);
+  --ring: var(--tw-shoot);
+  --chart-1: var(--tw-shoot);
+  --chart-2: var(--tw-furrow);
+  --chart-3: var(--tw-amber);
+  --chart-4: var(--tw-sage);
+  --chart-5: #b8452a;
+  --sidebar: var(--tw-loam-deep);
+  --sidebar-foreground: var(--tw-sage);
+  --sidebar-primary: var(--tw-shoot);
+  --sidebar-primary-foreground: var(--tw-loam-deep);
+  --sidebar-accent: #2a3a27;
+  --sidebar-accent-foreground: var(--tw-sage);
+  --sidebar-border: rgba(238, 242, 228, 0.14);
+  --sidebar-ring: var(--tw-shoot);
 }
 
 @layer base {
@@ -136,6 +139,14 @@
   }
   html {
     @apply font-sans;
+  }
+  a {
+    @apply underline-offset-4;
+  }
+  /* Keyboard focus is visible everywhere: the shoot border plus a soft 3 px halo (brand rule). */
+  :focus-visible {
+    outline: 2px solid var(--tw-shoot);
+    outline-offset: 2px;
   }
 }
 
@@ -153,4 +164,148 @@
 
 .tilthwave-pulse-dot {
   animation: tilthwave-pulse 1.6s ease-in-out infinite;
+}
+/* ---- Sign-in screens (brand handoff, login/reference-login.html) ------------------------------ */
+/* Unlayered on purpose: these rules win over the shared components' utility classes, so the
+   forms stay the same components with the reference's sizes. */
+
+.auth-screen {
+  position: relative;
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--tw-loam-deep);
+  color: var(--tw-sage);
+  font-family: var(--font-sans);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+.auth-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.auth-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(10, 16, 10, 0.75) 100%);
+}
+
+.auth-card {
+  position: relative;
+  z-index: 2;
+  width: min(400px, 100%);
+  padding: 36px 34px 30px;
+  border-radius: var(--tw-radius-lg);
+  background: rgba(30, 42, 28, 0.55);
+  border: 1px solid rgba(238, 242, 228, 0.14);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(238, 242, 228, 0.08);
+  animation: auth-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (max-width: 380px) {
+  .auth-card {
+    padding: 28px 20px 24px;
+  }
+}
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card {
+    animation: none;
+  }
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.auth-brand-name {
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.6px; /* -1.6 at 60 px, scaled */
+  line-height: 1;
+}
+.auth-brand-slogan {
+  margin-top: 4px;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--tw-shoot);
+}
+.auth-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.auth-lead {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: rgba(238, 242, 228, 0.62);
+}
+.auth-card [data-slot="form-label"] {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tw-sage);
+}
+.auth-card [data-slot="input"] {
+  height: auto;
+  padding: 12px 14px;
+  border-radius: var(--tw-radius-sm);
+  font-size: 15px;
+  color: var(--tw-sage);
+  background: rgba(17, 26, 16, 0.55);
+  border-color: rgba(238, 242, 228, 0.14);
+}
+.auth-card [data-slot="input"]:focus-visible {
+  border-color: var(--tw-shoot);
+  box-shadow: 0 0 0 3px rgba(140, 203, 94, 0.22);
+}
+.auth-card [data-slot="form-description"],
+.auth-meta {
+  font-size: 13px;
+  color: rgba(238, 242, 228, 0.62);
+}
+.auth-card a {
+  color: var(--tw-shoot);
+  text-decoration: none;
+}
+.auth-card a:hover {
+  text-decoration: underline;
+}
+.auth-card [data-slot="button"][type="submit"] {
+  height: auto;
+  margin-top: 6px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.auth-foot {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(238, 242, 228, 0.62);
+}
+.auth-foot strong {
+  color: var(--tw-sage);
+  font-weight: 700;
 }

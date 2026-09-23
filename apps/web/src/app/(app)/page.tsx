@@ -71,12 +71,12 @@ export default function HomePage() {
           Home
         </h1>
         <p className="text-sm text-muted-foreground">
-          Where farms speak. Fields listen.
+          The field&rsquo;s true voice
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-md border border-harvest/40 bg-harvest/10 px-4 py-3 text-sm text-loam">
+        <div className="rounded-md border border-amber/40 bg-amber/10 px-4 py-3 text-sm text-loam">
           <span className="font-medium">Dashboard data failed to load.</span>{" "}
           {error.message}
         </div>
