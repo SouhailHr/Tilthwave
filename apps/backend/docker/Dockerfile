@@ -3,7 +3,7 @@
 
 # 1. Resolve and install the locked dependencies into a virtualenv. uv, its cache and the lock
 #    file stay in this stage; only the finished .venv is copied out.
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 WORKDIR /backend
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -14,7 +14,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.11.21,source=/uv,target=/bin/uv \
     uv sync --frozen --no-dev
 
 # 2. Runtime: the interpreter, curl for the container healthcheck, the virtualenv and the code.
-FROM python:3.12-slim
+FROM python:3.14-slim
 WORKDIR /backend
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
