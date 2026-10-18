@@ -2,7 +2,7 @@
 # Tilthwave simulator image — two entrypoints (docker/{sensors,actuators}).
 
 # 1. Locked dependencies into a virtualenv; uv, its cache and the lock file stay here.
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 WORKDIR /simulator
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -14,7 +14,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.11.21,source=/uv,target=/bin/uv \
 
 # 2. Runtime: interpreter, virtualenv, code. Configuration comes from environment variables
 #    (STREAMER_*, API_*, SENSORS_*).
-FROM python:3.12-slim
+FROM python:3.14-slim
 WORKDIR /simulator
 
 RUN groupadd --system app && useradd --system --gid app --home-dir /simulator --shell /usr/sbin/nologin app
