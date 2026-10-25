@@ -7,23 +7,23 @@ license = { text = "MIT" }
 requires-python = ">=3.12,<3.13"  # tested on 3.12 only (image + CI); widen once a 3.13 CI leg exists
 dependencies = [
     # Settings
-    "pydantic==2.13.5",
-    "pydantic-settings==2.15.0",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.1",
     # Security
     "PyJWT==2.14.0",           # replaces python-jose (unfixed CVEs, ecdsa dependency)
     "bcrypt==5.0.0",           # used directly (core/security/password.py); passlib is gone
     # Database
     "psycopg2-binary==2.9.13",   # wheels for py3.12; no libpq/compiler needed
     "SQLAlchemy==2.0.54",
-    "alembic==1.20.0",
+    "alembic==1.20.1",
     # API
-    "fastapi==0.141.1",
-    "uvicorn==0.53.0",
+    "fastapi==0.161.0",
+    "uvicorn==0.54.0",
     "email_validator==2.3.0",
-    "fastapi-pagination==0.16.0",
+    "fastapi-pagination==0.16.1",
     # Streamer
-    "confluent-kafka==2.15.1",
-    "faststream[confluent,cli]==0.5.48",   # cli extra: the `faststream run` entrypoint
+    "confluent-kafka==2.16.0",
+    "faststream[confluent,cli]==0.7.7",   # cli extra: the `faststream run` entrypoint
     # NOTE: pinned back from 0.7.5 (see Dependabot PR #8) - 0.7.x drops the `auto_commit` kwarg
     # from KafkaRegistrator.subscriber(), which interfaces/streamer/run_streamer.py relies on.
     # Upgrading needs a code change (deferred to the faststream migration follow-up), not a
