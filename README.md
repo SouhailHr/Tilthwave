@@ -2,7 +2,7 @@
 
 Smart-irrigation IoT platform. A full control loop — sensors → broker → backend →
 automated irrigation — with a live web dashboard. Runs as a 24/7 public demo at
-`tilthwave.hannibyte.com` with a demo account and a simulated farm.
+`tilthwave.hannibyte.com` with a demo account (user: admin / pwd: admin500@ )  and a simulated farm.
 
 ## Monorepo layout
 
